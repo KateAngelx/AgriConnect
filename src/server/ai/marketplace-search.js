@@ -148,7 +148,7 @@ export function extractPriceBounds(rawQuery) {
   return { maxPricePhp, minPricePhp }
 }
 
-export function parseMarketplaceQuery(rawQuery) {
+export function parseMarketplaceQuery(rawQuery, categories = []) {
   const query = String(rawQuery ?? '').trim().toLowerCase()
   const { maxPricePhp, minPricePhp } = extractPriceBounds(query)
   const tokens = query
@@ -158,6 +158,16 @@ export function parseMarketplaceQuery(rawQuery) {
     .filter((part) => !/^\d+$/.test(part) && !/^\d+pesos?$/.test(part))
 
   const categoryIds = new Set()
+  for (const category of categories) {
+    const id = String(category.id || '').toLowerCase()
+    const name = String(category.name || '').toLowerCase()
+    const categoryTokens = name.split(/[^a-z0-9]+/).filter((token) => token.length > 1)
+    const mentioned =
+      query.includes(name) ||
+      (name && categoryTokens.some((token) => query.includes(token))) ||
+      (id && (query.includes(id) || query.includes(id.replaceAll('-', ' '))))
+    if (mentioned && id) categoryIds.add(id)
+  }
   for (const token of tokens) {
     const aliases = CATEGORY_ALIASES[token]
     if (aliases) aliases.forEach((id) => categoryIds.add(id))
@@ -166,6 +176,14 @@ export function parseMarketplaceQuery(rawQuery) {
   for (const [word, ids] of Object.entries(CATEGORY_ALIASES)) {
     if (query.includes(word)) ids.forEach((id) => categoryIds.add(id))
   }
+
+  const fulfillment = /\b(pickup|pick up)\b/.test(query)
+    ? 'pickup'
+    : /\b(delivery|deliver|shipping|ship)\b/.test(query)
+      ? 'delivery'
+      : null
+  const inStockOnly = /\b(in stock|available now|currently available|available today)\b/.test(query)
+  const newestOnly = /\b(newest|latest|recent|recently listed|newly listed)\b/.test(query)
 
   const priceFilterOnly =
     (maxPricePhp != null || minPricePhp != null) && categoryIds.length === 0 && tokens.length === 0
@@ -177,6 +195,9 @@ export function parseMarketplaceQuery(rawQuery) {
     maxPricePhp,
     minPricePhp,
     priceFilterOnly,
+    fulfillment,
+    inStockOnly,
+    newestOnly,
     browseAll:
       (tokens.length === 0 && categoryIds.length === 0 && BROWSE_INTENT.test(query)) || priceFilterOnly,
   }

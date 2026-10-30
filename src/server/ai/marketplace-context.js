@@ -6,7 +6,7 @@ function mapProduct(product) {
   return {
     id: product.id,
     name: product.name,
-    description: product.description.slice(0, 280),
+    description: String(product.description || '').slice(0, 280),
     price: product.price,
     unit: product.unit,
     stock: product.stock,
@@ -18,6 +18,9 @@ function mapProduct(product) {
     deliveryFee: DELIVERY_FEE,
     category: product.category?.name || '',
     categoryId: product.category?.id || '',
+    listedAt: product.createdAt || null,
+    available: product.stock > 0,
+    stockStatus: product.stock > 0 ? 'in stock' : 'out of stock',
   }
 }
 
@@ -44,15 +47,39 @@ function catalogSummary(activeProducts, categories) {
 
 export async function marketplaceProductFacts({ query, limit = 48 }) {
   const store = await readyStore()
-  const parsed = parseMarketplaceQuery(query)
+  const parsed = parseMarketplaceQuery(query, store.categories)
   const active = store.products.filter(
     (product) => product.status === 'active' && product.seller?.status === 'approved',
   )
 
-  let matched = active.filter((product) => productMatchesSearch(product, parsed))
+  const normalizedQuestion = String(query || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const locationMatches = active.filter((product) => {
+    const locations = [product.location, product.seller?.location]
+      .filter(Boolean)
+      .map((location) => String(location).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim())
+      .filter(Boolean)
+    return locations.some((location) => normalizedQuestion.includes(location))
+  })
+  const hasExplicitLocation = active.some((product) =>
+    [product.location, product.seller?.location].some((location) => {
+      const normalized = String(location || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+      return normalized && normalizedQuestion.includes(normalized)
+    }),
+  )
+  let matched = active.filter((product) => {
+    if (product.stock <= 0) return false
+    if (parsed.fulfillment === 'pickup' && !product.pickup) return false
+    if (parsed.fulfillment === 'delivery' && !product.delivery) return false
+    if (parsed.inStockOnly && product.stock <= 0) return false
+    if (hasExplicitLocation && !locationMatches.some((entry) => entry.id === product.id)) return false
+    return productMatchesSearch(product, parsed)
+  })
 
   if (matched.length === 0 && parsed.categoryIds.length > 0) {
-    matched = active.filter((product) => parsed.categoryIds.includes(product.category?.id))
+    matched = active.filter(
+      (product) =>
+        product.stock > 0 && parsed.categoryIds.includes(product.category?.id),
+    )
   }
 
   if (matched.length === 0 && parsed.tokens.length > 0) {
@@ -66,12 +93,13 @@ export async function marketplaceProductFacts({ query, limit = 48 }) {
       ]
         .join(' ')
         .toLowerCase()
-      return parsed.tokens.some((token) => haystack.includes(token))
+      return product.stock > 0 && parsed.tokens.some((token) => haystack.includes(token))
     })
   }
 
   if (matched.length === 0 && (parsed.browseAll || parsed.categoryIds.length > 0)) {
     matched = active.filter((product) => {
+      if (product.stock <= 0) return false
       const { maxPricePhp, minPricePhp } = parsed
       if (maxPricePhp == null && minPricePhp == null) return true
       const price = Number(product.price)
@@ -81,7 +109,9 @@ export async function marketplaceProductFacts({ query, limit = 48 }) {
     })
   }
 
-  if (parsed.maxPricePhp != null || parsed.minPricePhp != null) {
+  if (parsed.newestOnly) {
+    matched.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+  } else if (parsed.maxPricePhp != null || parsed.minPricePhp != null) {
     matched.sort((a, b) => Number(a.price) - Number(b.price))
   }
 
@@ -97,6 +127,9 @@ export async function marketplaceProductFacts({ query, limit = 48 }) {
       maxPricePhp: parsed.maxPricePhp,
       minPricePhp: parsed.minPricePhp,
       priceFilterOnly: parsed.priceFilterOnly,
+      fulfillment: parsed.fulfillment,
+      inStockOnly: parsed.inStockOnly,
+      newestOnly: parsed.newestOnly,
     },
     catalogSummary: summary,
     count: products.length,

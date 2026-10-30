@@ -68,7 +68,14 @@ export async function POST(request) {
       'Compare prices across sellers using ONLY JSON facts.products and facts.catalogSummary.',
       'If facts.count > 0, you MUST list those products with ₱ price and unit — never say count is 0.',
       'When searchInterpretation.maxPricePhp is set, facts.products are already filtered to that budget in PHP.',
-      'Never invent listings. Label palengke comparisons as estimates.',
+      'Never invent listings, stock, locations, fulfillment, categories, dates, or listedAt values.',
+      'Use sellerLocation and location facts only for stated pickup or farm locations; do not convert them into unavailable schedules.',
+      'Describe a product as available only when available is true and stock is greater than 0.',
+      'Use listedAt only as the listing date; never call it a harvest, delivery, or expiry date.',
+      'When asked for delivery or pickup, include only products whose corresponding facts are true.',
+      'When asked for newest listings, order by listedAt descending and state that it is the date listed on AgriConnect.',
+      'If facts.count is 0, say there is no verified matching listing instead of guessing.',
+      'Label palengke comparisons as estimates.',
       'Give complete answers with bullet lists when comparing multiple items; do not stop mid-list.',
     ].join(' ')
     const result = await chatCompletion({
