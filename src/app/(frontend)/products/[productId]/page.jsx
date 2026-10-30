@@ -7,7 +7,7 @@ import { currentUser } from '@/server/auth'
 import { isApprovedBuyer } from '@/server/roles'
 import { getProduct, listRelatedProducts } from '@/server/catalog'
 import { wished } from '@/server/wishlist'
-import { addToCartAction } from '@/app/(frontend)/cart/actions'
+import { ProductPurchaseActions } from '@/components/product-purchase-actions'
 import { toggleWishlistAction } from '@/app/(frontend)/wishlist/actions'
 export default async function ProductDetailsPage({ params }) {
   const { productId } = await params
@@ -107,34 +107,7 @@ export default async function ProductDetailsPage({ params }) {
             ) : null}
             {user && isApprovedBuyer(user) ? (
               <>
-              <form
-                action={addToCartAction}
-                className="mt-8 rounded-2xl bg-[#173c2c] p-6 text-white"
-              >
-                <input type="hidden" name="productID" value={product.id} />
-                <input type="hidden" name="returnTo" value={`/products/${product.id}`} />
-                <h2 className="text-lg font-semibold">Add to your cart</h2>
-                <p className="mt-2 text-sm text-white/70">
-                  Stock and product status are checked again on the server.
-                </p>
-                <div className="mt-5 flex gap-3">
-                  <input
-                    aria-label="Quantity"
-                    name="quantity"
-                    type="number"
-                    min="1"
-                    max={product.stock}
-                    defaultValue="1"
-                    className="w-24 rounded-full bg-white px-4 py-3 text-[#173c2c]"
-                  />
-                  <button
-                    disabled={product.stock < 1}
-                    className="rounded-full bg-[#bce86d] px-5 py-3 text-sm font-semibold text-[#173c2c] disabled:opacity-50"
-                  >
-                    {product.stock > 0 ? 'Add to cart' : 'Out of stock'}
-                  </button>
-                </div>
-              </form>
+              <ProductPurchaseActions product={product} />
               <form action={toggleWishlistAction} className="mt-3">
                 <input type="hidden" name="productId" value={product.id} />
                 <button className="text-sm font-bold text-[#3f8d29]">

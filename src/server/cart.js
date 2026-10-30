@@ -72,3 +72,23 @@ export async function updateCart(input) {
   await save()
   return { cart: presentCart(store, cart) }
 }
+
+export async function buyNow(input) {
+  const buyer = await requireBuyer()
+  if (buyer.error) return buyer
+  const productID = String(input.productID ?? '')
+  const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1))
+  if (!productID) return { error: 'Choose a product.' }
+  const product = await getProduct(productID)
+  if (!product || product.status !== 'active') return { error: 'That product is not available.' }
+  if (quantity > product.stock) return { error: 'The requested quantity exceeds available stock.' }
+  const store = await readyStore()
+  const cart = {
+    id: crypto.randomUUID(),
+    buyer: buyer.user.id,
+    items: [{ id: crypto.randomUUID(), productId: product.id, quantity }],
+  }
+  store.carts.set(buyer.user.id, cart)
+  await save()
+  return { cart: presentCart(store, cart) }
+}

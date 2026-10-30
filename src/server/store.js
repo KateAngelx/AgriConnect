@@ -48,6 +48,8 @@ export function publicUser(user) {
     status: user.status,
     sellerId: user.sellerId || null,
     serviceArea: user.serviceArea || '',
+    serviceAreaLat: user.serviceAreaLat ?? user.savedAddresses?.find((item) => item.id === 'service-area-pin')?.lat ?? '',
+    serviceAreaLng: user.serviceAreaLng ?? user.savedAddresses?.find((item) => item.id === 'service-area-pin')?.lng ?? '',
     contactNumber: user.contactNumber || '',
     savedAddresses: Array.isArray(user.savedAddresses) ? user.savedAddresses : [],
   }

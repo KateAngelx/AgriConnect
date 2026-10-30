@@ -1,4 +1,6 @@
+import { Suspense } from 'react'
 import { FloatingAiAssistant } from '@/components/floating-ai-assistant'
+import { RouteFeedbackToast } from '@/components/ui-feedback'
 import { currentUser } from '@/server/auth'
 import { ready } from '@/server/sync'
 import './styles.css'
@@ -25,6 +27,7 @@ export default async function RootLayout({ children }) {
         </a>
         <div id="root" tabIndex={-1}>
           {children}
+          <Suspense fallback={null}><RouteFeedbackToast /></Suspense>
           <FloatingAiAssistant user={user} />
         </div>
       </body>

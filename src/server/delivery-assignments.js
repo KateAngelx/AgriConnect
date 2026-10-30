@@ -10,20 +10,31 @@ function generalArea(text) {
   return value
 }
 
-function pickupAreaForOrder(store, order) {
-  if (!order) return 'Area not specified'
+function pickupDetailsForOrder(store, order) {
   const locations = []
-  for (const item of order.items || []) {
+  let pickupLat = null
+  let pickupLng = null
+  for (const item of order?.items || []) {
     const productId = item.product?.id
     const product = store.products.find((entry) => entry.id === productId)
     const seller =
-      product?.seller || store.sellers.find((entry) => entry.id === item.sellerId || item.sellerId)
+      product?.seller || store.sellers.find((entry) => entry.id === item.sellerId)
     if (item.pickupLocation) locations.push(item.pickupLocation)
     else if (seller?.location) locations.push(seller.location)
     else if (product?.location) locations.push(product.location)
+    pickupLat ??= item.pickupLat ?? product?.pickupLat ?? seller?.pickupLat ?? null
+    pickupLng ??= item.pickupLng ?? product?.pickupLng ?? seller?.pickupLng ?? null
   }
   const unique = [...new Set(locations.filter(Boolean))]
-  return unique.length ? generalArea(unique.join('; ')) : 'Area not specified'
+  return {
+    pickupArea: unique.length ? generalArea(unique.join('; ')) : 'Area not specified',
+    pickupLat: order?.sellerPickup?.pickupLat ?? pickupLat,
+    pickupLng: order?.sellerPickup?.pickupLng ?? pickupLng,
+  }
+}
+
+function pickupAreaForOrder(store, order) {
+  return pickupDetailsForOrder(store, order).pickupArea
 }
 
 export function deliveryAssignmentForViewer(store, delivery, order, viewerUserId) {
@@ -31,7 +42,8 @@ export function deliveryAssignmentForViewer(store, delivery, order, viewerUserId
     delivery.courierId &&
     delivery.courierId === viewerUserId &&
     delivery.status !== 'open'
-  const pickupArea = pickupAreaForOrder(store, order)
+  const pickupDetails = pickupDetailsForOrder(store, order)
+  const pickupArea = pickupDetails.pickupArea
 
   const base = {
     id: delivery.id,
@@ -58,8 +70,8 @@ export function deliveryAssignmentForViewer(store, delivery, order, viewerUserId
       buyerName: order?.buyerName || '',
       instructions: order?.instructions || '',
       pickupLocations: pickupArea,
-      pickupLat: pickup?.pickupLat ?? null,
-      pickupLng: pickup?.pickupLng ?? null,
+      pickupLat: pickup?.pickupLat ?? pickupDetails.pickupLat ?? null,
+      pickupLng: pickup?.pickupLng ?? pickupDetails.pickupLng ?? null,
       deliveryLat: order?.deliveryLat ?? null,
       deliveryLng: order?.deliveryLng ?? null,
       estimatedArrivalAt: order?.estimatedArrivalAt ?? null,

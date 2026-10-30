@@ -104,6 +104,14 @@ function threadKey(user, mode) {
   return `${user?.id ?? 'guest'}:${mode}`
 }
 
+function safeProviderNotice(notice) {
+  const text = String(notice || '').trim()
+  if (/api key is forbidden|api key|generativelanguage|googleapis/i.test(text)) {
+    return 'The AI provider rejected access. AgriConnect answered using live marketplace data instead.'
+  }
+  return text
+}
+
 export function FloatingAiAssistant({ user }) {
   const [open, setOpen] = useState(false)
   const [question, setQuestion] = useState('')
@@ -194,8 +202,9 @@ export function FloatingAiAssistant({ user }) {
       })
       const payload = await response.json()
       if (payload.answer) {
-        const answerText = payload.notice
-          ? `${payload.answer}\n\n(${payload.notice})`
+        const providerNotice = safeProviderNotice(payload.notice)
+        const answerText = providerNotice
+          ? `${payload.answer}\n\n(${providerNotice})`
           : payload.answer
         const withAssistant = [...withUser, { role: 'assistant', text: answerText }].slice(-MAX_MESSAGES_PER_THREAD)
         persistThread(sessionKey, withAssistant)

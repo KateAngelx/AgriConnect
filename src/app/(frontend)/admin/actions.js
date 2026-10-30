@@ -35,6 +35,6 @@ export async function reviewApplicationAction(formData) {
 export async function payCommissionAction(formData) {
   const user = await admin()
   const result = await markCommissionPaid(user, formData.get('deliveryId'))
-  const error = result.error ? `?error=${encodeURIComponent(result.error)}` : ''
-  redirect(`/admin/payments${error}`)
+  if (result.error) redirect(`/admin/payments?error=${encodeURIComponent(result.error)}`)
+  redirect('/admin/payments?success=Commission marked as paid.')
 }

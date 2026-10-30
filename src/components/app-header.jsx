@@ -63,7 +63,7 @@ export function AppHeader({
           })}
         </nav>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 justify-self-end sm:gap-3">
+        <div className="flex shrink-0 flex-nowrap items-center justify-end gap-2 justify-self-end sm:gap-3">
           <button
             type="button"
             className="grid size-10 place-items-center rounded-full border border-[#173c2c]/10 text-[#142016] lg:hidden"

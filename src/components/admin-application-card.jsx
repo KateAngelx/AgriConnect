@@ -2,12 +2,15 @@
 
 import { useRef, useState } from 'react'
 import { StatusBadge } from '@/components/dashboard-ui'
+import { ConfirmDialog } from '@/components/ui-feedback'
 
 export function AdminApplicationCard({ entry, reviewAction }) {
   const decisionRef = useRef(null)
   const [aiHint, setAiHint] = useState('')
   const [aiError, setAiError] = useState('')
   const [aiPending, setAiPending] = useState(false)
+  const [confirmation, setConfirmation] = useState(null)
+  const confirmedDecision = useRef(false)
 
   async function requestAiHint() {
     setAiPending(true)
@@ -34,15 +37,26 @@ export function AdminApplicationCard({ entry, reviewAction }) {
 
   function confirmSubmit(event, decision) {
     decisionRef.current.value = decision
+    if (confirmedDecision.current) {
+      confirmedDecision.current = false
+      return
+    }
+    event.preventDefault()
     if (decision === 'approved' || decision === 'rejected') {
-      const verb = decision === 'approved' ? 'approve' : 'reject'
-      if (!window.confirm(`Confirm that you want to ${verb} this application?`)) {
-        event.preventDefault()
-      }
+      setConfirmation({ decision, verb: decision === 'approved' ? 'approve' : 'reject' })
     }
   }
 
+  function submitDecision() {
+    confirmedDecision.current = true
+    const decision = confirmation.decision
+    setConfirmation(null)
+    decisionRef.current.value = decision
+    decisionRef.current.form?.requestSubmit()
+  }
+
   return (
+    <>
     <li className="rounded-xl border border-[#173c2c]/10 bg-[#fafbfa] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -110,6 +124,16 @@ export function AdminApplicationCard({ entry, reviewAction }) {
         </form>
       ) : null}
     </li>
+    <ConfirmDialog
+      open={Boolean(confirmation)}
+      title="Confirm application decision"
+      message={confirmation ? `Confirm that you want to ${confirmation.verb} this application?` : ''}
+      confirmLabel={confirmation?.verb === 'approve' ? 'Approve application' : 'Reject application'}
+      danger={confirmation?.verb === 'reject'}
+      onConfirm={submitDecision}
+      onCancel={() => setConfirmation(null)}
+    />
+    </>
   )
 }
 

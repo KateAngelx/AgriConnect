@@ -10,3 +10,5 @@ alter table orders add column if not exists delivery_lng double precision;
 update sellers set pickup_lat = 14.1723, pickup_lng = 121.2417, landmark = 'Near municipal hall' where id = 'laguna-greens' and pickup_lat is null;
 update sellers set pickup_lat = 16.4023, pickup_lng = 120.5960, landmark = 'Highland market road' where id = 'benguet-growers' and pickup_lat is null;
 update sellers set pickup_lat = 15.5784, pickup_lng = 121.0340, landmark = 'Rice mill gate' where id = 'nueva-ecija-rice' and pickup_lat is null;
+
+notify pgrst, 'reload schema';

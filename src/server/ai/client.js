@@ -29,11 +29,14 @@ function parseProviderFailure(status, bodyText) {
   const billing =
     status === 429 ||
     /insufficient|no credits|billing|quota|exceeded|rate limit|payment|resource exhausted/i.test(lower)
+  const forbidden = status === 403 || /api key is forbidden|permission denied|insufficient permissions/i.test(lower)
   const userMessage = billing
     ? 'LLM provider limit or billing issue. AgriConnect will answer using live data instead.'
-    : status >= 500
-      ? 'AI provider is temporarily unavailable. Using AgriConnect data instead.'
-      : 'AI provider rejected the request. Using AgriConnect data instead.'
+    : forbidden
+      ? 'AI provider access is restricted. Add an eligible API key or use database-only mode.'
+      : status >= 500
+        ? 'AI provider is temporarily unavailable. Using AgriConnect data instead.'
+        : 'AI provider rejected the request. Using AgriConnect data instead.'
   return {
     error: userMessage,
     useDatabaseFallback: billing || status >= 500 || status === 401,

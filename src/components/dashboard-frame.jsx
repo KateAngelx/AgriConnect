@@ -37,6 +37,7 @@ export function DashboardFrame({
   const navItems = [...roleLinks, ...dashboardExtrasForRole(navRole)]
 
   function isActive(href) {
+    if (href === '/account') return pathname === '/account'
     if (href === '/admin/dashboard' || href === '/seller/dashboard' || href === '/delivery/dashboard') {
       return pathname === href
     }
@@ -86,18 +87,22 @@ export function DashboardFrame({
 
       <div className="flex min-h-screen flex-col lg:pl-64">
         <header className="sticky top-0 z-30 border-b border-[#173c2c]/8 bg-white/95 backdrop-blur">
-          <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-            <div className="flex min-w-0 items-center gap-3 lg:hidden">
+          <div className="grid h-16 grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:gap-3 sm:px-5 lg:flex lg:justify-between lg:px-8">
+            <div className="flex min-w-0 items-center lg:hidden">
               <button
                 type="button"
                 onClick={() => setMobileNav((open) => !open)}
-                className="rounded-lg border border-[#173c2c]/12 px-3 py-2 text-xs font-bold"
+                className="grid size-10 place-items-center rounded-xl border border-[#173c2c]/12 bg-white text-[#173c2c] shadow-sm"
                 aria-expanded={mobileNav}
+                aria-label={mobileNav ? 'Close navigation' : 'Open navigation'}
               >
-                Menu
+                <span className="flex flex-col gap-1" aria-hidden="true">
+                  <span className={`block h-0.5 w-4 rounded-full bg-current transition ${mobileNav ? 'translate-y-[3px] rotate-45' : ''}`} />
+                  <span className={`block h-0.5 w-4 rounded-full bg-current transition ${mobileNav ? '-translate-y-[3px] -rotate-45' : ''}`} />
+                </span>
               </button>
-              <span className="truncate text-sm font-bold">AgriConnect</span>
             </div>
+            <span className="truncate text-center text-sm font-bold lg:hidden">AgriConnect</span>
 
             {variant === 'default' && (
               <div className="hidden min-w-0 flex-1 lg:block">
@@ -132,7 +137,7 @@ export function DashboardFrame({
           )}
         </header>
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="flex-1 px-3 py-5 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
           <div className={variant === 'overview' ? 'mx-auto max-w-7xl' : 'mx-auto max-w-6xl'}>
             {variant === 'default' && (
               <div className="mb-6 lg:hidden">

@@ -34,8 +34,8 @@ export default async function AdminDashboardPage() {
 
   return (
     <DashboardShell user={user} title="" subtitle="" variant="overview">
-      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-        <div className="min-w-0 space-y-6">
+      <div className="grid gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-5 sm:space-y-6">
           <DashboardHero
             label="Admin dashboard"
             title={`Good morning, ${firstName}!`}
@@ -45,7 +45,7 @@ export default async function AdminDashboardPage() {
             imageUrl="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=800&q=80"
           />
 
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
             <MetricTile label="Total users" value={summary.users} icon="users" tone="green" />
             <MetricTile
               label="Pending applications"
@@ -73,7 +73,7 @@ export default async function AdminDashboardPage() {
             />
           </section>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
             <OverviewPanel title="Recent applications" href="/admin/applications">
               {applications.length ? (
                 <DataTable columns={['Applicant', 'Submitted', 'Status']}>
@@ -101,7 +101,7 @@ export default async function AdminDashboardPage() {
             </OverviewPanel>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
             <ActivityBars title="Platform activity" series={activity} />
             <QuickActions
               actions={[

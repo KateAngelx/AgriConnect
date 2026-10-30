@@ -46,9 +46,12 @@ function canUseBuyerTools(user) {
   return hasUserRole(user, 'buyer') && user?.status === 'approved'
 }
 
-function profileLinks(user) {
+function profileLinks(user, pathname = '') {
   const links = []
-  if (canUseBuyerTools(user)) {
+  const isDashboardWorkspace =
+    pathname.startsWith('/admin/') || pathname.startsWith('/seller/') || pathname.startsWith('/delivery/')
+
+  if (canUseBuyerTools(user) && !isDashboardWorkspace) {
     links.push(
       { href: '/account', label: 'My account', icon: 'user' },
       { href: '/buyer/orders', label: 'My orders', icon: 'clipboard' },
@@ -93,16 +96,16 @@ export function RoleDashboardLinks({ user }) {
     links.push({ href: '/delivery/dashboard', label: 'Delivery dashboard' })
   }
   if (hasUserRole(user, 'admin') && user.status === 'approved') {
-    links.push({ href: '/admin/dashboard', label: 'Admin' })
+    links.push({ href: '/admin/dashboard', label: 'Admin dashboard' })
   }
   if (!links.length) return null
   return (
-    <div className="hidden items-center gap-2 md:flex">
+    <div className="hidden shrink-0 items-center gap-2 lg:flex">
       {links.map((link) => (
         <a
           key={link.href}
           href={link.href}
-          className="rounded-full border border-[#173c2c]/12 bg-[#f4faf0] px-3 py-1.5 text-xs font-semibold text-[#2e7d32] hover:bg-[#e8f5e3]"
+          className="whitespace-nowrap rounded-full border border-[#173c2c]/12 bg-[#f4faf0] px-3 py-1.5 text-xs font-semibold text-[#2e7d32] hover:bg-[#e8f5e3]"
         >
           {link.label}
         </a>
@@ -111,7 +114,7 @@ export function RoleDashboardLinks({ user }) {
   )
 }
 
-export function UserProfileMenu({ user }) {
+export function UserProfileMenu({ user, pathname = '' }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
   const menuId = useId()
@@ -139,7 +142,7 @@ export function UserProfileMenu({ user }) {
     }
   }, [open])
 
-  const links = profileLinks(user)
+  const links = profileLinks(user, pathname)
 
   return (
     <div className="relative" ref={rootRef}>
@@ -204,7 +207,7 @@ export function AuthenticatedHeaderActions({
   const router = useRouter()
   const [cartOpen, setCartOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
-  const isBuyer = canUseBuyerTools(user)
+  const isBuyer = canUseBuyerTools(user) && !pathname.startsWith('/admin/') && !pathname.startsWith('/seller/') && !pathname.startsWith('/delivery/')
 
   if (!user) return null
 
@@ -245,7 +248,7 @@ export function AuthenticatedHeaderActions({
             onClick={() => setNotifOpen(true)}
           />
         )}
-        <UserProfileMenu user={user} />
+        <UserProfileMenu user={user} pathname={pathname} />
       </div>
       {isBuyer ? (
         <CartDrawer

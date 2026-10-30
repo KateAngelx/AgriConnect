@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { updateProfileAction } from '@/app/(frontend)/account/settings/actions'
 import { LocationPicker } from '@/components/location-picker'
 
@@ -16,6 +16,11 @@ export function BuyerSettingsForm({ user }) {
   const [lat, setLat] = useState('')
   const [lng, setLng] = useState('')
   const [addressError, setAddressError] = useState('')
+  const [hasUnsavedLocations, setHasUnsavedLocations] = useState(false)
+
+  useEffect(() => {
+    if (state.ok) setHasUnsavedLocations(false)
+  }, [state.ok])
 
   const addAddress = () => {
     if (!label.trim() || address.trim().length < 10) {
@@ -46,6 +51,7 @@ export function BuyerSettingsForm({ user }) {
     setLat('')
     setLng('')
     setAddressError('')
+    setHasUnsavedLocations(true)
   }
 
   return (
@@ -72,7 +78,7 @@ export function BuyerSettingsForm({ user }) {
                   <p className="mt-1 text-sm text-[#647066]">{item.address}</p>
                   {item.landmark ? <p className="mt-1 text-xs text-[#647066]">{item.landmark}</p> : null}
                 </div>
-                <button type="button" onClick={() => setAddresses((current) => current.filter((addressItem) => addressItem.id !== item.id))} className="shrink-0 text-xs font-bold text-[#963b2d]">
+                <button type="button" onClick={() => { setAddresses((current) => current.filter((addressItem) => addressItem.id !== item.id)); setHasUnsavedLocations(true) }} className="shrink-0 text-xs font-bold text-[#963b2d]">
                   Remove
                 </button>
               </div>
@@ -99,12 +105,13 @@ export function BuyerSettingsForm({ user }) {
           </div>
           {addressError ? <p role="alert" className="text-sm font-bold text-[#963b2d]">{addressError}</p> : null}
           <button type="button" onClick={addAddress} className="w-fit rounded-full border border-[#173c2c]/15 px-4 py-2 text-sm font-bold">
-            + Add location
+            + Add to saved locations
           </button>
         </div>
       </div>
+      {hasUnsavedLocations ? <p role="status" className="rounded-xl bg-[#fff8ed] px-4 py-3 text-sm font-semibold text-[#7a4b12]">Location changes are ready. Select “Save changes” to keep them.</p> : null}
       {state.error ? <p role="alert" className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">{state.error}</p> : null}
-      {state.ok ? <p role="status" className="rounded-xl bg-[#eef8e8] px-4 py-3 text-sm text-[#3f8d29]">Profile and locations updated.</p> : null}
+      {state.ok ? <p role="status" className="rounded-xl bg-[#eef8e8] px-4 py-3 text-sm text-[#3f8d29]">Profile and locations updated and saved.</p> : null}
       <button type="submit" disabled={pending} className="rounded-full bg-[#5dbb38] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">
         {pending ? 'Saving…' : 'Save changes'}
       </button>

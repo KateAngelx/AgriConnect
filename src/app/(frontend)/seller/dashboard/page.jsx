@@ -15,6 +15,7 @@ import { requireSeller } from '@/server/guards'
 import { listNotifications } from '@/server/notifications'
 import { listOwnedOrders, listOwnedProducts, sellerRecord, sellerSnapshot } from '@/server/seller'
 import { readyStore } from '@/server/store'
+import { LocationMap } from '@/components/location-map'
 
 export default async function SellerDashboardPage() {
   const user = await requireSeller()
@@ -103,6 +104,15 @@ export default async function SellerDashboardPage() {
               )}
             </OverviewPanel>
           </div>
+
+          <OverviewPanel
+            title="Farm pickup location"
+            description="This pin is shared with buyers and delivery partners."
+            href="/seller/settings"
+            linkLabel="Edit pin"
+          >
+            <LocationMap lat={seller?.pickupLat} lng={seller?.pickupLng} height={240} label={`${seller?.farmName || 'Farm'} pickup pin`} />
+          </OverviewPanel>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <OverviewPanel title="Farm profile" description={seller ? `${seller.farmName} · ${seller.location}` : undefined}>

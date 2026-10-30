@@ -1,5 +1,6 @@
 import { refreshDeliveryEtaIso } from '@/lib/delivery-eta'
-import { listDeliveryWorkForUser } from './delivery-assignments'
+import { isValidPin } from '@/lib/geo'
+import { deliveryAssignmentForViewer, listDeliveryWorkForUser } from './delivery-assignments'
 import { notify } from './notifications'
 import { collectCash } from './payments'
 import { isApprovedDelivery, hasRole, rolesFromLegacy } from './roles'
@@ -60,8 +61,25 @@ export async function listCourierWork(user) {
 }
 
 export async function listCommissions(user) {
-  const work = await listCourierWork(user)
-  return work.filter((item) => item.courierId === user.id && item.status === 'delivered')
+  if (!hasRole(user, 'delivery') || user.status !== 'approved') return []
+  const store = await readyStore()
+  return store.deliveries
+    .filter((item) => item.courierId === user.id && ['delivered', 'completed'].includes(item.status))
+    .map((item) => deliveryAssignmentForViewer(store, item, store.orders.get(item.orderId) || null, user.id))
+    .map((item) => {
+      const delivery = store.deliveries.find((entry) => entry.id === item.id)
+      return {
+        ...item,
+        commission: delivery?.commission ?? item.commission ?? 0,
+        commissionStatus: delivery?.commissionStatus || 'pending',
+        updatedAt: delivery?.updatedAt || '',
+        order: store.orders.get(delivery?.orderId) ? {
+          id: delivery.orderId,
+          reference: store.orders.get(delivery.orderId).reference,
+        } : null,
+      }
+    })
+    .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
 }
 
 export async function assignmentForOrder(orderId) {
@@ -106,14 +124,37 @@ export async function updateAssignment(user, deliveryId, note) {
   return { ok: true }
 }
 
-export async function saveServiceArea(user, serviceArea) {
+export async function saveServiceArea(user, serviceArea, serviceAreaLat, serviceAreaLng, serviceLocationsJson = '') {
   if (!hasRole(user, 'delivery')) return { error: 'Only delivery accounts can set a service area.' }
   const area = String(serviceArea ?? '').trim().slice(0, 120)
   if (area.length < 2) return { error: 'Enter the areas you can serve.' }
+  const latitude = Number(serviceAreaLat)
+  const longitude = Number(serviceAreaLng)
+  if (!isValidPin(latitude, longitude)) return { error: 'Drop a service-area pin on the map.' }
+  let locations = []
+  try {
+    const parsed = JSON.parse(String(serviceLocationsJson || '[]'))
+    if (Array.isArray(parsed)) locations = parsed
+  } catch {}
+  locations = locations
+    .filter((item) => String(item?.label || '').trim() && isValidPin(Number(item?.lat), Number(item?.lng)))
+    .slice(0, 10)
+    .map((item, index) => ({
+      id: index === 0 && item.id === 'service-area-pin' ? 'service-area-pin' : String(item.id || crypto.randomUUID()),
+      label: String(item.label).trim().slice(0, 80),
+      address: String(item.address || item.label).trim().slice(0, 240),
+      landmark: '',
+      lat: Number(item.lat),
+      lng: Number(item.lng),
+    }))
+  if (!locations.length) locations = [{ id: 'service-area-pin', label: area, address: area, landmark: '', lat: latitude, lng: longitude }]
   const store = await readyStore()
   const record = store.users.get(user.id)
   if (!record) return { error: 'Account not found.' }
   record.serviceArea = area
+  record.serviceAreaLat = latitude
+  record.serviceAreaLng = longitude
+  record.savedAddresses = locations
   await save()
   return { ok: true }
 }

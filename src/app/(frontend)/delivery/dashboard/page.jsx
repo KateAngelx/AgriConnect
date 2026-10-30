@@ -13,6 +13,8 @@ import { ServiceAreaForm } from '@/components/profile-forms'
 import { requireDelivery } from '@/server/guards'
 import { deliverySnapshot, listCourierWork } from '@/server/delivery'
 import { listNotifications } from '@/server/notifications'
+import { LocationMap } from '@/components/location-map'
+import { LocationRouteMap } from '@/components/location-route-map'
 
 export default async function DeliveryDashboardPage({ searchParams }) {
   const user = await requireDelivery()
@@ -26,6 +28,10 @@ export default async function DeliveryDashboardPage({ searchParams }) {
   ])
   const firstName = greetingName(user.name)
   const recent = work.slice(0, 5)
+  const servicePin = Array.isArray(user.savedAddresses)
+    ? user.savedAddresses.find((item) => item.id === 'service-area-pin')
+    : null
+  const routeAssignment = work.find((assignment) => assignment.privacy === 'full')
 
   return (
     <DashboardShell user={user} title="" subtitle="" variant="overview">
@@ -55,6 +61,29 @@ export default async function DeliveryDashboardPage({ searchParams }) {
             />
           </section>
 
+          <OverviewPanel title="Delivery locations">
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div>
+                <p className="mb-2 font-bold text-[#142016]">Your service-area pin</p>
+                <LocationMap lat={servicePin?.lat ?? user.serviceAreaLat} lng={servicePin?.lng ?? user.serviceAreaLng} height={220} label="Service-area pin" />
+              </div>
+              <div>
+                <p className="mb-2 font-bold text-[#142016]">Buyer and pickup route</p>
+                {routeAssignment ? (
+                  <LocationRouteMap
+                    pickupLat={routeAssignment.pickupLat}
+                    pickupLng={routeAssignment.pickupLng}
+                    deliveryLat={routeAssignment.deliveryLat}
+                    deliveryLng={routeAssignment.deliveryLng}
+                    height={220}
+                  />
+                ) : (
+                  <LocationRouteMap pickupLat={null} pickupLng={null} deliveryLat={null} deliveryLng={null} height={220} />
+                )}
+              </div>
+            </div>
+          </OverviewPanel>
+
           <OverviewPanel title="Recent assignments">
             {recent.length ? (
               <DataTable columns={['Order', 'Address', 'Commission', 'Status']}>
@@ -82,7 +111,11 @@ export default async function DeliveryDashboardPage({ searchParams }) {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <OverviewPanel title="Service area" description="Jobs are matched using your coverage area.">
-              <ServiceAreaForm area={user.serviceArea} />
+              <ServiceAreaForm
+                area={user.serviceArea}
+                lat={user.serviceAreaLat ?? servicePin?.lat}
+                lng={user.serviceAreaLng ?? servicePin?.lng}
+              />
             </OverviewPanel>
             <QuickActions
               actions={[

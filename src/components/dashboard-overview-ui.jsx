@@ -14,7 +14,7 @@ const iconTones = {
 export function DashboardHero({ label, title, description, actionHref, actionLabel, imageUrl }) {
   return (
     <section className="relative overflow-hidden rounded-2xl border border-[#173c2c]/8 bg-[linear-gradient(105deg,#e8f5e3_0%,#f4faf0_45%,#ffffff_100%)] shadow-sm">
-      <div className="relative z-10 flex flex-col gap-5 p-6 sm:p-8 md:max-w-xl lg:max-w-2xl">
+      <div className="relative z-10 flex flex-col gap-4 p-5 sm:gap-5 sm:p-7 md:max-w-xl md:p-8 lg:max-w-2xl">
         <p className="page-eyebrow text-[#4f8d3b]">{label}</p>
         <h1 className="text-2xl font-bold tracking-tight text-[#142016] sm:text-3xl">{title}</h1>
         <p className="text-sm leading-6 text-[#65766d] sm:text-base">{description}</p>
@@ -44,13 +44,13 @@ export function DashboardHero({ label, title, description, actionHref, actionLab
 export function MetricTile({ label, value, hint, icon = 'grid', tone = 'green' }) {
   const toneClass = iconTones[tone] || iconTones.green
   return (
-    <div className="flex gap-3 rounded-xl border border-[#173c2c]/8 bg-white p-4 shadow-sm">
-      <div className={`grid size-11 shrink-0 place-items-center rounded-full ${toneClass}`}>
+    <div className="min-h-28 flex flex-col items-start gap-3 rounded-xl border border-[#173c2c]/8 bg-white p-3.5 shadow-sm sm:min-h-32 sm:flex-row sm:p-4">
+      <div className={`grid size-10 shrink-0 place-items-center rounded-full sm:size-11 ${toneClass}`}>
         <DashboardIcon name={icon} className="size-5" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-[#65766d]">{label}</p>
-        <p className="mt-0.5 truncate text-2xl font-bold text-[#142016]">{value}</p>
+        <p className="mt-1 text-2xl font-bold leading-none text-[#142016] sm:text-[1.7rem]">{value}</p>
         {hint ? <p className="mt-1 text-xs text-[#4f8d3b]">{hint}</p> : null}
       </div>
     </div>

@@ -7,6 +7,7 @@ import { listOrders } from '@/server/orders'
 import { isApprovedAdmin, isApprovedBuyer } from '@/server/roles'
 import { listWishlist } from '@/server/wishlist'
 import { requireUser } from '@/server/guards'
+import { LocationMap } from '@/components/location-map'
 
 export default async function AccountPage() {
   const user = await requireUser('/account')
@@ -29,6 +30,26 @@ export default async function AccountPage() {
         <StatCard label="Account status" value={user.status} />
         <StatCard label="Open applications" value={applications.filter((item) => ['pending', 'under-review', 'needs-info'].includes(item.status)).length} />
       </div>
+
+      {isApprovedBuyer(user) ? (
+        <div className="mt-6">
+          <DashboardPanel title="Saved delivery locations" action={<Link href="/account/settings" className="text-xs font-bold text-[#4b9f30]">Manage locations</Link>}>
+            {Array.isArray(user.savedAddresses) && user.savedAddresses.length ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {user.savedAddresses.slice(0, 4).map((location) => (
+                  <div key={location.id} className="min-w-0">
+                    <p className="mb-2 font-bold text-[#142016]">{location.label}</p>
+                    <p className="mb-3 line-clamp-2 text-xs text-[#647066]">{location.address}</p>
+                    <LocationMap lat={location.lat} lng={location.lng} height={180} label={location.label} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-[#647066]">No delivery pin saved yet. Add a location in account settings.</p>
+            )}
+          </DashboardPanel>
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <DashboardPanel

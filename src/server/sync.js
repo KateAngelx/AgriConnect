@@ -16,8 +16,22 @@ async function replaceTable(client, table, rows, key = 'id') {
     if (removed.error) throw new Error(`${table}: ${removed.error.message}`)
   }
   if (!rows.length) return
-  const saved = await client.from(table).upsert(rows)
-  if (saved.error) throw new Error(`${table}: ${saved.error.message}`)
+  let payload = rows
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const saved = await client.from(table).upsert(payload)
+    if (!saved.error) return
+    const message = String(saved.error.message || '')
+    const missing = message.match(/Could not find the '([^']+)' column/i)?.[1]
+    if (!missing || !payload.some((row) => Object.prototype.hasOwnProperty.call(row, missing))) {
+      throw new Error(`${table}: ${message}`)
+    }
+    payload = payload.map((row) => {
+      const next = { ...row }
+      delete next[missing]
+      return next
+    })
+  }
+  throw new Error(`${table}: Supabase schema columns could not be synchronized.`)
 }
 
 function snapshot(store) {
@@ -216,6 +230,13 @@ async function pullAll(client) {
   )
   for (const user of store.users.values()) {
     normalizeUserRoles(user)
+    const servicePin = Array.isArray(user.savedAddresses)
+      ? user.savedAddresses.find((item) => item.id === 'service-area-pin')
+      : null
+    if (servicePin) {
+      user.serviceAreaLat = servicePin.lat
+      user.serviceAreaLng = servicePin.lng
+    }
   }
   store.categories = rowsOf(categories, 'categories').map((row) => ({
     id: row.id,

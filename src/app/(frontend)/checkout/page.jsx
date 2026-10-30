@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { CheckoutForm } from '@/components/checkout-form'
-import { DELIVERY_FEE, electronicPaymentConfigured, electronicPaymentProvider } from '@/server/payments'
+import { DELIVERY_FEE, electronicPaymentConfiguredSafely, electronicPaymentProvider } from '@/server/payments'
 import { currentUser } from '@/server/auth'
 import { checkoutSummaryForBuyer } from '@/server/checkout-summary'
 export default async function CheckoutPage() {
@@ -11,7 +11,7 @@ export default async function CheckoutPage() {
   if (!isApprovedBuyer(user)) redirect('/products')
   const summary = await checkoutSummaryForBuyer(user.id)
   if (!summary.items.length) redirect('/cart')
-  const electronicPayments = electronicPaymentConfigured()
+  const electronicPayments = await electronicPaymentConfiguredSafely()
   const electronicProvider = electronicPaymentProvider()
 
   return (

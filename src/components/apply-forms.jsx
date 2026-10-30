@@ -1,8 +1,9 @@
 'use client'
 
-import { useActionState } from 'react'
-import Link from 'next/link'
+import { useActionState, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { applyDeliveryAction, applySellerAction } from '@/app/(frontend)/account/actions'
+import { ConfirmDialog } from '@/components/ui-feedback'
 
 const field =
   'mt-2 w-full rounded-xl border border-[#173c2c]/12 bg-white px-4 py-2.5 text-sm outline-none ring-[#5dbb38]/30 focus:ring-2'
@@ -19,7 +20,21 @@ const formCopy = {
 }
 
 function FormActions({ pending, submitLabel, formId, t }) {
+  const router = useRouter()
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
+
+  function requestCancel() {
+    const form = document.getElementById(formId)
+    const data = form ? new FormData(form) : null
+    const changed = data ? [...data.values()].some((value) => String(value).trim()) : false
+    setHasChanges(changed)
+    if (changed) setCancelOpen(true)
+    else router.push('/account')
+  }
+
   return (
+    <>
     <div className="flex flex-wrap items-center gap-3 pt-2">
       <button
         type="submit"
@@ -39,20 +54,22 @@ function FormActions({ pending, submitLabel, formId, t }) {
       >
         {pending ? t.saving : t.saveDraft}
       </button>
-      <Link
-        href="/account"
-        onClick={(event) => {
-          const form = document.getElementById(formId)
-          if (!form) return
-          const data = new FormData(form)
-          const hasInput = [...data.values()].some((value) => String(value).trim())
-          if (hasInput && !window.confirm(t.cancelConfirm)) event.preventDefault()
-        }}
-        className="text-sm font-bold text-[#647066] hover:text-[#4b9f30]"
-      >
+      <button type="button" onClick={requestCancel} className="text-sm font-bold text-[#647066] hover:text-[#4b9f30]">
         {t.cancel}
-      </Link>
+      </button>
     </div>
+    {hasChanges ? (
+      <ConfirmDialog
+        open={cancelOpen}
+        title="Discard application changes?"
+        message={t.cancelConfirm}
+        confirmLabel="Leave page"
+        danger
+        onConfirm={() => router.push('/account')}
+        onCancel={() => setCancelOpen(false)}
+      />
+    ) : null}
+    </>
   )
 }
 

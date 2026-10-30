@@ -29,7 +29,13 @@ export async function collectDeliveryAction(formData) {
 
 export async function serviceAreaAction(_state, formData) {
   const user = await courier()
-  const result = await saveServiceArea(user, formData.get('serviceArea'))
+  const result = await saveServiceArea(
+    user,
+    formData.get('serviceArea'),
+    formData.get('serviceAreaLat'),
+    formData.get('serviceAreaLng'),
+    formData.get('serviceLocations'),
+  )
   if (result.error) return result
   redirect('/delivery/dashboard')
 }

@@ -33,7 +33,11 @@ export async function startSession(user) {
     path: '/',
     maxAge: 60 * 60 * 24 * 7,
   })
-  await save()
+  try {
+    await save()
+  } catch {
+    // Authentication should still succeed if an optional database migration is pending.
+  }
   return publicUser(user)
 }
 

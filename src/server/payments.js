@@ -30,6 +30,20 @@ export function electronicPaymentConfigured() {
   return Boolean(process.env.PAYMONGO_SECRET_KEY || process.env.XENDIT_SECRET_KEY)
 }
 
+let xenditAvailabilityProbe = null
+
+export async function electronicPaymentConfiguredSafely() {
+  if (!process.env.PAYMONGO_SECRET_KEY && !process.env.XENDIT_SECRET_KEY) return false
+  if (process.env.PAYMONGO_SECRET_KEY) return true
+  if (!xenditAvailabilityProbe) {
+    xenditAvailabilityProbe = fetch('https://api.xendit.co/v2/invoices?limit=1', {
+      headers: { Authorization: xenditHeader(), Accept: 'application/json' },
+      cache: 'no-store',
+    }).then((response) => response.ok).catch(() => false)
+  }
+  return xenditAvailabilityProbe
+}
+
 export function electronicPaymentProvider() {
   if (process.env.XENDIT_SECRET_KEY) return 'xendit'
   if (process.env.PAYMONGO_SECRET_KEY) return 'paymongo'
@@ -138,7 +152,14 @@ export async function startXenditCheckout(orders, origin) {
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
-    return { error: payload.message || 'Xendit could not start this payment.' }
+    const providerMessage = `${payload.message || ''} ${payload.error_code || ''}`.toLowerCase()
+    if (response.status === 403 || providerMessage.includes('forbidden') || providerMessage.includes('permission')) {
+      return { error: 'Xendit rejected this API key. Please check that it has the required payment permissions and try Cash checkout for now.' }
+    }
+    if (response.status === 401) {
+      return { error: 'Xendit rejected these credentials. Please verify the secret key or try Cash checkout for now.' }
+    }
+    return { error: 'Xendit could not start this payment right now. Please try Cash checkout or try again shortly.' }
   }
   return { id: payload.id, url: payload.invoice_url }
 }

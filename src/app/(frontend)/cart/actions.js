@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { addToCart, updateCart } from '@/server/cart'
+import { addToCart, buyNow, updateCart } from '@/server/cart'
 
 export async function addToCartAction(formData) {
   const result = await addToCart({
@@ -26,4 +26,14 @@ export async function updateCartAction(formData) {
   if (result.redirectTo) redirect(result.redirectTo)
   if (result.error) throw new Error(result.error)
   redirect('/cart')
+}
+
+export async function buyNowAction(formData) {
+  const result = await buyNow({
+    productID: formData.get('productID'),
+    quantity: formData.get('quantity'),
+  })
+  if (result.redirectTo) redirect(result.redirectTo)
+  if (result.error) throw new Error(result.error)
+  redirect('/checkout')
 }

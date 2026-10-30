@@ -39,13 +39,20 @@ export function LocationRouteMap({
         attribution: '&copy; OpenStreetMap',
         maxZoom: 19,
       }).addTo(map)
+      const pinIcon = (color) => L.divIcon({
+        className: 'agriconnect-map-pin',
+        html: `<span style="display:block;width:32px;height:32px;border-radius:50% 50% 50% 0;background:${color};border:4px solid:#fff;box-shadow:0 3px 10px rgba(20,32,22,.35);transform:rotate(-45deg)"><span style="display:block;width:8px;height:8px;margin:8px;border-radius:50%;background:#fff"></span></span>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32],
+      })
       const bounds = []
       if (hasPickup) {
-        L.marker([plat, plng]).addTo(map).bindPopup('Farm pickup')
+        L.marker([plat, plng], { icon: pinIcon('#2e7d32') }).addTo(map).bindPopup('Farm pickup')
         bounds.push([plat, plng])
       }
       if (hasDelivery) {
-        L.marker([dlat, dlng]).addTo(map).bindPopup('Delivery drop-off')
+        L.marker([dlat, dlng], { icon: pinIcon('#ef7d32') }).addTo(map).bindPopup('Delivery drop-off')
         bounds.push([dlat, dlng])
       }
       if (hasPickup && hasDelivery) {
@@ -59,6 +66,7 @@ export function LocationRouteMap({
         map.fitBounds(bounds, { padding: [28, 28] })
       }
       instanceRef.current = map
+      setTimeout(() => map.invalidateSize(), 0)
     })()
     return () => {
       cancelled = true

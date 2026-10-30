@@ -76,20 +76,15 @@ export function CartDrawer({ open, onClose }) {
   )
 
   return (
-    <div className="fixed inset-0 z-[200] flex justify-end">
-      <button
-        type="button"
-        className="absolute inset-0 bg-[#142016]/40"
-        aria-label="Close cart"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-[200]" onClick={onClose}>
       <aside
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-drawer-title"
-        className="relative flex h-full max-h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-white shadow-2xl"
+        className="absolute right-2 top-[4.25rem] flex max-h-[calc(100dvh-5.25rem)] w-[calc(100vw-1rem)] max-w-md flex-col overflow-hidden rounded-2xl border border-[#173c2c]/10 bg-white shadow-xl sm:right-6"
+        onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex shrink-0 items-center justify-between border-b border-[#173c2c]/10 px-5 py-4">
+        <header className="flex shrink-0 items-center justify-between border-b border-[#173c2c]/10 px-4 py-3">
           <h2 id="cart-drawer-title" className="text-lg font-bold text-[#142016]">
             Shopping cart
           </h2>
@@ -103,7 +98,7 @@ export function CartDrawer({ open, onClose }) {
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+        <div className="min-h-0 max-h-[min(28rem,55vh)] flex-1 overflow-y-auto overscroll-contain px-4 py-4">
           {loading ? (
             <p className="text-sm text-[#647066]">Loading cart…</p>
           ) : error ? (
@@ -157,7 +152,10 @@ export function CartDrawer({ open, onClose }) {
                           max={product.stock}
                           disabled={busy}
                           value={entry.quantity}
-                          onChange={(event) => updateQuantity(entry, Number(event.target.value))}
+                          onChange={(event) => {
+                            if (event.target.value === '') return
+                            updateQuantity(entry, Number(event.target.value))
+                          }}
                           className="w-16 rounded-lg border border-[#173c2c]/12 px-2 py-1 text-sm"
                         />
                         <button

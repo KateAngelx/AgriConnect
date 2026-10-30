@@ -69,22 +69,64 @@ export function SellerProfileForm({ seller }) {
   )
 }
 
-export function ServiceAreaForm({ area }) {
+export function ServiceAreaForm({ area, lat = '', lng = '', locations = [] }) {
   const [state, action, pending] = useActionState(serviceAreaAction, { error: '' })
+  const [serviceLat, setServiceLat] = useState(String(lat ?? ''))
+  const [serviceLng, setServiceLng] = useState(String(lng ?? ''))
+  const [coverageAreas, setCoverageAreas] = useState(() =>
+    locations.filter((item) => item?.id !== 'service-area-pin' && item?.address).length
+      ? locations.filter((item) => item?.id !== 'service-area-pin' && item?.address)
+      : area
+        ? [{ id: 'service-area-pin', label: area, address: area, lat: Number(lat), lng: Number(lng) }]
+        : [],
+  )
+  const [areaName, setAreaName] = useState(area || '')
+  const [error, setError] = useState('')
+
+  const addArea = () => {
+    if (areaName.trim().length < 2 || !serviceLat || !serviceLng) {
+      setError('Enter an area name and drop its pin.')
+      return
+    }
+    setCoverageAreas((current) => [...current.filter((item) => item.id !== 'service-area-pin'), {
+      id: crypto.randomUUID(),
+      label: areaName.trim(),
+      address: areaName.trim(),
+      landmark: '',
+      lat: Number(serviceLat),
+      lng: Number(serviceLng),
+    }])
+    setError('')
+  }
+
   return (
     <form action={action} className="space-y-4">
+      <input type="hidden" name="serviceLocations" value={JSON.stringify(coverageAreas)} />
       <div>
-        <label className="text-sm font-bold text-[#142016]" htmlFor="serviceArea">
-          Coverage area
-        </label>
-        <FieldInput id="serviceArea" name="serviceArea" required defaultValue={area} className="mt-2" />
+        <label className="text-sm font-bold text-[#142016]" htmlFor="serviceArea">Coverage area</label>
+        <FieldInput id="serviceArea" name="serviceArea" required value={areaName} onChange={(event) => setAreaName(event.target.value)} className="mt-2" />
       </div>
-      {state.error ? (
-        <p className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">{state.error}</p>
+      <div>
+        <p className="text-sm font-bold text-[#142016]">Service-area pin</p>
+        <LocationPicker lat={serviceLat} lng={serviceLng} onChange={({ lat, lng }) => { setServiceLat(String(lat)); setServiceLng(String(lng)) }} />
+        <input type="hidden" name="serviceAreaLat" value={serviceLat} />
+        <input type="hidden" name="serviceAreaLng" value={serviceLng} />
+      </div>
+      <button type="button" onClick={addArea} className="rounded-full border border-[#173c2c]/15 px-4 py-2 text-sm font-bold">
+        + Save this service area
+      </button>
+      {coverageAreas.length ? (
+        <div className="grid gap-2">
+          {coverageAreas.map((item) => (
+            <div key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-[#173c2c]/10 p-3">
+              <div><p className="text-sm font-bold">{item.label}</p><p className="text-xs text-[#647066]">{item.address}</p></div>
+              <button type="button" onClick={() => setCoverageAreas((current) => current.filter((entry) => entry.id !== item.id))} className="text-xs font-bold text-[#963b2d]">Remove</button>
+            </div>
+          ))}
+        </div>
       ) : null}
-      <PrimaryButton type="submit" disabled={pending}>
-        {pending ? 'Saving…' : 'Save area'}
-      </PrimaryButton>
+      {error || state.error ? <p className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">{error || state.error}</p> : null}
+      <PrimaryButton type="submit" disabled={pending}>{pending ? 'Saving…' : 'Save areas'}</PrimaryButton>
     </form>
   )
 }

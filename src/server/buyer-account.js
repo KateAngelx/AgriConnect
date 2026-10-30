@@ -1,6 +1,7 @@
 import { save } from './sync'
 import { readyStore } from './store'
 import { isValidPin } from '@/lib/geo'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function updateBuyerProfile(user, input) {
   const { isApprovedBuyer } = await import('./roles')
@@ -26,6 +27,30 @@ export async function updateBuyerProfile(user, input) {
       }))
       .filter((address) => address.label && address.address.length >= 10 && isValidPin(address.lat, address.lng))
   }
-  await save()
+  const client = getSupabaseAdmin()
+  if (client) {
+    const { error } = await client
+      .from('profiles')
+      .update({ delivery_addresses: record.savedAddresses })
+      .eq('id', user.id)
+    if (error) {
+      const message = String(error.message || '')
+      if (/delivery_addresses|schema cache|Could not find the column/i.test(message)) {
+        return { error: 'Supabase cannot see delivery_addresses yet. Run the SQL below in the Supabase project connected by NEXT_PUBLIC_SUPABASE_URL, then use Database → API Settings → Reload schema cache (or restart the project API).' }
+      }
+      return { error: `Locations could not be saved to Supabase: ${message}` }
+    }
+  }
+
+  try {
+    await save()
+  } catch (error) {
+    const message = String(error?.message || '')
+    // The targeted profile update above is authoritative; unrelated legacy
+    // table columns must not prevent location settings from appearing saved.
+    if (!/delivery_addresses|schema cache/i.test(message)) {
+      return { error: `Location changes could not be saved: ${error.message || 'database error'}` }
+    }
+  }
   return { ok: true }
 }

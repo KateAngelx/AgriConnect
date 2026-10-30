@@ -9,13 +9,34 @@ import { LocationPicker } from '@/components/location-picker'
 export function CheckoutForm({ user, summary, electronicPayments, electronicProvider, deliveryFee }) {
   const [state, checkoutAction, pending] = useActionState(placeOrderAction, { error: '' })
   const [fulfillment, setFulfillment] = useState('pickup')
-  const savedAddresses = Array.isArray(user.savedAddresses) ? user.savedAddresses : []
+  const savedAddresses = (Array.isArray(user.savedAddresses) ? user.savedAddresses : []).filter(
+    (item) => item?.id !== 'service-area-pin' && item?.address && item?.lat !== undefined && item?.lng !== undefined,
+  )
   const defaultAddress = savedAddresses[0]
   const [deliveryAddress, setDeliveryAddress] = useState(defaultAddress?.address || '')
   const [deliveryLandmark, setDeliveryLandmark] = useState(defaultAddress?.landmark || '')
   const [deliveryLat, setDeliveryLat] = useState(defaultAddress ? String(defaultAddress.lat) : '')
   const [deliveryLng, setDeliveryLng] = useState(defaultAddress ? String(defaultAddress.lng) : '')
   const [selectedAddressId, setSelectedAddressId] = useState(defaultAddress?.id || '')
+  const [usingNewLocation, setUsingNewLocation] = useState(!defaultAddress)
+
+  const selectSavedAddress = (item) => {
+    setSelectedAddressId(item.id)
+    setUsingNewLocation(false)
+    setDeliveryAddress(item.address)
+    setDeliveryLandmark(item.landmark || '')
+    setDeliveryLat(String(item.lat))
+    setDeliveryLng(String(item.lng))
+  }
+
+  const beginNewLocation = () => {
+    setSelectedAddressId('new')
+    setUsingNewLocation(true)
+    setDeliveryAddress('')
+    setDeliveryLandmark('')
+    setDeliveryLat('')
+    setDeliveryLng('')
+  }
 
   const sellerCount = summary.sellerGroups.length
   const deliveryFees = fulfillment === 'delivery' ? deliveryFee * sellerCount : 0
@@ -27,25 +48,36 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
         <div className="space-y-4">
           {savedAddresses.length ? (
             <div>
-              <label className="text-sm font-bold" htmlFor="savedDeliveryAddress">Saved location</label>
-              <select
-                id="savedDeliveryAddress"
-                value={selectedAddressId}
-                onChange={(event) => {
-                  const selected = savedAddresses.find((item) => item.id === event.target.value)
-                  setSelectedAddressId(event.target.value)
-                  if (selected) {
-                    setDeliveryAddress(selected.address)
-                    setDeliveryLandmark(selected.landmark || '')
-                    setDeliveryLat(String(selected.lat))
-                    setDeliveryLng(String(selected.lng))
-                  }
-                }}
-                className="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3"
+              <p className="text-sm font-bold">Choose a saved location</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {savedAddresses.map((item) => {
+                  const selected = !usingNewLocation && selectedAddressId === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectSavedAddress(item)}
+                      className={`rounded-2xl border p-4 text-left transition ${selected ? 'border-[#5dbb38] bg-[#f4faf0] ring-2 ring-[#5dbb38]/15' : 'border-[#173c2c]/10 bg-white hover:border-[#5dbb38]/60'}`}
+                    >
+                      <span className="flex items-start justify-between gap-3">
+                        <span>
+                          <strong className="block text-sm text-[#142016]">{item.label}</strong>
+                          <span className="mt-1 block text-xs leading-5 text-[#647066]">{item.address}</span>
+                          {item.landmark ? <span className="mt-1 block text-xs text-[#647066]">Landmark: {item.landmark}</span> : null}
+                        </span>
+                        <span className={`mt-0.5 size-4 shrink-0 rounded-full border-2 ${selected ? 'border-[#5dbb38] bg-[#5dbb38]' : 'border-[#173c2c]/20 bg-white'}`} />
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={beginNewLocation}
+                className={`mt-3 w-full rounded-2xl border border-dashed px-4 py-3 text-sm font-bold transition ${usingNewLocation ? 'border-[#5dbb38] bg-[#f4faf0] text-[#173c2c]' : 'border-[#173c2c]/20 text-[#647066] hover:border-[#5dbb38]'}`}
               >
-                <option value="">Use a different location</option>
-                {savedAddresses.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-              </select>
+                + Add another location
+              </button>
             </div>
           ) : null}
           <div>

@@ -189,7 +189,7 @@ export async function placeOrder(input) {
         orderId: order.id,
         courierId: '',
         status: 'open',
-        commission: 40,
+        commission: DELIVERY_FEE,
         commissionStatus: 'pending',
         note: '',
         updates: [
