@@ -214,6 +214,7 @@ export function AuthenticatedHeaderActions({
   cartCount = 0,
   wishlistCount = 0,
   pathname = '',
+  mobileAccountInMenu = false,
 }) {
   const router = useRouter()
   const [cartOpen, setCartOpen] = useState(false)
@@ -238,13 +239,15 @@ export function AuthenticatedHeaderActions({
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         {isBuyer ? (
           <>
-            <HeaderIconLink
-              href="/wishlist"
-              label="Wishlist"
-              icon="heart"
-              badge={wishlistCount}
-              active={pathname.startsWith('/wishlist')}
-            />
+            <span className={mobileAccountInMenu ? 'hidden lg:contents' : 'contents'}>
+              <HeaderIconLink
+                href="/wishlist"
+                label="Wishlist"
+                icon="heart"
+                badge={wishlistCount}
+                active={pathname.startsWith('/wishlist')}
+              />
+            </span>
             <HeaderIconButton
               label="Shopping cart"
               icon="cart"
@@ -269,7 +272,9 @@ export function AuthenticatedHeaderActions({
             onClick={() => setNotifOpen(true)}
           />
         )}
-        <UserProfileMenu user={user} pathname={pathname} />
+        <div className={mobileAccountInMenu ? 'hidden lg:block' : undefined}>
+          <UserProfileMenu user={user} pathname={pathname} />
+        </div>
       </div>
       {isBuyer ? (
         <CartDrawer

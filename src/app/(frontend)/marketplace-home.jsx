@@ -9,20 +9,20 @@ function partnerHref(user, path) {
 export default function MarketplaceHome({ user = null, products = [], sellers = [], categories = [] }) {
   return (
     <main className="bg-[#f3f8ef] text-[#142016]">
-      <section className="relative isolate overflow-hidden text-white">
+      <section className="home-hero">
         <img
           src="https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=2000&q=80"
           alt=""
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          className="home-hero-photo"
         />
         <div
           className="absolute inset-0 bg-[linear-gradient(105deg,rgba(12,36,22,0.84)_0%,rgba(12,36,22,0.58)_40%,rgba(12,36,22,0.18)_100%)]"
           aria-hidden="true"
         />
-        <div className="page-container relative grid items-end gap-8 py-8 lg:grid-cols-[1.15fr_.85fr] lg:py-10">
+        <div className="page-container relative grid w-full items-center gap-8 py-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.85fr)] lg:py-12">
           <div className="max-w-2xl">
             <p className="text-[13px] font-semibold text-[#c8f0b0]">Philippine harvest marketplace</p>
-            <h1 className="page-title mt-2 max-w-xl text-4xl text-white sm:text-5xl">
+            <h1 className="page-title mt-2 max-w-xl text-[clamp(2rem,4vw,3rem)] text-white">
               Good food starts with good farms.
             </h1>
             <p className="mt-4 max-w-xl text-[17px] leading-7 text-white/85">
