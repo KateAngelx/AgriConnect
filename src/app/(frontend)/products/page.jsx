@@ -130,7 +130,7 @@ export default async function ProductsPage({ searchParams }) {
             </div>
 
             {products.docs.length ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
                 {products.docs.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

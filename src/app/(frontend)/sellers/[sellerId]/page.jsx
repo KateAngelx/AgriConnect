@@ -35,7 +35,7 @@ export default async function SellerPage({ params }) {
           </p>
           <h2 className="page-section-title mt-8 text-3xl text-brand-900">Available products</h2>
           {products.docs.length ? (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
               {products.docs.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

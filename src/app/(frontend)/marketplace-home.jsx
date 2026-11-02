@@ -85,7 +85,7 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
             <a href="/products" className="btn btn-secondary">Browse marketplace</a>
           </div>
           {products.length ? (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
               {products.slice(0, 6).map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
