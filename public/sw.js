@@ -7,5 +7,5 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', () => {
-  // A fetch handler is required for install. Pages stay on the network.
+  // A fetch listener is required for Android install. Leave each request on the network.
 })

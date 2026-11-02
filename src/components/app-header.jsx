@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/(frontend)/account/actions'
+import { InstallAppMenuButton } from './install-app-toast'
 import { AuthenticatedHeaderActions } from './header-actions'
 import { homeForNav, publicNav } from '@/components/dashboard-nav'
 
@@ -149,6 +150,7 @@ export function AppHeader({
                   </a>
                 )
               })}
+              <InstallAppMenuButton onDone={() => setMobileMenuOpen(false)} />
               {user && roleLinks.length ? (
                 <div className="mt-2 border-t border-[#d5e4d4] pt-2">
                   <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[#5c6f62]">My workspace</p>

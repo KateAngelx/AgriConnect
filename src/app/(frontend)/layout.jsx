@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Script from 'next/script'
 import { FloatingAiAssistant } from '@/components/floating-ai-assistant'
 import { InstallAppToast } from '@/components/install-app-toast'
 import { RouteFeedbackToast } from '@/components/ui-feedback'
@@ -40,7 +41,13 @@ export default async function RootLayout({ children }) {
   const user = await currentUser()
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
       <body className="min-h-screen bg-[#f3f8ef] text-[#142016] antialiased" suppressHydrationWarning>
+        <Script id="agriconnect-install-prompt" strategy="beforeInteractive">
+          {`window.addEventListener('beforeinstallprompt',function(event){var ua=navigator.userAgent||'';var ios=/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);var android=/Android/i.test(ua);var phone=ios||android||(matchMedia('(pointer: coarse)').matches&&matchMedia('(max-width: 900px)').matches);if(!phone)return;event.preventDefault();window.__agriconnectInstall=event})`}
+        </Script>
         <a className="skip-link" href="#root">
           Skip to content
         </a>

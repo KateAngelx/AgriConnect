@@ -3,9 +3,12 @@ export default function manifest() {
     name: 'AgriConnect',
     short_name: 'AgriConnect',
     description: 'Fresh agricultural products from local Filipino farmers, for pickup or delivery.',
+    id: '/',
     start_url: '/',
     scope: '/',
     display: 'standalone',
+    display_override: ['standalone', 'browser'],
+    lang: 'en',
     background_color: '#f3f8ef',
     theme_color: '#f3f8ef',
     icons: [

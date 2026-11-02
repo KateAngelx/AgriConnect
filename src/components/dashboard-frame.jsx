@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { AuthenticatedHeaderActions } from './header-actions'
 import { activeNavHref, dashboardExtrasForRole, dashboardNav, dashboardNavRole, groupDashboardNav, homeForNav } from '@/components/dashboard-nav'
 import { DashboardIcon } from './dashboard-icons'
+import { InstallAppMenuButton } from './install-app-toast'
 import { pretty } from '@/lib/dashboard-format'
 
 const workspaceNames = {
@@ -243,6 +244,7 @@ export function DashboardFrame({
                   unread={unread}
                   onNavigate={() => setMobileNav(false)}
                 />
+                <InstallAppMenuButton onDone={() => setMobileNav(false)} />
               </div>
             </nav>
           </div>
