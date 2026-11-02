@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { DashboardShell } from '@/components/dashboard-shell'
-import { EmptyState, ListRow, PrimaryButton, SecondaryButton } from '@/components/dashboard-ui'
+import { EmptyState, ListRow, PrimaryLink, SecondaryButton } from '@/components/dashboard-ui'
 import { peso } from '@/lib/dashboard-format'
 import { currentUser } from '@/server/auth'
 import { listWishlist } from '@/server/wishlist'
@@ -15,7 +15,7 @@ export default async function WishlistPage() {
   const items = await listWishlist(user.id)
 
   return (
-    <DashboardShell user={user} title="Wishlist" subtitle="Products you saved for later.">
+    <DashboardShell user={user} title="Wishlist" subtitle="Products you saved to order later.">
       {items.length ? (
         <ul className="space-y-3">
           {items.map((item) => (
@@ -41,12 +41,10 @@ export default async function WishlistPage() {
         <EmptyState
           title="Nothing saved yet"
           action={
-            <Link href="/products">
-              <PrimaryButton type="button">Browse products</PrimaryButton>
-            </Link>
+            <PrimaryLink href="/products">Browse products</PrimaryLink>
           }
         >
-          Tap save on any product to add it here.
+          Save a product from its page to keep it here.
         </EmptyState>
       )}
     </DashboardShell>

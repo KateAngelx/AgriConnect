@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from 'react'
 import { isValidPin, openStreetMapLink, parseCoord } from '@/lib/geo'
+import { mapPinIcon } from '@/lib/map-pins'
 
-export function LocationMap({ lat, lng, height = 220, label = 'Pickup pin' }) {
+export function LocationMap({ lat, lng, height = 220, label = 'Pickup pin', kind = 'place' }) {
   const mapRef = useRef(null)
   const instanceRef = useRef(null)
   const latitude = parseCoord(lat)
@@ -25,14 +26,7 @@ export function LocationMap({ lat, lng, height = 220, label = 'Pickup pin' }) {
         attribution: '&copy; OpenStreetMap',
         maxZoom: 19,
       }).addTo(map)
-      const pinIcon = L.divIcon({
-        className: 'agriconnect-map-pin',
-        html: '<span style="display:block;width:32px;height:32px;border-radius:50% 50% 50% 0;background:#2e7d32;border:4px solid:#fff;box-shadow:0 3px 10px rgba(20,32,22,.35);transform:rotate(-45deg)"><span style="display:block;width:8px;height:8px;margin:8px;border-radius:50%;background:#fff"></span></span>',
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32],
-      })
-      L.marker([latitude, longitude], { icon: pinIcon }).addTo(map).bindPopup(label)
+      L.marker([latitude, longitude], { icon: mapPinIcon(L, kind) }).addTo(map).bindPopup(label)
       instanceRef.current = map
       setTimeout(() => map.invalidateSize(), 0)
     })()
@@ -43,7 +37,7 @@ export function LocationMap({ lat, lng, height = 220, label = 'Pickup pin' }) {
         instanceRef.current = null
       }
     }
-  }, [latitude, longitude, label])
+  }, [latitude, longitude, label, kind])
 
   if (!isValidPin(latitude, longitude)) {
     return (

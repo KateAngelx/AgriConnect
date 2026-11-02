@@ -12,7 +12,7 @@ export default async function SellerSettingsPage() {
   if (!seller) redirect('/seller/dashboard')
 
   return (
-    <DashboardShell user={user} title="Shop settings" subtitle="Manage your farm profile shown to buyers.">
+    <DashboardShell user={user} title="Shop settings" subtitle="Farm profile and the pickup pin used for orders.">
       <DashboardPanel title="Farm profile">
         <SellerProfileForm seller={seller} />
       </DashboardPanel>

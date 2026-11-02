@@ -1,14 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { AuthenticatedHeaderActions } from './header-actions'
 import { homeForNav, publicNav } from '@/components/dashboard-nav'
 
 function navLinkClass(active) {
   return active
-    ? 'text-[#54aa34]'
-    : 'text-[#243126] hover:text-[#54aa34]'
+    ? 'bg-[#e3f3d8] text-[#1b5e20]'
+    : 'text-[#142016] hover:bg-[#e3f3d8]'
 }
 
 export function AppHeader({
@@ -21,32 +21,45 @@ export function AppHeader({
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const logoHref = user ? homeForNav(user.role) : '/'
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [mobileMenuOpen])
   const roles = new Set(user?.roles ?? [])
   if (user?.role) roles.add(user.role)
   const roleLinks = []
-  if (roles.has('admin')) roleLinks.push(['Admin dashboard', '/admin/dashboard'], ['Applications', '/admin/applications'])
-  if (roles.has('seller')) roleLinks.push(['Seller dashboard', '/seller/dashboard'], ['Seller products', '/seller/products'])
-  if (roles.has('delivery')) roleLinks.push(['Delivery dashboard', '/delivery/dashboard'], ['My deliveries', '/delivery/deliveries'])
-  if (roles.has('buyer')) roleLinks.push(['My account', '/account'], ['My orders', '/buyer/orders'], ['Wishlist', '/wishlist'])
+  if (roles.has('admin')) roleLinks.push(['Administration', '/admin/dashboard'], ['Approvals', '/admin/applications'])
+  if (roles.has('seller')) roleLinks.push(['Selling', '/seller/dashboard'], ['Products', '/seller/products'])
+  if (roles.has('delivery')) roleLinks.push(['Delivering', '/delivery/dashboard'], ['Active deliveries', '/delivery/deliveries'])
+  if (roles.has('buyer')) roleLinks.push(['Shopping', '/account'], ['My orders', '/buyer/orders'], ['Wishlist', '/wishlist'])
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-black/5 bg-white/95 shadow-sm backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-5 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-8">
+    <header className="safe-top sticky top-0 z-50 w-full border-b border-[#d5e4d4] bg-[#f3f8ef]">
+      <div className="page-container flex h-14 items-center justify-between gap-2 lg:grid lg:h-16 lg:grid-cols-[1fr_auto_1fr] lg:gap-4">
         <a
           href={logoHref}
-          className="flex items-center gap-2 font-bold tracking-tight text-[#142016] justify-self-start"
+          className="flex min-w-0 items-center gap-2 font-bold tracking-tight text-[#142016] justify-self-start"
         >
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#5dbb38] text-white">
+          <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-[#2e7d32] text-white">
             <svg viewBox="0 0 24 24" className="size-5 fill-none stroke-current stroke-2" aria-hidden="true">
               <path d="M5 20c8 0 13-5 14-15C9 6 4 11 5 20Z" />
               <path d="M5 20c2-5 6-8 11-11" />
             </svg>
           </span>
-          <span className="hidden text-base sm:inline sm:text-lg">AgriConnect</span>
+          <span className="truncate text-[17px]">AgriConnect</span>
         </a>
 
         <nav
-          className="hidden items-center justify-center gap-8 text-xs font-semibold uppercase tracking-wide text-[#243126] lg:flex"
+          className="hidden items-center justify-center gap-1 text-[13px] font-medium lg:flex"
           aria-label="Main navigation"
         >
           {publicNav.map(([label, href]) => {
@@ -55,7 +68,7 @@ export function AppHeader({
               <a
                 key={href}
                 href={href}
-                className={`whitespace-nowrap px-1 py-2 ${navLinkClass(active)}`}
+                className={`rounded-lg px-3 py-1.5 ${navLinkClass(active)}`}
               >
                 {label}
               </a>
@@ -63,10 +76,10 @@ export function AppHeader({
           })}
         </nav>
 
-        <div className="flex shrink-0 flex-nowrap items-center justify-end gap-2 justify-self-end sm:gap-3">
+        <div className="flex shrink-0 flex-nowrap items-center justify-end gap-1 justify-self-end sm:gap-2">
           <button
             type="button"
-            className="grid size-10 place-items-center rounded-full border border-[#173c2c]/10 text-[#142016] lg:hidden"
+            className="grid size-10 place-items-center rounded-lg text-[#142016] hover:bg-[#e3f3d8] lg:hidden"
             onClick={() => setMobileMenuOpen((open) => !open)}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-main-navigation"
@@ -88,16 +101,10 @@ export function AppHeader({
 
           {!user ? (
             <>
-              <a
-                href="/login"
-                className="hidden rounded-full px-4 py-2 text-center text-sm font-semibold text-[#142016] sm:inline-block"
-              >
+              <a href="/login" className="btn btn-secondary !hidden sm:!inline-flex">
                 Login
               </a>
-              <a
-                href="/register"
-                className="rounded-full bg-[#5dbb38] px-5 py-2.5 text-center text-sm font-bold text-white"
-              >
+              <a href="/register" className="btn btn-primary !hidden sm:!inline-flex">
                 Register
               </a>
             </>
@@ -105,51 +112,60 @@ export function AppHeader({
         </div>
       </div>
       {mobileMenuOpen ? (
-        <nav
-          id="mobile-main-navigation"
-          className="border-t border-[#173c2c]/8 bg-white px-5 py-3 lg:hidden"
-          aria-label="Mobile navigation"
-        >
-          <div className="mx-auto max-w-7xl space-y-1">
-            {publicNav.map(([label, href]) => {
-              const active = pathname === href || (href !== '/' && pathname.startsWith(href))
-              return (
-                <a
-                  key={href}
-                  href={href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block rounded-xl px-3 py-3 text-sm font-semibold ${active ? 'bg-[#e8f5e3] text-[#2e7d32]' : 'text-[#243126]'}`}
-                >
-                  {label}
-                </a>
-              )
-            })}
-            {user && roleLinks.length ? (
-              <div className="mt-2 border-t border-[#173c2c]/8 pt-2">
-                <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-[#647066]">My workspace</p>
-                {roleLinks.map(([label, href]) => (
+        <>
+          <button
+            type="button"
+            className="fixed inset-x-0 bottom-0 top-[calc(3.5rem+env(safe-area-inset-top))] z-40 bg-[#142016]/30 lg:hidden"
+            aria-label="Close navigation"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <nav
+            id="mobile-main-navigation"
+            className="fixed inset-x-0 top-[calc(3.5rem+env(safe-area-inset-top))] z-50 max-h-[calc(100dvh-3.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] overflow-y-auto border-t border-[#d5e4d4] bg-[#f3f8ef] py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden"
+            aria-label="Mobile navigation"
+          >
+            <div className="page-container">
+              {publicNav.map(([label, href]) => {
+                const active = pathname === href || (href !== '/' && pathname.startsWith(href))
+                return (
                   <a
                     key={href}
                     href={href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`block rounded-xl px-3 py-3 text-sm font-semibold ${pathname.startsWith(href) ? 'bg-[#e8f5e3] text-[#2e7d32]' : 'text-[#243126]'}`}
+                    className={`flex min-h-11 items-center rounded-lg px-3 text-[15px] font-medium ${active ? 'bg-[#e3f3d8] text-[#1b5e20]' : 'text-[#142016]'}`}
                   >
                     {label}
                   </a>
-                ))}
-              </div>
-            ) : null}
-            {!user ? (
-              <a
-                href="/login"
-                className="block rounded-xl px-3 py-3 text-sm font-semibold text-[#243126] sm:hidden"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Login
-              </a>
-            ) : null}
-          </div>
-        </nav>
+                )
+              })}
+              {user && roleLinks.length ? (
+                <div className="mt-2 border-t border-[#d5e4d4] pt-2">
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[#5c6f62]">My workspace</p>
+                  {roleLinks.map(([label, href]) => (
+                    <a
+                      key={href}
+                      href={href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex min-h-11 items-center rounded-lg px-3 text-[15px] font-medium ${pathname.startsWith(href) ? 'bg-[#e3f3d8] text-[#1b5e20]' : 'text-[#142016]'}`}
+                    >
+                      {label}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+              {!user ? (
+                <div className="mt-3 grid gap-2 border-t border-[#d5e4d4] pt-3 sm:hidden">
+                  <a href="/login" className="btn btn-secondary w-full" onClick={() => setMobileMenuOpen(false)}>
+                    Login
+                  </a>
+                  <a href="/register" className="btn btn-primary w-full" onClick={() => setMobileMenuOpen(false)}>
+                    Register
+                  </a>
+                </div>
+              ) : null}
+            </div>
+          </nav>
+        </>
       ) : null}
     </header>
   )

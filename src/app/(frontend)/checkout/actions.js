@@ -22,6 +22,6 @@ export async function placeOrderAction(_state, formData) {
   if (result.redirectTo) redirect(result.redirectTo)
   if (result.error) return { error: result.error }
   if (result.checkoutUrl) redirect(result.checkoutUrl)
-  if (result.orders?.length === 1) redirect(`/buyer/orders/${result.orders[0].id}`)
+  if (result.orders?.length === 1) redirect(`/buyer/orders?order=${encodeURIComponent(result.orders[0].id)}`)
   redirect('/buyer/orders')
 }

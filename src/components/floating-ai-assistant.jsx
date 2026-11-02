@@ -228,27 +228,32 @@ export function FloatingAiAssistant({ user }) {
           onClick={() => setOpen(false)}
         />
       ) : null}
-      <div className="fixed bottom-5 right-5 z-[100] flex flex-col items-end gap-3">
+      <div className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[100] flex w-[min(26rem,calc(100vw-2.5rem))] flex-col items-end gap-3">
         {open ? (
           <div
-            className="flex w-[min(100vw-2rem,24rem)] flex-col overflow-hidden rounded-2xl border border-[#173c2c]/12 bg-white shadow-2xl sm:w-[26rem]"
+            className="flex max-h-[min(34rem,calc(100dvh-7.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] w-full min-h-0 flex-col overflow-hidden rounded-xl border border-[#d5e4d4] bg-white shadow-[0_12px_40px_rgb(20_32_22/0.16)]"
             role="dialog"
             aria-label={assistantTitle(mode)}
           >
-            <header className="flex items-start justify-between gap-3 border-b border-[#173c2c]/10 bg-[#f8f8f3] px-4 py-3">
+            <header className="flex shrink-0 items-center gap-3 border-b border-[#d5e4d4] px-4 py-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-[#2e7d32] text-white">
+                <svg viewBox="0 0 24 24" className="size-5 fill-none stroke-current stroke-2" aria-hidden="true">
+                  <path d="M7 18 4 21V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7Z" />
+                </svg>
+              </span>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-wide text-[#4f8d3b]">AI · {modeLabel(mode)}</p>
-                <h2 className="text-base font-bold text-[#142016]">{meta.title}</h2>
-                <p className="mt-0.5 text-xs text-[#647066]">
+                <p className="page-eyebrow">{modeLabel(mode)}</p>
+                <h2 className="truncate text-[15px] font-semibold text-[#142016]">{meta.title}</h2>
+                <p className="truncate text-[13px] text-[#5c6f62]">
                   {user ? `${user.name} · ${meta.subtitle}` : meta.subtitle}
                 </p>
               </div>
-              <div className="flex shrink-0 items-start gap-1">
+              <div className="flex shrink-0 items-center gap-1">
                 {messages.length > 0 ? (
                   <button
                     type="button"
                     onClick={clearChat}
-                    className="rounded-full px-2 py-1 text-xs font-semibold text-[#647066] hover:bg-white"
+                    className="rounded-lg px-2 py-1.5 text-[13px] font-semibold text-[#5c6f62] hover:bg-[#e8f5e3]"
                   >
                     Clear
                   </button>
@@ -256,15 +261,17 @@ export function FloatingAiAssistant({ user }) {
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="rounded-full px-2 py-1 text-sm font-bold text-[#647066] hover:bg-white"
+                  className="grid size-9 place-items-center rounded-lg text-[#142016] hover:bg-[#e8f5e3]"
                   aria-label="Close assistant"
                 >
-                  ✕
+                  <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current stroke-2" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6 6 18" />
+                  </svg>
                 </button>
               </div>
             </header>
             {availableModes.length > 1 ? (
-              <div className="flex flex-wrap gap-1.5 border-b border-[#173c2c]/8 bg-white px-3 py-2">
+              <div className="flex shrink-0 gap-1 border-b border-[#d5e4d4] px-3 py-2">
                 {availableModes.map((m) => (
                   <button
                     key={m}
@@ -273,10 +280,8 @@ export function FloatingAiAssistant({ user }) {
                       setModeOverride(m)
                       setError('')
                     }}
-                    className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-                      mode === m
-                        ? 'bg-[#173c2c] text-white'
-                        : 'border border-[#173c2c]/12 bg-[#f8f8f3] text-[#647066] hover:border-[#5dbb38]'
+                    className={`rounded-lg px-3 py-1.5 text-[13px] font-medium ${
+                      mode === m ? 'bg-[#e3f3d8] text-[#1b5e20]' : 'text-[#142016] hover:bg-[#e3f3d8]'
                     }`}
                   >
                     {modeLabel(m)}
@@ -284,17 +289,19 @@ export function FloatingAiAssistant({ user }) {
                 ))}
               </div>
             ) : null}
-            <div className="max-h-[min(52vh,26rem)] space-y-3 overflow-y-auto px-4 py-3">
+            <div className="min-h-28 flex-1 space-y-3 overflow-y-auto px-4 py-4">
               {!threadsReady ? (
-                <p className="text-sm text-[#647066]">Loading conversation…</p>
+                <p className="text-sm leading-6 text-[#5c6f62]">Loading conversation…</p>
               ) : messages.length === 0 ? (
-                <p className="text-sm text-[#647066]">{meta.empty}</p>
+                <p className="text-sm leading-6 text-[#5c6f62]">{meta.empty}</p>
               ) : null}
               {messages.map((msg, index) => (
                 <div
                   key={`${sessionKey}-${msg.role}-${index}`}
-                  className={`rounded-2xl px-3 py-2 text-sm leading-6 whitespace-pre-wrap ${
-                    msg.role === 'user' ? 'ml-8 bg-[#eef8e8] text-[#142016]' : 'mr-4 bg-[#f8f8f3] text-[#243126]'
+                  className={`whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-6 ${
+                    msg.role === 'user'
+                      ? 'ml-8 bg-[#e8f5e3] text-[#142016]'
+                      : 'mr-6 border border-[#d5e4d4] bg-[#f3f8ef] text-[#142016]'
                   }`}
                 >
                   {msg.text}
@@ -302,12 +309,12 @@ export function FloatingAiAssistant({ user }) {
               ))}
             </div>
             {mode === 'delivery' ? (
-              <div className="border-t border-[#173c2c]/8 px-4 py-2">
+              <div className="shrink-0 border-t border-[#d5e4d4] px-4 py-2">
                 <button
                   type="button"
                   onClick={shareLocation}
                   disabled={locating}
-                  className="text-xs font-bold text-[#4b9f30] disabled:opacity-60"
+                  className="text-[13px] font-semibold text-[#2e7d32] disabled:opacity-60"
                 >
                   {locating
                     ? 'Getting location…'
@@ -317,42 +324,42 @@ export function FloatingAiAssistant({ user }) {
                 </button>
               </div>
             ) : null}
-            <div className="flex flex-wrap gap-2 border-t border-[#173c2c]/8 px-4 py-2">
+            <div className="flex shrink-0 gap-2 overflow-x-auto border-t border-[#d5e4d4] px-4 py-3">
               {prompts.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
                   onClick={() => send(prompt)}
                   disabled={pending}
-                  className="rounded-full border border-[#173c2c]/12 bg-white px-3 py-1 text-xs font-semibold text-[#647066] hover:border-[#5dbb38]"
+                  className="shrink-0 rounded-full border border-[#d5e4d4] bg-white px-3 py-1.5 text-[13px] font-medium text-[#142016] hover:bg-[#e8f5e3] disabled:opacity-60"
                 >
                   {prompt.length > 42 ? `${prompt.slice(0, 40)}…` : prompt}
                 </button>
               ))}
             </div>
             <form
-              className="flex gap-2 border-t border-[#173c2c]/10 p-3"
+              className="flex shrink-0 items-center gap-2 border-t border-[#d5e4d4] p-3"
               onSubmit={(event) => {
                 event.preventDefault()
                 send(question)
               }}
             >
+              <label htmlFor="floating-ai-question" className="sr-only">
+                Ask the assistant
+              </label>
               <input
+                id="floating-ai-question"
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 placeholder="Ask anything…"
-                className="min-w-0 flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm outline-none focus:border-[#5dbb38]"
+                className="ui-field min-w-0 flex-1"
               />
-              <button
-                type="submit"
-                disabled={pending || question.trim().length < 2}
-                className="shrink-0 rounded-xl bg-[#5dbb38] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
-              >
+              <button type="submit" disabled={pending || question.trim().length < 2} className="btn btn-primary shrink-0">
                 {pending ? '…' : 'Send'}
               </button>
             </form>
             {error ? (
-              <p role="alert" className="px-4 pb-3 text-xs text-[#963b2d]">
+              <p role="alert" className="shrink-0 px-4 pb-3 text-[13px] leading-5 text-[#963b2d]">
                 {error}
               </p>
             ) : null}
@@ -361,20 +368,18 @@ export function FloatingAiAssistant({ user }) {
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="grid size-14 place-items-center rounded-full bg-[#173c2c] text-white shadow-lg ring-4 ring-white transition hover:bg-[#1f4a35]"
+          className="grid size-14 shrink-0 place-items-center rounded-full bg-[#2e7d32] text-white shadow-lg hover:bg-[#1b5e20]"
           aria-label={open ? 'Close AI assistant' : 'Open AI assistant'}
         >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M12 3c-4.4 0-8 2.7-8 6v5c0 1.1.9 2 2 2h1v3l3.5-2.5H18c3.3 0 6-2.7 6-6V9c0-3.3-3.6-6-8-6Z"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinejoin="round"
-            />
-            <circle cx="9" cy="11" r="1.1" fill="currentColor" />
-            <circle cx="12" cy="11" r="1.1" fill="currentColor" />
-            <circle cx="15" cy="11" r="1.1" fill="currentColor" />
-          </svg>
+          {open ? (
+            <svg viewBox="0 0 24 24" className="size-6 fill-none stroke-current stroke-2" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" className="size-6 fill-none stroke-current stroke-2" aria-hidden="true">
+              <path d="M7 18 4 21V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7Z" />
+            </svg>
+          )}
         </button>
       </div>
     </>

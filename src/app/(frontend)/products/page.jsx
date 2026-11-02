@@ -1,11 +1,12 @@
 import { MarketplaceAssistant } from '@/components/marketplace-assistant'
 import { ProductCard } from '@/components/product-card'
+import { ProductSort } from '@/components/product-sort'
 import { SiteShell } from '@/components/site-shell'
 import { listCategories, listProducts } from '@/server/catalog'
 
 export default async function ProductsPage({ searchParams }) {
   const query = await searchParams
-  const search = typeof query.q === 'string' ? query.q.trim() : ''
+  const search = (typeof query.q === 'string' ? query.q : typeof query.search === 'string' ? query.search : '').trim()
   const category = typeof query.category === 'string' ? query.category : ''
   const sort = typeof query.sort === 'string' ? query.sort : '-createdAt'
   const page = Math.max(1, Number(query.page) || 1)
@@ -40,23 +41,21 @@ export default async function ProductsPage({ searchParams }) {
   return (
     <SiteShell>
       <main>
-        <section className="border-b border-[#173c2c]/10 bg-[#e9eddc]">
-          <div className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
-            <p className="page-eyebrow text-[#4f8d3b]">Marketplace</p>
-            <h1 className="page-title mt-2 text-4xl sm:text-5xl">Shop agricultural products</h1>
-            <p className="page-lead mt-4 max-w-2xl text-[#65766d]">
-              Browse active listings from approved local sellers. Sign in is required only when you
-              are ready to purchase.
+        <section className="page-band">
+          <div className="page-container">
+            <p className="page-eyebrow text-brand-700">Marketplace</p>
+            <h1 className="page-title mt-2 text-3xl text-brand-900 sm:text-4xl">Shop agricultural products</h1>
+            <p className="page-lead mt-3 max-w-2xl text-brand-muted">
+              Browse active listings from approved local sellers. Sign in only when you are ready to purchase.
             </p>
           </div>
         </section>
 
-        <div className="mx-auto max-w-7xl px-5 pt-8 lg:px-8">
+        <div className="page-container page-section space-y-6">
           <MarketplaceAssistant />
-        </div>
-        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-10 lg:grid-cols-[260px_1fr] lg:px-8">
-          <aside>
-            <form className="space-y-5 rounded-3xl border border-[#173c2c]/10 bg-white p-5">
+        <div className="grid gap-6 lg:grid-cols-[16rem_1fr] lg:gap-8">
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <form className="ui-card space-y-5 p-5">
               <div>
                 <label htmlFor="q" className="text-sm font-semibold">
                   Search products
@@ -66,7 +65,7 @@ export default async function ProductsPage({ searchParams }) {
                   name="q"
                   defaultValue={search}
                   placeholder="Tomatoes, rice, herbs"
-                  className="mt-2 w-full rounded-xl border border-[#173c2c]/15 bg-[#faf9f4] px-4 py-3 outline-none focus:border-[#4f8d3b]"
+                  className="ui-field mt-2"
                 />
               </div>
               <div>
@@ -77,7 +76,7 @@ export default async function ProductsPage({ searchParams }) {
                   id="category"
                   name="category"
                   defaultValue={category}
-                  className="mt-2 w-full rounded-xl border border-[#173c2c]/15 bg-[#faf9f4] px-4 py-3"
+                  className="ui-field mt-2"
                 >
                   <option value="">All products</option>
                   {categories.docs.map((item) => (
@@ -95,7 +94,7 @@ export default async function ProductsPage({ searchParams }) {
                   id="fulfillment"
                   name="fulfillment"
                   defaultValue={typeof query.fulfillment === 'string' ? query.fulfillment : ''}
-                  className="mt-2 w-full rounded-xl border border-[#173c2c]/15 bg-[#faf9f4] px-4 py-3"
+                  className="ui-field mt-2"
                 >
                   <option value="">Pickup or delivery</option>
                   <option value="pickup">Pickup</option>
@@ -111,67 +110,74 @@ export default async function ProductsPage({ searchParams }) {
                 />{' '}
                 In stock only
               </label>
-              <button className="w-full rounded-full bg-[#173c2c] px-5 py-3 font-semibold text-white">
-                Apply filters
-              </button>
+              <button className="btn btn-dark btn-block">Apply filters</button>
             </form>
           </aside>
 
           <section>
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <p className="text-sm text-[#65766d]">
-                {products.totalDocs} product{products.totalDocs === 1 ? '' : 's'} found
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+              <p className="text-sm text-brand-muted">
+                {products.totalDocs === 1 ? '1 product' : `${products.totalDocs} products`}
+                {search ? ` for “${search}”` : ''}
               </p>
-              <form>
-                {search ? <input type="hidden" name="q" value={search} /> : null}
-                {category ? <input type="hidden" name="category" value={category} /> : null}
-                {typeof query.fulfillment === 'string' && query.fulfillment ? (
-                  <input type="hidden" name="fulfillment" value={query.fulfillment} />
-                ) : null}
-                {query.available === 'true' ? <input type="hidden" name="available" value="true" /> : null}
-                <select
-                  name="sort"
-                  defaultValue={sort}
-                  className="rounded-full border border-[#173c2c]/15 bg-white px-4 py-2 text-sm"
-                  aria-label="Sort products"
-                >
-                  <option value="-createdAt">Newest</option>
-                  <option value="price">Price: Low to High</option>
-                  <option value="-price">Price: High to Low</option>
-                </select>
-                <button className="ml-2 rounded-full border border-[#173c2c]/15 px-3 py-2 text-sm">
-                  Sort
-                </button>
-              </form>
+              <ProductSort
+                search={search}
+                category={category}
+                fulfillment={typeof query.fulfillment === 'string' ? query.fulfillment : ''}
+                available={query.available === 'true'}
+                sort={sort}
+              />
             </div>
 
             {products.docs.length ? (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {products.docs.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
             ) : (
-              <div className="rounded-3xl border border-dashed border-[#173c2c]/20 bg-white p-12 text-center">
-                <h2 className="text-xl font-semibold">No products match your filters.</h2>
-                <p className="mt-2 text-[#65766d]">Try a different category or broader search.</p>
+              <div className="page-empty">
+                <h2 className="text-xl font-semibold text-brand-900">No products match these filters</h2>
+                <p className="mt-2 text-brand-muted">Try another category, or clear the search to see every active listing.</p>
+                <a href="/products" className="btn btn-secondary mt-5">Clear filters</a>
               </div>
             )}
 
             {products.totalPages > 1 && (
-              <nav className="mt-10 flex justify-center gap-2" aria-label="Pagination">
-                {Array.from({ length: products.totalPages }, (_, index) => (
-                  <a
-                    key={index}
-                    href={withParams({ page: index + 1 })}
-                    className={`grid size-10 place-items-center rounded-full ${page === index + 1 ? 'bg-[#173c2c] text-white' : 'border border-[#173c2c]/15 bg-white'}`}
-                  >
-                    {index + 1}
+              <nav className="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="Pagination">
+                {page > 1 ? (
+                  <a href={withParams({ page: page - 1 })} className="btn btn-secondary" rel="prev">
+                    Previous
                   </a>
-                ))}
+                ) : (
+                  <span className="btn btn-secondary opacity-40">Previous</span>
+                )}
+                {Array.from({ length: products.totalPages }, (_, index) => {
+                  const number = index + 1
+                  const current = page === number
+                  return (
+                    <a
+                      key={number}
+                      href={withParams({ page: number })}
+                      aria-label={`Page ${number}`}
+                      aria-current={current ? 'page' : undefined}
+                      className={`grid size-9 place-items-center rounded-lg text-[13px] font-semibold ${current ? 'bg-[#1d1d1f] text-white' : 'bg-white text-[#1d1d1f] ring-1 ring-[#e5e5ea]'}`}
+                    >
+                      {number}
+                    </a>
+                  )
+                })}
+                {page < products.totalPages ? (
+                  <a href={withParams({ page: page + 1 })} className="btn btn-secondary" rel="next">
+                    Next
+                  </a>
+                ) : (
+                  <span className="btn btn-secondary opacity-40">Next</span>
+                )}
               </nav>
             )}
           </section>
+        </div>
         </div>
       </main>
     </SiteShell>

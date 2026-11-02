@@ -1,58 +1,59 @@
+import { peso } from '@/lib/dashboard-format'
+
 function relationName(value) {
-  return typeof value === 'object' && value ? value.farmName : 'Local seller'
+  return typeof value === 'object' && value?.farmName ? value.farmName : 'Local seller'
 }
+
 function mediaURL(product) {
   const first = product.images?.[0]
   return typeof first === 'object' && first?.url ? first.url : null
 }
+
+function stockBadge(stock) {
+  if (!stock || stock <= 0) return { text: 'Sold out', className: 'bg-[#f5f5f7] text-[#6e6e73]' }
+  if (stock < 10) return { text: `Low stock · ${stock} left`, className: 'bg-[#fff4e5] text-[#9a6700]' }
+  return { text: 'In stock', className: 'bg-white text-[#248a3d]' }
+}
+
+function fulfillmentLabel(product) {
+  if (product.pickup && product.delivery) return 'Pickup or delivery'
+  if (product.delivery) return 'Delivery'
+  if (product.pickup) return 'Pickup'
+  return 'Ask the seller'
+}
+
 export function ProductCard({ product }) {
   const image = mediaURL(product)
+  const stock = stockBadge(product.stock)
+  const imageAlt = typeof product.images?.[0] === 'object' ? product.images[0].alt || product.name : product.name
+
   return (
-    <article className="overflow-hidden rounded-3xl border border-[#173c2c]/10 bg-white shadow-sm">
-      <div className="aspect-[4/3] bg-[#e7eadf]">
-        {image ? (
-          <img
-            src={image}
-            alt={typeof product.images?.[0] === 'object' ? product.images[0].alt : product.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="grid h-full place-items-center text-sm text-[#65766d]">
-            Product image coming soon
-          </div>
-        )}
-      </div>
-      <div className="p-5">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-bold uppercase tracking-wide text-[#4f8d3b]">
-            {product.stock > 0 ? `${product.stock} available` : 'Out of stock'}
-          </span>
-          <span className="text-xs text-[#65766d]">
-            {product.pickup && product.delivery
-              ? 'Pickup · Delivery'
-              : product.delivery
-                ? 'Delivery'
-                : 'Pickup'}
+    <article className="ui-card flex h-full flex-col overflow-hidden transition-colors hover:border-[#d2d2d7]">
+      <a href={`/products/${product.id}`} className="flex h-full flex-col text-inherit no-underline">
+        <div className="product-photo">
+          {image ? (
+            <img src={image} alt={imageAlt} />
+          ) : (
+            <div className="grid h-full place-items-center px-6 text-center text-[13px] text-[#6e6e73]">No photo yet</div>
+          )}
+          <span className={`absolute left-2.5 top-2.5 rounded-md border border-[#e5e5ea] px-2 py-0.5 text-[11px] font-semibold ${stock.className}`}>
+            {stock.text}
           </span>
         </div>
-        <h2 className="mt-3 text-xl font-semibold">{product.name}</h2>
-        <p className="mt-1 text-sm text-[#65766d]">
-          {relationName(product.seller)}
-          {product.location ? ` · ${product.location}` : ''}
-        </p>
-        <div className="mt-5 flex items-end justify-between gap-3">
-          <p className="text-2xl font-semibold">
-            ₱{product.price.toLocaleString()}{' '}
-            <span className="text-sm font-normal text-[#65766d]">/ {product.unit}</span>
+        <div className="flex flex-1 flex-col p-4">
+          <p className="truncate text-[13px] text-[#6e6e73]">{relationName(product.seller)}</p>
+          <h2 className="mt-0.5 line-clamp-2 min-h-[2.6em] text-[15px] font-semibold leading-snug tracking-[-0.01em] text-[#1d1d1f]">
+            {product.name}
+          </h2>
+          <p className="mt-1 truncate text-[13px] text-[#6e6e73]">
+            {product.location || 'Philippines'} · {fulfillmentLabel(product)}
           </p>
-          <a
-            href={`/products/${product.id}`}
-            className="rounded-full bg-[#173c2c] px-4 py-2 text-sm font-semibold text-white"
-          >
-            View
-          </a>
+          <p className="mt-auto pt-3 text-[17px] font-semibold tracking-[-0.02em] text-[#1d1d1f]">
+            {peso(product.price)}
+            <span className="text-[13px] font-normal text-[#6e6e73]"> / {product.unit}</span>
+          </p>
         </div>
-      </div>
+      </a>
     </article>
   )
 }

@@ -17,8 +17,8 @@ export default async function CheckoutPage() {
   return (
     <DashboardShell
       user={user}
-      title="Confirm your order"
-      subtitle="Secure checkout with live stock validation."
+      title="Checkout"
+      subtitle="Choose pickup or delivery, then how you will pay."
     >
       <CheckoutForm
         user={user}

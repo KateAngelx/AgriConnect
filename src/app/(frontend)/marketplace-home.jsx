@@ -1,168 +1,122 @@
 import { MarketplaceAssistant } from '@/components/marketplace-assistant'
+import { ProductCard } from '@/components/product-card'
 
 function partnerHref(user, path) {
   if ((user?.roles?.includes('buyer') || user?.role === 'buyer') && user.status === 'approved') return path
   return `/login?next=${encodeURIComponent(path)}`
 }
 
-export default function MarketplaceHome({ user = null, products, sellers, categories = [] }) {
+export default function MarketplaceHome({ user = null, products = [], sellers = [], categories = [] }) {
   return (
-    <main className="bg-[#f7f6ef] text-[#173c2c]">
-      <section>
-        <div className="relative min-h-[720px] overflow-hidden bg-[linear-gradient(90deg,rgba(6,28,13,.9)_0%,rgba(6,28,13,.46)_58%,rgba(6,28,13,.14)_100%),url('https://images.unsplash.com/photo-1777045453423-b9aaf76d6eb6?auto=format&fit=crop&w=1800&q=85')] bg-cover bg-center">
-          <div className="flex min-h-[720px] max-w-3xl flex-col justify-center px-7 pb-16 pt-32 text-white sm:px-12 lg:px-16">
-            <span className="page-eyebrow mb-6 w-fit rounded-full border border-white/25 bg-white/10 px-4 py-2 text-white/95 backdrop-blur">
-              Supporting local Filipino farmers
-            </span>
-            <h1 className="page-title max-w-3xl text-5xl sm:text-6xl lg:text-7xl">
-              Fresh from our farms, straight to your table.
+    <main className="bg-[#f3f8ef] text-[#142016]">
+      <section className="relative isolate overflow-hidden text-white">
+        <img
+          src="https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=2000&q=80"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+        <div
+          className="absolute inset-0 bg-[linear-gradient(105deg,rgba(12,36,22,0.84)_0%,rgba(12,36,22,0.58)_40%,rgba(12,36,22,0.18)_100%)]"
+          aria-hidden="true"
+        />
+        <div className="page-container relative grid items-end gap-8 py-8 lg:grid-cols-[1.15fr_.85fr] lg:py-10">
+          <div className="max-w-2xl">
+            <p className="text-[13px] font-semibold text-[#c8f0b0]">Philippine harvest marketplace</p>
+            <h1 className="page-title mt-2 max-w-xl text-4xl text-white sm:text-5xl">
+              Good food starts with good farms.
             </h1>
-            <p className="page-lead mt-5 max-w-xl text-base text-white/85 sm:text-lg">
-              Discover quality produce from local farmers. Compare prices, support farming communities,
-              and choose convenient pickup or delivery.
+            <p className="mt-4 max-w-xl text-[17px] leading-7 text-white/85">
+              Discover fresh, local produce and deal directly with Filipino farmers in one trusted marketplace.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <a
-                href="/products"
-                className="rounded-full bg-[#bce86d] px-6 py-3.5 text-sm font-bold text-[#173c2c]"
-              >
-                Explore products →
-              </a>
+            <form action="/products" className="mt-8 flex max-w-xl flex-col gap-2 rounded-xl bg-white p-2 sm:flex-row sm:items-center">
+              <label htmlFor="marketplace-search" className="sr-only">Search products</label>
+              <div className="flex min-w-0 flex-1 items-center">
+                <svg viewBox="0 0 24 24" className="ml-2 size-5 shrink-0 fill-none stroke-[#2e7d32] stroke-2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                <input id="marketplace-search" name="q" placeholder="Search mango, rice, vegetables..." className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-base text-[#142016] outline-none placeholder:text-[#6b7f72]" />
+              </div>
+              <button className="btn btn-primary w-full sm:w-auto">Search</button>
+            </form>
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-white/85">
+              <span className="flex items-center gap-2"><svg viewBox="0 0 24 24" className="size-4 fill-none stroke-[#c8f0b0] stroke-2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Verified local farms</span>
+              <span className="flex items-center gap-2"><svg viewBox="0 0 24 24" className="size-4 fill-none stroke-[#c8f0b0] stroke-2" aria-hidden="true"><path d="M3 12h18M12 3v18"/></svg>Fresh pickup and delivery</span>
             </div>
+          </div>
+          <div className="hidden max-w-xs justify-self-end rounded-xl bg-white p-4 text-[#142016] lg:block">
+            <p className="text-[13px] font-semibold text-[#2e7d32]">Marketplace</p>
+            <p className="mt-1 text-[15px] font-semibold">{products.length ? 'Fresh listings are live' : 'Listings are being prepared'}</p>
+            {sellers.length ? <p className="mt-1 text-[13px] text-[#5c6f62]">From approved local farms</p> : null}
           </div>
         </div>
       </section>
 
-      <section id="categories" className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
-        <div className="mb-9 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <section className="page-container page-section">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="page-eyebrow text-[#4f8d3b]">Harvest selection</p>
-            <h2 className="page-section-title mt-2 text-3xl sm:text-4xl">Shop by category</h2>
+            <p className="page-eyebrow">Browse the market</p>
+            <h2 className="page-section-title mt-2 text-3xl text-brand-900">Shop by category</h2>
           </div>
-          <p className="page-lead max-w-md text-[#65766d]">Everyday essentials, grown closer to home.</p>
+          <a href="/categories" className="inline-flex items-center gap-2 text-sm font-bold text-brand-700">View all categories <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current stroke-2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
         {categories.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.map((cat) => {
-              const imageUrl =
-                typeof cat.image === 'object' && cat.image?.url
-                  ? cat.image.url
-                  : 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=700&q=80'
+          <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {categories.slice(0, 4).map((category, index) => {
+              const image = typeof category.image === 'object' && category.image?.url ? category.image.url : null
               return (
-                <a
-                  href={`/products?category=${encodeURIComponent(cat.id)}`}
-                  key={cat.id}
-                  className="group relative min-h-72 overflow-hidden rounded-3xl bg-cover bg-center"
-                  style={{
-                    backgroundImage: `linear-gradient(0deg,rgba(6,35,24,.75),transparent 65%),url('${imageUrl}')`,
-                  }}
-                >
-                  <span className="absolute bottom-5 left-5 text-xl font-semibold text-white">{cat.name} →</span>
+                <a key={category.id} href={`/products?category=${encodeURIComponent(category.id)}`} className="ui-card flex h-full flex-col overflow-hidden transition-colors hover:border-[#d2d2d7]">
+                  <div className="aspect-square bg-[#f5f5f7]">
+                    {image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-[15px] font-semibold text-[#6e6e73]">{String(index + 1).padStart(2, '0')}</div>}
+                  </div>
+                  <div className="p-4">
+                    <span className="text-[15px] font-semibold tracking-[-0.01em] text-[#1d1d1f]">{category.name}</span>
+                  </div>
                 </a>
               )
             })}
           </div>
-        ) : (
-          <div className="rounded-3xl border border-dashed border-[#173c2c]/20 bg-white p-10 text-center text-[#65766d]">
-            Fresh listings are being prepared. Check back soon.
-          </div>
-        )}
+        ) : <div className="page-empty mt-6">Categories will appear as the marketplace grows.</div>}
       </section>
 
-      <section id="products" className="bg-white py-20">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <p className="page-eyebrow text-[#4f8d3b]">Marketplace</p>
-          <h2 className="page-section-title mt-2 text-3xl sm:text-4xl">Fresh picks from local farms</h2>
-          <p className="page-lead mt-3 text-[#65766d]">Live listings from approved AgriConnect sellers.</p>
+      <section className="page-container page-section">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="page-eyebrow">In season now</p>
+              <h2 className="page-section-title mt-2 text-3xl text-brand-900">Fresh from nearby farms</h2>
+            </div>
+            <a href="/products" className="btn btn-secondary">Browse marketplace</a>
+          </div>
           {products.length ? (
-            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {products.map((product) => (
-                <article
-                  key={product.id}
-                  className="rounded-3xl border border-[#173c2c]/10 bg-[#faf9f4] p-6"
-                >
-                  <span className="rounded-full bg-[#dff0cd] px-3 py-1 text-xs font-bold">
-                    {product.stock > 0 ? 'Available' : 'Out of stock'}
-                  </span>
-                  <h3 className="mt-4 text-xl font-semibold leading-snug">{product.name}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-[#65766d]">
-                    {typeof product.seller === 'object' ? product.seller.farmName : 'Local seller'} ·{' '}
-                    {product.location || 'Philippines'}
-                  </p>
-                  <p className="mt-4 text-2xl font-semibold">
-                    ₱{Number(product.price).toLocaleString()}{' '}
-                    <span className="text-sm font-normal text-[#65766d]">/ {product.unit}</span>
-                  </p>
-                  <a
-                    href={`/products/${product.id}`}
-                    className="mt-5 inline-block text-sm font-semibold text-[#1d6b45]"
-                  >
-                    View product →
-                  </a>
-                </article>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {products.slice(0, 6).map((product) => (
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
-          ) : (
-            <div className="mt-10 rounded-3xl border border-dashed border-[#173c2c]/20 bg-[#faf9f4] p-10 text-center text-[#65766d]">
-              Fresh listings are being prepared. Check back soon.
+          ) : <div className="page-empty mt-6">Fresh listings are being prepared.</div>}
+      </section>
+
+      <section className="page-container page-section">
+        <div className="grid gap-4 lg:grid-cols-[1fr_340px] lg:gap-6">
+          <article className="ui-card grid overflow-hidden lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="flex flex-col justify-center p-5 sm:p-6">
+              <p className="text-[13px] font-semibold text-[#248a3d]">Join our community</p>
+              <h2 className="mt-2 text-3xl font-semibold leading-tight text-[#1d1d1f]">Build your livelihood with AgriConnect.</h2>
+              <p className="mt-3 text-[15px] leading-6 text-[#6e6e73]">Grow your customer base and sell your harvest through one trusted marketplace.</p>
+              <a href={partnerHref(user, '/account/become-seller')} className="btn btn-primary mt-5 w-fit">Apply as seller</a>
             </div>
-          )}
+            <img src="https://images.unsplash.com/photo-1595855759920-86582396756a?auto=format&fit=crop&w=1200&q=85" alt="Farmer with freshly harvested produce" className="h-56 w-full object-cover lg:h-full" />
+          </article>
+          <MarketplaceAssistant compact />
         </div>
       </section>
 
-      <section id="partner-programs" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-        <div className="rounded-[2rem] border border-[#173c2c]/10 bg-white p-8 shadow-sm sm:p-10">
-          <p className="page-eyebrow text-[#4f8d3b]">Partner programs</p>
-          <h2 className="page-section-title mt-2 text-3xl text-[#173c2c]">Grow with AgriConnect</h2>
-          <p className="page-lead mt-4 max-w-2xl text-[#65766d]">
-            Apply to sell produce or deliver orders. An administrator must approve each request.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <a
-              href={partnerHref(user, '/account/become-seller')}
-              className="rounded-full bg-[#5dbb38] px-6 py-3.5 text-sm font-bold text-white hover:opacity-95"
-            >
-              Apply to sell →
-            </a>
-            <a
-              href={partnerHref(user, '/account/become-delivery')}
-              className="rounded-full bg-[#142a19] px-6 py-3.5 text-sm font-bold text-white hover:opacity-95"
-            >
-              Apply to deliver →
-            </a>
+      <section className="page-container page-section">
+        <div className="flex flex-col gap-4 rounded-xl bg-[#163224] p-5 text-white sm:p-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Ready to shop local harvests?</h2>
+            <p className="mt-1 max-w-xl text-[14px] leading-6 text-white/75">Browse what is in season, or see how buying, selling, and delivery work on AgriConnect.</p>
           </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-        <MarketplaceAssistant compact />
-      </section>
-
-      <section className="mx-auto max-w-7xl px-5 pb-20 lg:px-8">
-        <div className="grid overflow-hidden rounded-[2rem] bg-[#123c2d] text-white lg:grid-cols-[1.2fr_.8fr]">
-          <div className="p-8 sm:p-12">
-            <p className="page-eyebrow text-[#bce86d]">Marketplace impact</p>
-            <h2 className="page-section-title mt-3 max-w-xl text-4xl sm:text-5xl">
-              A clearer path from harvest to household.
-            </h2>
-            <p className="page-lead mt-5 max-w-xl text-white/75">
-              AgriConnect gives farmers a digital storefront and helps buyers make informed choices. Live
-              totals appear here only when marketplace records exist.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 border-t border-white/10 lg:border-l lg:border-t-0">
-            {[
-              ['Approved sellers', sellers.length],
-              ['Active products', products.length],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="flex flex-col justify-end border-r border-white/10 p-7 last:border-r-0"
-              >
-                <span className="text-4xl font-semibold text-[#bce86d]">{value}</span>
-                <span className="mt-2 text-sm leading-relaxed text-white/65">{label}</span>
-              </div>
-            ))}
+          <div className="flex flex-wrap gap-3">
+            <a href="/products" className="btn btn-primary">Shop products</a>
+            <a href="/how-it-works" className="btn btn-ghost">How it works</a>
           </div>
         </div>
       </section>

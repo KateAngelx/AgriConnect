@@ -9,6 +9,7 @@ import { getProduct, listRelatedProducts } from '@/server/catalog'
 import { wished } from '@/server/wishlist'
 import { ProductPurchaseActions } from '@/components/product-purchase-actions'
 import { toggleWishlistAction } from '@/app/(frontend)/wishlist/actions'
+import { peso } from '@/lib/dashboard-format'
 export default async function ProductDetailsPage({ params }) {
   const { productId } = await params
   const user = await currentUser()
@@ -21,10 +22,23 @@ export default async function ProductDetailsPage({ params }) {
   const images = product.images?.filter((image) => typeof image === 'object' && image.url) ?? []
   return (
     <SiteShell>
-      <main className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-2">
+      <main className="page-container page-section page-open">
+        <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-2 text-sm text-brand-muted">
+          <a href="/products" className="font-semibold text-brand-700">Products</a>
+          {category ? (
+            <>
+              <span aria-hidden="true">/</span>
+              <a href={`/products?category=${encodeURIComponent(category.id)}`} className="font-semibold text-brand-700">
+                {category.name}
+              </a>
+            </>
+          ) : null}
+          <span aria-hidden="true">/</span>
+          <span className="text-brand-900">{product.name}</span>
+        </nav>
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
           <section>
-            <div className="aspect-[4/3] overflow-hidden rounded-[2rem] bg-[#e7eadf]">
+            <div className="aspect-square overflow-hidden rounded-xl border border-[#d5e4d4] bg-[#f3f8ef]">
               {images[0] && typeof images[0] === 'object' ? (
                 <img
                   src={images[0].url}
@@ -55,24 +69,25 @@ export default async function ProductDetailsPage({ params }) {
               </div>
             )}
           </section>
-          <section className="py-3">
+          <section>
             <p className="page-eyebrow text-[#4f8d3b]">{category?.name ?? 'Agricultural product'}</p>
-            <h1 className="page-title mt-2 text-4xl sm:text-5xl">{product.name}</h1>
-            <p className="mt-4 text-3xl font-semibold">
-              ₱{product.price.toLocaleString()}{' '}
-              <span className="text-base font-normal text-[#65766d]">per {product.unit}</span>
+            <h1 className="page-title mt-2 text-3xl text-brand-900 sm:text-4xl">{product.name}</h1>
+            <p className="mt-4 text-3xl font-semibold text-brand-900">
+              {peso(product.price)}{' '}
+              <span className="text-base font-normal text-brand-muted">per {product.unit}</span>
             </p>
             <p className="mt-6 leading-7 text-[#65766d]">
               {product.description || 'Contact the seller for additional product details.'}
             </p>
-            <div className="mt-8 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-white p-4">
+            <div className="mt-6 grid grid-cols-2 gap-4">
+              <div className="ui-card p-4">
                 <span className="text-xs text-[#65766d]">Stock</span>
                 <p className="mt-1 font-semibold">
-                  {product.stock} {product.unit}s available
+                  {product.stock > 0 ? `${product.stock} ${product.unit} available` : 'Sold out'}
+                  {product.stock > 0 && product.stock < 10 ? ' · Low stock' : ''}
                 </p>
               </div>
-              <div className="rounded-2xl bg-white p-4">
+              <div className="ui-card p-4">
                 <span className="text-xs text-[#65766d]">Fulfillment</span>
                 <p className="mt-1 font-semibold">
                   {[product.pickup && 'Pickup', product.delivery && 'Delivery']
@@ -84,7 +99,7 @@ export default async function ProductDetailsPage({ params }) {
             {seller && (
               <a
                 href={`/sellers/${seller.id}`}
-                className="mt-6 block rounded-2xl border border-[#173c2c]/10 bg-white p-5"
+                className="ui-card mt-6 block p-5"
               >
                 <span className="text-xs font-bold uppercase tracking-wide text-[#4f8d3b]">
                   Approved seller
@@ -102,6 +117,7 @@ export default async function ProductDetailsPage({ params }) {
                   lat={seller.pickupLat}
                   lng={seller.pickupLng}
                   label={`${seller.farmName} pickup`}
+                  kind="pickup"
                 />
               </div>
             ) : null}
@@ -110,29 +126,23 @@ export default async function ProductDetailsPage({ params }) {
               <ProductPurchaseActions product={product} />
               <form action={toggleWishlistAction} className="mt-3">
                 <input type="hidden" name="productId" value={product.id} />
-                <button className="text-sm font-bold text-[#3f8d29]">
+                <button className="btn btn-secondary">
                   {saved ? 'Remove from wishlist' : 'Save to wishlist'}
                 </button>
               </form>
               </>
             ) : (
-              <div className="mt-8 rounded-2xl bg-[#173c2c] p-6 text-white">
-                <h2 className="text-lg font-semibold">Sign in to purchase</h2>
-                <p className="mt-2 text-sm text-white/70">
+              <div className="ui-card mt-6 p-5">
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">Sign in to purchase</h2>
+                <p className="mt-2 text-[13px] text-[#6e6e73]">
                   Create an approved buyer account to select quantities, add items to your cart, and
                   check out securely.
                 </p>
                 <div className="mt-5 flex gap-3">
-                  <a
-                    href="/login"
-                    className="rounded-full bg-[#bce86d] px-5 py-3 text-sm font-semibold text-[#173c2c]"
-                  >
+                  <a href="/login" className="btn btn-primary">
                     Sign in
                   </a>
-                  <a
-                    href="/register"
-                    className="rounded-full border border-white/20 px-5 py-3 text-sm font-semibold"
-                  >
+                  <a href="/register" className="btn btn-secondary">
                     Create account
                   </a>
                 </div>
@@ -140,13 +150,13 @@ export default async function ProductDetailsPage({ params }) {
             )}
           </section>
         </div>
-        <section className="mt-16">
+        <section className="mt-12">
           <MarketplaceAssistant compact />
         </section>
-        <section className="mt-20">
-          <h2 className="text-3xl font-semibold">Similar products</h2>
+        <section className="mt-12">
+          <h2 className="page-section-title text-2xl text-brand-900">Similar products</h2>
           {related.docs.length ? (
-            <div className="mt-7 grid gap-5 md:grid-cols-3">
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {related.docs.map((item) => (
                 <ProductCard key={item.id} product={item} />
               ))}

@@ -9,7 +9,7 @@ export default async function AdminSettingsPage() {
   const integrations = await describeIntegrations()
 
   return (
-    <DashboardShell user={user} title="Platform settings" subtitle="Administrative preferences and integration status.">
+    <DashboardShell user={user} title="Settings" subtitle="Preferences and payment connections for this account.">
       <DashboardPanel title="Integrations">
         <ul className="space-y-3 text-sm text-[#647066]">
           <li>

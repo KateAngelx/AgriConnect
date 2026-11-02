@@ -12,7 +12,7 @@ export default async function InventoryPage({ searchParams }) {
   const products = await listOwnedProducts(user)
 
   return (
-    <DashboardShell user={user} title="Inventory" subtitle="Update stock quantities buyers can purchase.">
+    <DashboardShell user={user} title="Inventory" subtitle="Stock quantities buyers can purchase.">
       {error ? <div className="mb-6"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
 
       <div className="mb-8">
@@ -25,28 +25,35 @@ export default async function InventoryPage({ searchParams }) {
             <form
               key={product.id}
               action={updateStockAction}
-              className="grid gap-4 rounded-2xl border border-[#173c2c]/10 bg-white p-5 shadow-sm sm:grid-cols-[1fr_120px_auto] sm:items-end"
+              className="grid gap-4 rounded-2xl border border-brand-800/10 bg-white p-5 shadow-sm sm:grid-cols-[minmax(0,1fr)_9rem_auto] sm:items-end"
             >
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="font-bold text-[#142016]">{product.name}</h2>
                   <StatusBadge status={pretty(product.status)} />
-                  {product.stock < 10 ? (
-                    <span className="text-xs font-bold text-[#b38a22]">Low stock</span>
+                  {product.stock <= 0 ? (
+                    <span className="text-xs font-semibold text-red-800">Out of stock</span>
+                  ) : product.stock < 10 ? (
+                    <span className="text-xs font-semibold text-amber-800">Low stock</span>
                   ) : null}
                 </div>
-                <p className="mt-1 text-sm text-[#647066]">Unit: {product.unit}</p>
+                <p className="mt-1 text-sm text-brand-muted">Unit: {product.unit}</p>
+                <input type="hidden" name="productId" value={product.id} />
               </div>
-              <input type="hidden" name="productId" value={product.id} />
-              <FieldInput
-                aria-label={`${product.name} stock`}
-                name="stock"
-                type="number"
-                min="0"
-                step="1"
-                defaultValue={product.stock}
-              />
-              <DarkButton type="submit">Update</DarkButton>
+              <div>
+                <label htmlFor={`stock-${product.id}`} className="mb-1 block text-xs font-semibold text-brand-muted">
+                  Stock
+                </label>
+                <FieldInput
+                  id={`stock-${product.id}`}
+                  name="stock"
+                  type="number"
+                  min="0"
+                  step="1"
+                  defaultValue={product.stock}
+                />
+              </div>
+              <DarkButton type="submit">Save stock</DarkButton>
             </form>
           ))}
         </ul>

@@ -19,7 +19,7 @@ function CategoryCard({ category }) {
   return (
     <a
       href={`/products?category=${encodeURIComponent(category.id)}`}
-      className="group flex h-full min-h-[420px] flex-col overflow-hidden rounded-2xl border border-[#173c2c]/10 bg-white shadow-sm transition hover:border-[#5dbb38]/35 hover:shadow-md"
+      className="ui-card group flex h-full flex-col overflow-hidden transition-colors hover:border-[#d2d2d7]"
     >
       <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-[#e8ebe3]">
         {category.imageUrl ? (
@@ -58,12 +58,12 @@ function CategoryCard({ category }) {
 
 function PromoCard() {
   return (
-    <article className="relative flex h-full min-h-[420px] flex-col overflow-hidden rounded-2xl border border-[#173c2c]/10 shadow-sm">
+    <article className="ui-card relative flex h-full min-h-72 flex-col overflow-hidden">
       <div
         className="absolute inset-0 bg-[linear-gradient(135deg,rgba(237,248,232,.94)_0%,rgba(220,236,210,.88)_100%),url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=900&q=80')] bg-cover bg-center"
         aria-hidden="true"
       />
-      <div className="relative flex flex-1 flex-col justify-end p-6 sm:p-7">
+      <div className="relative flex flex-1 flex-col justify-end p-5 sm:p-6">
         <span className="mb-3 grid size-11 place-items-center rounded-full bg-white/90 shadow-sm">
           <CategoryIcon categoryId="default" className="size-6" />
         </span>
@@ -74,7 +74,7 @@ function PromoCard() {
         </p>
         <a
           href="/about"
-          className="mt-5 inline-flex w-fit rounded-full bg-[#173c2c] px-5 py-2.5 text-sm font-bold text-white transition hover:opacity-90"
+          className="btn btn-primary mt-5 w-fit"
         >
           Learn more →
         </a>
@@ -111,22 +111,22 @@ export function CategoriesBrowser({ categories }) {
   }, [categories, query])
 
   return (
-    <main className="relative overflow-hidden bg-[#f7f6ef] text-[#173c2c]">
+    <main className="relative">
       <LeafWatermark className="-right-8 top-24 size-48 sm:size-64" />
       <LeafWatermark className="-left-10 bottom-32 size-40 rotate-180 sm:size-56" />
 
-      <div className="relative mx-auto max-w-7xl px-5 py-12 lg:px-8 lg:py-16">
+      <div className="page-container page-section page-open relative">
         <header className="max-w-3xl">
           <p className="page-eyebrow text-[#4f8d3b]">Explore the harvest</p>
-          <h1 className="page-title mt-2 text-4xl text-[#142016] sm:text-5xl">Shop by category</h1>
-          <p className="page-lead mt-4 max-w-2xl text-base text-[#65766d]">
+          <h1 className="page-title mt-2 text-3xl text-brand-900 sm:text-4xl">Shop by category</h1>
+          <p className="page-lead mt-3 max-w-2xl text-brand-muted">
             Discover fresh produce and agricultural products from local farmers. Browse by type to find
             what you need.
           </p>
         </header>
 
         {categories.length > 0 && (
-          <div className="mt-8 max-w-xl">
+          <div className="mt-6 max-w-xl">
             <label htmlFor="category-search" className="sr-only">
               Search categories
             </label>
@@ -147,7 +147,7 @@ export function CategoriesBrowser({ categories }) {
 
         {categories.length === 0 ? (
           <div
-            className="mt-10 rounded-2xl border border-dashed border-[#173c2c]/20 bg-white px-6 py-16 text-center"
+            className="page-empty mt-6"
             role="status"
           >
             <CategoryIcon categoryId="default" className="mx-auto size-10 text-[#65766d]/50" />
@@ -157,13 +157,13 @@ export function CategoriesBrowser({ categories }) {
           </div>
         ) : filtered.length === 0 ? (
           <div
-            className="mt-10 rounded-2xl border border-dashed border-[#173c2c]/20 bg-white px-6 py-16 text-center"
+            className="page-empty mt-6"
             role="status"
           >
             <p className="text-[#65766d]">No categories match your search. Try another keyword.</p>
           </div>
         ) : (
-          <ul className="mt-10 grid list-none gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <ul className="mt-6 grid list-none gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((category) => (
               <li key={category.id} className="flex">
                 <CategoryCard category={category} />

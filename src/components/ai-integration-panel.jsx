@@ -104,7 +104,7 @@ export function AiIntegrationPanel() {
               key={key}
               type="button"
               onClick={() => setSnippet(key)}
-              className={`rounded-full px-3 py-1 text-xs font-bold ${snippet === key ? 'bg-[#173c2c] text-white' : 'border border-[#173c2c]/15 bg-[#fafbfa]'}`}
+              className={`rounded-lg px-3 py-1 text-[12px] font-semibold ${snippet === key ? 'bg-[#e8e8ed] text-[#1d1d1f]' : 'text-[#6e6e73] hover:bg-[#f5f5f7]'}`}
             >
               {key === 'gemini' ? 'Google Gemini' : key === 'groq' ? 'Groq' : 'Data only'}
             </button>
@@ -122,7 +122,7 @@ export function AiIntegrationPanel() {
         type="button"
         onClick={runTest}
         disabled={pending}
-        className="rounded-full bg-[#173c2c] px-5 py-2.5 text-xs font-bold text-white disabled:opacity-60"
+        className="btn btn-dark"
       >
         {pending ? 'Testing…' : 'Test AI connection'}
       </button>

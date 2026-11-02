@@ -4,8 +4,7 @@ import { useActionState, useEffect, useState } from 'react'
 import { updateProfileAction } from '@/app/(frontend)/account/settings/actions'
 import { LocationPicker } from '@/components/location-picker'
 
-const field =
-  'mt-2 w-full rounded-xl border border-[#173c2c]/12 bg-white px-4 py-2.5 text-sm outline-none ring-[#5dbb38]/30 focus:ring-2'
+const field = 'ui-field mt-2'
 
 export function BuyerSettingsForm({ user }) {
   const [state, action, pending] = useActionState(updateProfileAction, { error: '' })
@@ -101,10 +100,10 @@ export function BuyerSettingsForm({ user }) {
           </div>
           <div>
             <p className="text-sm font-bold">Delivery pin</p>
-            <LocationPicker lat={lat} lng={lng} onChange={({ lat: nextLat, lng: nextLng }) => { setLat(String(nextLat)); setLng(String(nextLng)) }} />
+            <LocationPicker kind="dropoff" lat={lat} lng={lng} onChange={({ lat: nextLat, lng: nextLng }) => { setLat(String(nextLat)); setLng(String(nextLng)) }} />
           </div>
           {addressError ? <p role="alert" className="text-sm font-bold text-[#963b2d]">{addressError}</p> : null}
-          <button type="button" onClick={addAddress} className="w-fit rounded-full border border-[#173c2c]/15 px-4 py-2 text-sm font-bold">
+          <button type="button" onClick={addAddress} className="btn btn-secondary w-fit">
             + Add to saved locations
           </button>
         </div>
@@ -112,7 +111,7 @@ export function BuyerSettingsForm({ user }) {
       {hasUnsavedLocations ? <p role="status" className="rounded-xl bg-[#fff8ed] px-4 py-3 text-sm font-semibold text-[#7a4b12]">Location changes are ready. Select “Save changes” to keep them.</p> : null}
       {state.error ? <p role="alert" className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">{state.error}</p> : null}
       {state.ok ? <p role="status" className="rounded-xl bg-[#eef8e8] px-4 py-3 text-sm text-[#3f8d29]">Profile and locations updated and saved.</p> : null}
-      <button type="submit" disabled={pending} className="rounded-full bg-[#5dbb38] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">
+      <button type="submit" disabled={pending} className="btn btn-primary">
         {pending ? 'Saving…' : 'Save changes'}
       </button>
     </form>

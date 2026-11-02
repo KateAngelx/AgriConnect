@@ -7,7 +7,7 @@ export default async function DeliverySettingsPage() {
   const user = await requireDelivery()
 
   return (
-    <DashboardShell user={user} title="Profile settings" subtitle="Update the service area shown to administrators and buyers.">
+    <DashboardShell user={user} title="Settings" subtitle="Service area used when matching delivery jobs.">
       <DashboardPanel title="Service area">
         <ServiceAreaForm
           area={user.serviceArea || ''}

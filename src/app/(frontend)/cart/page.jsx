@@ -3,6 +3,7 @@ import { DashboardShell } from '@/components/dashboard-shell'
 import { currentUser } from '@/server/auth'
 import { getCart } from '@/server/cart'
 import { updateCartAction } from '@/app/(frontend)/cart/actions'
+import { peso } from '@/lib/dashboard-format'
 export default async function CartPage() {
   const user = await currentUser()
   if (!user) redirect('/login')
@@ -16,7 +17,7 @@ export default async function CartPage() {
     0,
   )
   return (
-    <DashboardShell user={user} title="Your cart" subtitle="Review quantities before checkout.">
+    <DashboardShell user={user} title="Cart" subtitle="Review quantities before checkout.">
         {items.length ? (
           <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
             <section className="space-y-4">
@@ -26,7 +27,7 @@ export default async function CartPage() {
                 return (
                   <article
                     key={item.id ?? `${product.id}-${index}`}
-                    className="flex flex-col gap-5 rounded-[2rem] border border-[#173c2c]/10 bg-white p-6 shadow-sm sm:flex-row sm:items-center"
+                    className="ui-card flex flex-col gap-5 p-5 sm:flex-row sm:items-center"
                   >
                     <div className="flex-1">
                       <p className="text-xs font-bold uppercase text-[#5dbb38]">
@@ -34,7 +35,8 @@ export default async function CartPage() {
                       </p>
                       <h2 className="mt-2 text-xl font-bold">{product.name}</h2>
                       <p className="mt-1 text-sm text-[#647066]">
-                        ₱{product.price.toLocaleString()} / {product.unit}
+                        {peso(product.price)} / {product.unit}
+                        {product.stock <= 0 ? ' · Sold out' : product.stock < 10 ? ' · Low stock' : ''}
                       </p>
                     </div>
                     <form action={updateCartAction} className="flex items-center gap-2">
@@ -49,43 +51,44 @@ export default async function CartPage() {
                         defaultValue={item.quantity}
                         className="w-20 rounded-xl border border-black/10 px-3 py-2"
                       />
-                      <button className="rounded-full border border-black/10 px-4 py-2 text-sm font-bold">
-                        Update
-                      </button>
+                      <button className="btn btn-secondary">Update</button>
                     </form>
-                    <p className="w-28 text-right font-bold">
-                      ₱{(product.price * item.quantity).toLocaleString()}
+                    <form action={updateCartAction}>
+                      <input type="hidden" name="cartID" value={cart.id} />
+                      <input type="hidden" name="itemID" value={item.id ?? ''} />
+                      <input type="hidden" name="quantity" value="0" />
+                      <button className="btn btn-danger">Remove</button>
+                    </form>
+                    <p className="w-28 text-right text-lg font-bold">
+                      {peso(product.price * item.quantity)}
                     </p>
                   </article>
                 )
               })}
             </section>
-            <aside className="h-fit rounded-[2rem] bg-[#142a19] p-7 text-white">
-              <h2 className="text-xl font-bold">Order summary</h2>
-              <div className="mt-6 flex justify-between border-b border-white/10 pb-5 text-sm">
-                <span className="text-white/60">Subtotal</span>
-                <strong>₱{subtotal.toLocaleString()}</strong>
+            <aside className="ui-card h-fit p-5">
+              <h2 className="text-[17px] font-semibold">Order summary</h2>
+              <div className="mt-4 flex justify-between border-b border-[#e5e5ea] pb-4 text-[13px]">
+                <span className="text-[#6e6e73]">Subtotal</span>
+                <strong>{peso(subtotal)}</strong>
               </div>
-              <p className="mt-5 text-xs leading-5 text-white/55">
+              <p className="mt-4 text-[12px] leading-5 text-[#6e6e73]">
                 Delivery fees and final stock are validated during checkout.
               </p>
               <a
                 href="/checkout"
-                className="mt-6 block rounded-full bg-[#5dbb38] px-5 py-4 text-center font-bold"
+                className="btn btn-primary mt-6 w-full"
               >
-                Proceed to checkout →
+                Continue to checkout
               </a>
             </aside>
           </div>
         ) : (
-          <div className="rounded-[2rem] border border-dashed border-[#173c2c]/15 bg-white p-12 text-center">
-            <h2 className="text-2xl font-bold">Your cart is empty.</h2>
-            <p className="mt-2 text-[#647066]">Browse active products and add available items.</p>
-            <a
-              href="/products"
-              className="mt-6 inline-block rounded-full bg-[#5dbb38] px-6 py-3 font-bold text-white"
-            >
-              Explore products
+          <div className="rounded-2xl border border-dashed border-brand-800/15 bg-white px-6 py-14 text-center">
+            <h2 className="text-xl font-bold text-brand-900">Your cart is empty</h2>
+            <p className="mt-2 text-brand-muted">Browse active products and add the items you want.</p>
+            <a href="/products" className="btn btn-primary mt-6">
+              Browse products
             </a>
           </div>
         )}

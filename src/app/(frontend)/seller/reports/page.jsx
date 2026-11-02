@@ -1,14 +1,21 @@
 import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
+import { PeriodFilter } from '@/components/period-filter'
 import { DashboardPanel, DataTable, StatusBadge } from '@/components/dashboard-ui'
+import { periodLabel, readPeriod } from '@/lib/report-period'
 import { requireApprovedSeller } from '@/server/guards'
 import { sellerSalesReport } from '@/server/seller'
 
-export default async function SellerReportsPage() {
+export default async function SellerReportsPage({ searchParams }) {
   const user = await requireApprovedSeller()
-  const rows = await sellerSalesReport(user)
+  const query = await searchParams
+  const period = readPeriod(query.period)
+  const rows = await sellerSalesReport(user, period)
 
   return (
-    <DashboardShell user={user} title="Sales reports" subtitle="Recent orders that include your products.">
+    <DashboardShell user={user} title="Sales reports" subtitle={`${periodLabel(period)} · orders that include your products in this range.`}>
+      <div className="mb-6">
+        <PeriodFilter period={period} pathname="/seller/reports" />
+      </div>
       <DashboardPanel title="Recent sales">
         {rows.length ? (
           <DataTable columns={['Order', 'Total', 'Payment', 'Status', 'Date']}>

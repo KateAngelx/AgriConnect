@@ -13,7 +13,7 @@ const formCopy = {
   submitSeller: 'Submit seller application',
   submitDelivery: 'Submit delivery application',
   cancel: 'Cancel',
-  cancelConfirm: 'Leave this page? Unsaved changes may be lost.',
+  cancelConfirm: 'Close this form? Unsaved changes may be lost.',
   saving: 'Saving…',
   submitting: 'Submitting…',
   draftSaved: 'Draft saved.',
@@ -41,7 +41,7 @@ function FormActions({ pending, submitLabel, formId, t }) {
         name="intent"
         value="submit"
         disabled={pending}
-        className="rounded-full bg-[#5dbb38] px-6 py-3 text-sm font-bold text-white disabled:opacity-60"
+        className="btn btn-primary"
       >
         {pending ? t.submitting : submitLabel} →
       </button>
@@ -50,7 +50,7 @@ function FormActions({ pending, submitLabel, formId, t }) {
         name="intent"
         value="draft"
         disabled={pending}
-        className="rounded-full border border-[#173c2c]/15 bg-white px-6 py-3 text-sm font-bold text-[#142016] disabled:opacity-60"
+        className="btn btn-secondary"
       >
         {pending ? t.saving : t.saveDraft}
       </button>
@@ -61,9 +61,9 @@ function FormActions({ pending, submitLabel, formId, t }) {
     {hasChanges ? (
       <ConfirmDialog
         open={cancelOpen}
-        title="Discard application changes?"
+        title="Close application?"
         message={t.cancelConfirm}
-        confirmLabel="Leave page"
+        confirmLabel="Close"
         danger
         onConfirm={() => router.push('/account')}
         onCancel={() => setCancelOpen(false)}

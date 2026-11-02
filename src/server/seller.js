@@ -1,4 +1,5 @@
 import { isValidPin } from '@/lib/geo'
+import { inPeriod } from '@/lib/report-period'
 import { eligibleCouriersForOrder } from './delivery'
 import { notify } from './notifications'
 import { collectCash, itemSellerId } from './payments'
@@ -23,16 +24,38 @@ const sellerSteps = {
   },
 }
 
+const nextActionLabels = {
+  confirmed: 'Confirm order',
+  preparing: 'Start preparing',
+  'ready-for-pickup': 'Mark ready for pickup',
+  'picked-up': 'Mark picked up',
+  completed: 'Complete order',
+  'awaiting-delivery': 'Mark ready for delivery',
+}
+
+export function nextSellerAction(fulfillment, status) {
+  const next = sellerSteps[fulfillment]?.[status]
+  if (!next) return null
+  return { status: next, label: nextActionLabels[next] || 'Update order' }
+}
+
 function cleanText(value, max) {
   return String(value ?? '').trim().slice(0, max)
 }
 
+const DATA_IMAGE = /^data:image\/(jpeg|jpg|png|webp);base64,[a-z0-9+/=\r\n]+$/i
+
 function imageUrl(value) {
-  const url = cleanText(value, 500)
+  const url = String(value ?? '').trim()
   if (!url) return ''
+  if (url.startsWith('data:image/')) {
+    if (url.length > 1_200_000 || !DATA_IMAGE.test(url)) return null
+    return url
+  }
   try {
     const parsed = new URL(url)
-    return parsed.protocol === 'https:' ? parsed.toString() : null
+    if (parsed.protocol !== 'https:' || parsed.toString().length > 500) return null
+    return parsed.toString()
   } catch {
     return null
   }
@@ -80,8 +103,8 @@ function sellerOrderTotal(order, sellerId) {
     .reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
 }
 
-export async function sellerFinancials(user) {
-  const orders = await listOwnedOrders(user)
+export async function sellerFinancials(user, period = 'all') {
+  const orders = (await listOwnedOrders(user)).filter((order) => inPeriod(order.createdAt, period))
   const completed = orders.filter((order) => ['completed', 'delivered', 'picked-up'].includes(order.status))
   const gross = completed.reduce((sum, order) => sum + sellerOrderTotal(order, user.sellerId), 0)
   const pending = orders
@@ -95,9 +118,9 @@ export async function sellerFinancials(user) {
   }
 }
 
-export async function sellerSalesReport(user) {
-  const orders = await listOwnedOrders(user)
-  return orders.slice(0, 20).map((order) => ({
+export async function sellerSalesReport(user, period = 'all') {
+  const orders = (await listOwnedOrders(user)).filter((order) => inPeriod(order.createdAt, period))
+  return orders.map((order) => ({
     id: order.id,
     reference: order.reference,
     total: sellerOrderTotal(order, user.sellerId),
@@ -156,7 +179,7 @@ export async function saveProduct(user, input) {
   if (!Number.isInteger(stock) || stock < 0 || stock > 100000) return { error: 'Enter a whole-number stock quantity.' }
   if (location.length < 2) return { error: 'Enter the product location.' }
   if (!pickup && !delivery) return { error: 'Choose pickup, delivery, or both.' }
-  if (photo === null) return { error: 'Product image must be an https URL.' }
+  if (photo === null) return { error: 'Use a photo from your camera or library. Very large files need to be a smaller picture.' }
   const seller = sellerRecord(store, user)
   if (!seller || seller.status !== 'approved') return { error: 'Your seller profile is not approved.' }
   const existing = input.productId ? store.products.find((product) => product.id === input.productId) : null

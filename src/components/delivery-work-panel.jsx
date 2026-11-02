@@ -1,6 +1,6 @@
 import { collectDeliveryAction, trackAction } from '@/app/(frontend)/delivery/actions'
 import { OverviewPanel } from '@/components/dashboard-overview-ui'
-import { DarkButton, EmptyState, FieldInput, StatusBadge } from '@/components/dashboard-ui'
+import { DarkButton, FieldInput, StatusBadge } from '@/components/dashboard-ui'
 import { LocationRouteMap } from '@/components/location-route-map'
 import { peso, pretty } from '@/lib/dashboard-format'
 import { ConfirmButton } from '@/components/confirm-button'
@@ -13,10 +13,8 @@ const nextLabel = {
   'in-transit': 'Mark delivered',
 }
 
-export function DeliveryWorkPanel({ work, userId }) {
-  return (
-    <OverviewPanel title="Manage assignments">
-      {work.length ? (
+export function DeliveryWorkPanel({ work, userId, bare = false, emptyMessage = 'Open jobs in your service area will appear here.' }) {
+  const body = work.length ? (
         <ul className="space-y-4">
           {work.map((assignment) => (
             <li
@@ -71,7 +69,7 @@ export function DeliveryWorkPanel({ work, userId }) {
                   <ConfirmButton
                     type="submit"
                     message={`Confirm: ${nextLabel[assignment.status]}?`}
-                    className="rounded-full bg-[#173c2c] px-4 py-2.5 text-sm font-bold text-white"
+                    className="btn btn-dark"
                   >
                     {nextLabel[assignment.status]}
                   </ConfirmButton>
@@ -90,8 +88,8 @@ export function DeliveryWorkPanel({ work, userId }) {
           ))}
         </ul>
       ) : (
-        <EmptyState title="No assignments">Open jobs in your service area will appear here.</EmptyState>
-      )}
-    </OverviewPanel>
-  )
+        <p className="text-sm text-[#5c6f62]">{emptyMessage}</p>
+      )
+  if (bare) return body
+  return <OverviewPanel title="Manage assignments">{body}</OverviewPanel>
 }

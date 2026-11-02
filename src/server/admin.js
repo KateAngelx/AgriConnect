@@ -1,3 +1,4 @@
+import { inPeriod } from '@/lib/report-period'
 import { listRoleApplications } from './applications'
 import { notify } from './notifications'
 import { save } from './sync'
@@ -132,16 +133,31 @@ export async function markCommissionPaid(actor, deliveryId) {
   return { ok: true }
 }
 
-export async function platformReport() {
-  const summary = await adminSnapshot()
+export async function platformReport(period = 'all') {
   const store = await readyStore()
-  const applications = store.applications
+  const users = [...store.users.values()].filter((user) => inPeriod(user.createdAt, period))
+  const applications = store.applications.filter((item) => inPeriod(item.createdAt, period))
+  const orders = [...store.orders.values()].filter((order) => inPeriod(order.createdAt, period))
+  const payments = store.payments.filter((payment) => inPeriod(payment.createdAt, period))
+  const closed = new Set(['completed', 'cancelled', 'delivered', 'picked-up'])
   return {
-    ...summary,
+    users: users.length,
+    buyers: users.filter((user) => user.role === 'buyer').length,
+    approvedSellers: users.filter((user) => user.role === 'seller' && user.status === 'approved').length,
+    approvedDelivery: users.filter((user) => user.role === 'delivery' && user.status === 'approved').length,
+    pending: applications.filter((item) => item.status === 'pending' || item.status === 'under-review').length,
     applicationsTotal: applications.length,
     applicationsApproved: applications.filter((item) => item.status === 'approved').length,
     applicationsRejected: applications.filter((item) => item.status === 'rejected').length,
-    buyers: [...store.users.values()].filter((user) => user.role === 'buyer').length,
+    activeProducts: store.products.filter((product) => product.status === 'active').length,
+    orders: orders.length,
+    ordersAttention: orders.filter((order) => !closed.has(order.status)).length,
+    orderVolume: orders.reduce((sum, order) => sum + (Number(order.subtotal) || 0) + (Number(order.deliveryFee) || 0), 0),
+    payments: payments.filter((payment) => payment.status === 'pending').length,
+    paidTransactions: payments.filter((payment) => payment.status === 'paid').length,
+    paidVolume: payments
+      .filter((payment) => payment.status === 'paid')
+      .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
   }
 }
 

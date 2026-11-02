@@ -3,18 +3,24 @@
 import { redirect } from 'next/navigation'
 import { addToCart, buyNow, updateCart } from '@/server/cart'
 
+function safePath(value, fallback) {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : fallback
+}
+
+function withNotice(path, key, message) {
+  const joiner = path.includes('?') ? '&' : '?'
+  return `${path}${joiner}${key}=${encodeURIComponent(message)}`
+}
+
 export async function addToCartAction(formData) {
   const result = await addToCart({
     productID: formData.get('productID'),
     quantity: formData.get('quantity'),
   })
   if (result.redirectTo) redirect(result.redirectTo)
-  if (result.error) throw new Error(result.error)
-  const returnTo = formData.get('returnTo')
-  if (typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')) {
-    redirect(returnTo)
-  }
-  redirect('/cart')
+  const back = safePath(formData.get('returnTo'), '/cart')
+  if (result.error) redirect(withNotice(back, 'error', result.error))
+  redirect(withNotice(back, 'success', 'Added to your cart.'))
 }
 
 export async function updateCartAction(formData) {
@@ -24,7 +30,7 @@ export async function updateCartAction(formData) {
     quantity: formData.get('quantity'),
   })
   if (result.redirectTo) redirect(result.redirectTo)
-  if (result.error) throw new Error(result.error)
+  if (result.error) redirect(withNotice('/cart', 'error', result.error))
   redirect('/cart')
 }
 
@@ -34,6 +40,6 @@ export async function buyNowAction(formData) {
     quantity: formData.get('quantity'),
   })
   if (result.redirectTo) redirect(result.redirectTo)
-  if (result.error) throw new Error(result.error)
+  if (result.error) redirect(withNotice(safePath(formData.get('returnTo'), '/cart'), 'error', result.error))
   redirect('/checkout')
 }

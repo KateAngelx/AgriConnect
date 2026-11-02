@@ -142,9 +142,7 @@ function ReviewButton({ label, primary, danger, onClick }) {
     <button
       type="submit"
       onClick={onClick}
-      className={`rounded-full px-4 py-2 text-xs font-bold ${
-        primary ? 'bg-[#173c2c] text-white' : danger ? 'bg-[#fff1ed] text-[#963b2d]' : 'border border-[#173c2c]/15 bg-white'
-      }`}
+      className={primary ? 'btn btn-primary' : danger ? 'btn btn-danger' : 'btn btn-secondary'}
     >
       {label}
     </button>

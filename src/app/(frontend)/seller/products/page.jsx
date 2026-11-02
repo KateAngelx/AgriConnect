@@ -1,24 +1,30 @@
 import Link from 'next/link'
+import { removeProductAction } from '@/app/(frontend)/seller/actions'
 import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
-import { AlertBanner, EmptyState, ListRow, PrimaryButton, StatusBadge } from '@/components/dashboard-ui'
+import { AlertBanner, EmptyState, ListRow, PrimaryLink, StatusBadge } from '@/components/dashboard-ui'
+import { ConfirmButton } from '@/components/confirm-button'
+import { Modal } from '@/components/modal'
+import { ProductForm } from '@/components/product-form'
+import { listCategories } from '@/server/catalog'
 import { requireApprovedSeller } from '@/server/guards'
 import { listOwnedProducts } from '@/server/seller'
-import { removeProductAction } from '@/app/(frontend)/seller/actions'
 
 export default async function SellerProductsPage({ searchParams }) {
   const user = await requireApprovedSeller()
   const query = await searchParams
   const error = typeof query.error === 'string' ? query.error : ''
-  const products = await listOwnedProducts(user)
+  const creating = query.new === '1'
+  const editingId = typeof query.edit === 'string' ? query.edit : ''
+  const [products, categories] = await Promise.all([listOwnedProducts(user), listCategories()])
+  const editing = editingId ? products.find((product) => product.id === editingId) : null
+  const modalOpen = creating || Boolean(editingId)
 
   return (
-    <DashboardShell user={user} title="Products" subtitle="Create, edit, and remove your marketplace listings.">
+    <DashboardShell user={user} title="Products" subtitle="Listings buyers can order from your shop.">
       {error ? <div className="mb-6"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
 
       <div className="mb-6 flex justify-end">
-        <Link href="/seller/products/new" className="inline-flex rounded-full bg-[#5dbb38] px-5 py-2.5 text-sm font-bold text-white hover:opacity-90">
-          New product
-        </Link>
+        <PrimaryLink href="/seller/products?new=1">Add product</PrimaryLink>
       </div>
 
       {products.length ? (
@@ -31,17 +37,19 @@ export default async function SellerProductsPage({ searchParams }) {
               meta={`${peso(product.price)} / ${product.unit} · ${product.stock} in stock · ${product.location}`}
               actions={
                 <>
-                  <Link
-                    href={`/seller/products/${product.id}`}
-                    className="inline-flex rounded-full border border-[#173c2c]/15 bg-white px-5 py-2.5 text-sm font-bold text-[#142016] hover:bg-[#f7f7f2]"
-                  >
+                  <Link href={`/seller/products?edit=${encodeURIComponent(product.id)}`} className="btn btn-secondary">
                     Edit
                   </Link>
                   <form action={removeProductAction}>
                     <input type="hidden" name="productId" value={product.id} />
-                    <button type="submit" className="rounded-full bg-[#fff1ed] px-5 py-2.5 text-sm font-bold text-[#963b2d]">
+                    <ConfirmButton
+                      danger
+                      confirmLabel="Remove listing"
+                      message="Remove this listing? Products already used in an order are archived instead of deleted."
+                      className="btn btn-danger"
+                    >
                       Remove
-                    </button>
+                    </ConfirmButton>
                   </form>
                 </>
               }
@@ -52,14 +60,26 @@ export default async function SellerProductsPage({ searchParams }) {
         <EmptyState
           title="No products yet"
           action={
-            <Link href="/seller/products/new">
-              <PrimaryButton type="button">Create listing</PrimaryButton>
-            </Link>
+            <PrimaryLink href="/seller/products?new=1">Add product</PrimaryLink>
           }
         >
           Publish produce after your seller account is approved.
         </EmptyState>
       )}
+
+      {modalOpen ? (
+        <Modal
+          title={editing ? 'Edit product' : 'Add product'}
+          subtitle={editing ? 'Price, stock, and how buyers can receive this listing.' : 'Set the price, stock, and whether buyers pick it up or have it delivered.'}
+          closeHref="/seller/products"
+        >
+          {editingId && !editing ? (
+            <p className="text-sm text-[#5c6f62]">This listing is not in your shop.</p>
+          ) : (
+            <ProductForm categories={categories.docs} product={editing || undefined} />
+          )}
+        </Modal>
+      ) : null}
     </DashboardShell>
   )
 }

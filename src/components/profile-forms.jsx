@@ -6,8 +6,7 @@ import { saveProfileAction } from '@/app/(frontend)/seller/actions'
 import { LocationPicker } from '@/components/location-picker'
 import { FieldInput, PrimaryButton } from '@/components/dashboard-ui'
 
-const textareaClass =
-  'mt-2 w-full rounded-2xl border border-[#173c2c]/12 bg-[#fafbfa] px-4 py-3 text-sm outline-none ring-[#5dbb38]/30 focus:border-[#5dbb38] focus:ring-2'
+const textareaClass = 'ui-field mt-2'
 
 export function SellerProfileForm({ seller }) {
   const [state, action, pending] = useActionState(saveProfileAction, { error: '' })
@@ -37,6 +36,7 @@ export function SellerProfileForm({ seller }) {
       <div>
         <p className="text-sm font-bold text-[#142016]">Pickup pin on map</p>
         <LocationPicker
+          kind="pickup"
           lat={pickupLat}
           lng={pickupLng}
           onChange={({ lat, lng }) => {
@@ -112,7 +112,7 @@ export function ServiceAreaForm({ area, lat = '', lng = '', locations = [] }) {
         <input type="hidden" name="serviceAreaLat" value={serviceLat} />
         <input type="hidden" name="serviceAreaLng" value={serviceLng} />
       </div>
-      <button type="button" onClick={addArea} className="rounded-full border border-[#173c2c]/15 px-4 py-2 text-sm font-bold">
+      <button type="button" onClick={addArea} className="btn btn-secondary">
         + Save this service area
       </button>
       {coverageAreas.length ? (

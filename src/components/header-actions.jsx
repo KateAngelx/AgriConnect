@@ -3,13 +3,13 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { logoutAction } from '@/app/(frontend)/account/actions'
-import { homeForNav } from '@/components/dashboard-nav'
+import { activeNavHref, homeForNav } from '@/components/dashboard-nav'
 import { DashboardIcon } from './dashboard-icons'
 import { CartDrawer } from './cart-drawer'
 import { NotificationsPanel } from './notifications-panel'
 
 function iconButtonClass(active) {
-  return `relative grid size-10 place-items-center rounded-full border border-[#173c2c]/10 text-[#455a64] transition hover:bg-[#f4f6f8] hover:text-[#2e7d32] ${active ? 'bg-[#eef8e8] text-[#2e7d32]' : ''}`
+  return `relative grid size-9 place-items-center rounded-lg text-[#1d1d1f] hover:bg-[#e8e8ed] ${active ? 'bg-[#e8e8ed]' : ''}`
 }
 
 function HeaderIconButton({ label, icon, badge = 0, active = false, onClick }) {
@@ -46,42 +46,39 @@ function canUseBuyerTools(user) {
   return hasUserRole(user, 'buyer') && user?.status === 'approved'
 }
 
-function profileLinks(user, pathname = '') {
+function profileLinks(user) {
   const links = []
-  const isDashboardWorkspace =
-    pathname.startsWith('/admin/') || pathname.startsWith('/seller/') || pathname.startsWith('/delivery/')
-
-  if (canUseBuyerTools(user) && !isDashboardWorkspace) {
+  if (canUseBuyerTools(user)) {
     links.push(
-      { href: '/account', label: 'My account', icon: 'user' },
-      { href: '/buyer/orders', label: 'My orders', icon: 'clipboard' },
-      { href: '/wishlist', label: 'Wishlist', icon: 'leaf' },
-      { href: '/account/settings', label: 'Account settings', icon: 'grid' },
+      { href: '/account', label: 'Overview', icon: 'user', group: 'Shopping' },
+      { href: '/buyer/orders', label: 'My orders', icon: 'clipboard', group: 'Shopping' },
+      { href: '/wishlist', label: 'Wishlist', icon: 'heart', group: 'Shopping' },
+      { href: '/account/settings', label: 'Account settings', icon: 'grid', group: 'Shopping' },
     )
   }
   if (hasUserRole(user, 'seller') && user.sellerId && user.status === 'approved') {
     links.push(
-      { href: '/seller/dashboard', label: 'Seller dashboard', icon: 'grid' },
-      { href: '/seller/shop', label: 'My shop', icon: 'store' },
-      { href: '/seller/settings', label: 'Shop settings', icon: 'user' },
+      { href: '/seller/dashboard', label: 'Overview', icon: 'grid', group: 'Selling' },
+      { href: '/seller/products', label: 'Products', icon: 'package', group: 'Selling' },
+      { href: '/seller/orders', label: 'Orders', icon: 'clipboard', group: 'Selling' },
     )
   }
   if (hasUserRole(user, 'delivery') && user.status === 'approved') {
     links.push(
-      { href: '/delivery/dashboard', label: 'Delivery dashboard', icon: 'grid' },
-      { href: '/delivery/deliveries', label: 'My deliveries', icon: 'truck' },
-      { href: '/delivery/settings', label: 'Delivery settings', icon: 'user' },
+      { href: '/delivery/dashboard', label: 'Overview', icon: 'grid', group: 'Delivering' },
+      { href: '/delivery/deliveries', label: 'Active deliveries', icon: 'truck', group: 'Delivering' },
+      { href: '/delivery/settings', label: 'Settings', icon: 'user', group: 'Delivering' },
     )
   }
   if (hasUserRole(user, 'admin') && user.status === 'approved') {
     links.push(
-      { href: '/admin/dashboard', label: 'Admin overview', icon: 'grid' },
-      { href: '/admin/applications', label: 'Applications', icon: 'clipboard' },
-      { href: '/admin/settings', label: 'Admin settings', icon: 'user' },
+      { href: '/admin/dashboard', label: 'Overview', icon: 'grid', group: 'Administration' },
+      { href: '/admin/applications', label: 'Approvals', icon: 'clipboard', group: 'Administration' },
+      { href: '/admin/users', label: 'Accounts', icon: 'users', group: 'Administration' },
     )
   }
   if (!links.length) {
-    links.push({ href: homeForNav(user.role), label: 'Dashboard', icon: 'grid' })
+    links.push({ href: homeForNav(user.role), label: 'Dashboard', icon: 'grid', group: 'Account' })
   }
   return links
 }
@@ -90,13 +87,13 @@ export function RoleDashboardLinks({ user }) {
   if (!user) return null
   const links = []
   if (hasUserRole(user, 'seller') && user.sellerId && user.status === 'approved') {
-    links.push({ href: '/seller/dashboard', label: 'Seller dashboard' })
+    links.push({ href: '/seller/dashboard', label: 'Selling' })
   }
   if (hasUserRole(user, 'delivery') && user.status === 'approved') {
-    links.push({ href: '/delivery/dashboard', label: 'Delivery dashboard' })
+    links.push({ href: '/delivery/dashboard', label: 'Delivering' })
   }
   if (hasUserRole(user, 'admin') && user.status === 'approved') {
-    links.push({ href: '/admin/dashboard', label: 'Admin dashboard' })
+    links.push({ href: '/admin/dashboard', label: 'Administration' })
   }
   if (!links.length) return null
   return (
@@ -105,7 +102,7 @@ export function RoleDashboardLinks({ user }) {
         <a
           key={link.href}
           href={link.href}
-          className="whitespace-nowrap rounded-full border border-[#173c2c]/12 bg-[#f4faf0] px-3 py-1.5 text-xs font-semibold text-[#2e7d32] hover:bg-[#e8f5e3]"
+          className="btn btn-secondary"
         >
           {link.label}
         </a>
@@ -142,14 +139,15 @@ export function UserProfileMenu({ user, pathname = '' }) {
     }
   }, [open])
 
-  const links = profileLinks(user, pathname)
+  const links = profileLinks(user)
+  const groups = [...new Set(links.map((link) => link.group))]
 
   return (
     <div className="relative" ref={rootRef}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className={`flex items-center rounded-full border border-[#173c2c]/10 p-1 transition hover:bg-[#f4f6f8] ${open ? 'bg-[#eef8e8]' : 'bg-white'}`}
+        className={`flex items-center rounded-lg p-0.5 hover:bg-[#e8e8ed] ${open ? 'bg-[#e8e8ed]' : ''}`}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={menuId}
@@ -164,23 +162,36 @@ export function UserProfileMenu({ user, pathname = '' }) {
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-[#173c2c]/10 bg-white py-2 shadow-lg"
+          className="absolute right-0 z-50 mt-2 max-h-[min(70vh,calc(100dvh-6rem))] w-[min(16rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-[#173c2c]/10 bg-white py-2 shadow-lg"
         >
           <div className="border-b border-[#173c2c]/8 px-4 pb-3 pt-1">
             <p className="truncate text-sm font-bold text-[#142016]">{user.name}</p>
             <p className="truncate text-xs text-[#65766d]">{user.email}</p>
           </div>
-          {links.map((link) => (
-            <a
-              key={`${link.href}-${link.label}`}
-              role="menuitem"
-              href={link.href}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#142016] hover:bg-[#f4f6f8]"
-              onClick={() => setOpen(false)}
-            >
-              <DashboardIcon name={link.icon} className="size-4 text-[#65766d]" />
-              {link.label}
-            </a>
+          {groups.map((group) => (
+            <div key={group} className="py-1">
+              {groups.length > 1 ? (
+                <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">{group}</p>
+              ) : null}
+              {links
+                .filter((link) => link.group === group)
+                .map((link) => {
+                  const active = link.href === activeNavHref(pathname, links.map((item) => item.href))
+                  return (
+                  <a
+                    key={`${link.href}-${link.label}`}
+                    role="menuitem"
+                    href={link.href}
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-[#f4f6f8] ${active ? 'bg-brand-50 font-semibold text-brand-800' : 'text-brand-900'}`}
+                    onClick={() => setOpen(false)}
+                  >
+                    <DashboardIcon name={link.icon} className="size-4 text-[#65766d]" />
+                    {link.label}
+                  </a>
+                  )
+                })}
+            </div>
           ))}
           <form action={logoutAction} className="border-t border-[#173c2c]/8 px-2 pt-2">
             <button
@@ -208,19 +219,29 @@ export function AuthenticatedHeaderActions({
   const [cartOpen, setCartOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const isBuyer = canUseBuyerTools(user) && !pathname.startsWith('/admin/') && !pathname.startsWith('/seller/') && !pathname.startsWith('/delivery/')
+  const inWorkspace =
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/seller') ||
+    pathname.startsWith('/delivery') ||
+    pathname.startsWith('/account') ||
+    pathname.startsWith('/buyer') ||
+    pathname.startsWith('/notifications') ||
+    pathname.startsWith('/cart') ||
+    pathname.startsWith('/checkout') ||
+    pathname.startsWith('/wishlist')
 
   if (!user) return null
 
   return (
     <>
-      <RoleDashboardLinks user={user} />
-      <div className="flex items-center gap-1 sm:gap-2">
+      {!inWorkspace ? <RoleDashboardLinks user={user} /> : null}
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         {isBuyer ? (
           <>
             <HeaderIconLink
               href="/wishlist"
               label="Wishlist"
-              icon="leaf"
+              icon="heart"
               badge={wishlistCount}
               active={pathname.startsWith('/wishlist')}
             />

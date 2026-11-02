@@ -1,139 +1,90 @@
-import Link from 'next/link'
-import { DashboardShell, greetingName, peso, pretty } from '@/components/dashboard-shell'
-import {
-  DashboardHero,
-  MetricTile,
-  NotificationFeed,
-  OrderRow,
-  OverviewPanel,
-  PromoBanner,
-  QuickActions,
-} from '@/components/dashboard-overview-ui'
-import { SellerProfileForm } from '@/components/profile-forms'
-import { DataTable, StatusBadge } from '@/components/dashboard-ui'
+import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
+import { MetricSection, MetricTile, NotificationFeed, QuickActions } from '@/components/dashboard-overview-ui'
+import { StatusBadge, WorkSection } from '@/components/dashboard-ui'
+import { groupBySection, sellerOrderSection } from '@/lib/work-sections'
 import { requireSeller } from '@/server/guards'
 import { listNotifications } from '@/server/notifications'
-import { listOwnedOrders, listOwnedProducts, sellerRecord, sellerSnapshot } from '@/server/seller'
-import { readyStore } from '@/server/store'
-import { LocationMap } from '@/components/location-map'
+import { listOwnedOrders, listOwnedProducts, sellerSnapshot } from '@/server/seller'
 
 export default async function SellerDashboardPage() {
   const user = await requireSeller()
 
-  const [summary, store, orders, products, notes] = await Promise.all([
+  const [summary, orders, products, notes] = await Promise.all([
     sellerSnapshot(user),
-    readyStore(),
     listOwnedOrders(user),
     listOwnedProducts(user),
     listNotifications(user.id),
   ])
-  const seller = sellerRecord(store, user)
-  const recentOrders = orders.slice(0, 5)
+  const grouped = groupBySection(orders, sellerOrderSection)
+  const needsYou = grouped['needs-you'] || []
+  const activeOrders = grouped.active || []
+  const completed = grouped.completed || []
   const activeProducts = products.filter((item) => item.status === 'active').length
-  const firstName = greetingName(user.name)
 
   return (
-    <DashboardShell user={user} title="" subtitle="" variant="overview">
+    <DashboardShell
+      user={user}
+      title="Overview"
+      subtitle="Orders that need you, deliveries in progress, and shop totals."
+      variant="overview"
+    >
       <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-6">
-          <DashboardHero
-            label="Seller dashboard"
-            title={`Good morning, ${firstName}!`}
-            description={
-              seller
-                ? `Manage listings for ${seller.farmName}. Keep inventory fresh and fulfill buyer orders on time.`
-                : 'Complete your farm profile, publish products, and start receiving orders from local buyers.'
-            }
-            actionHref="/seller/products/new"
-            actionLabel="Add a product"
-            imageUrl="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80"
-          />
-
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricTile label="Total products" value={summary.products} icon="package" tone="green" />
-            <MetricTile label="Active listings" value={activeProducts} icon="store" tone="teal" />
+          <MetricSection title="Orders">
+            <MetricTile label="Needs your action" value={needsYou.length} icon="clipboard" tone="amber" />
+            <MetricTile label="Active orders" value={activeOrders.length} hint="Waiting on the courier" icon="truck" tone="blue" />
+            <MetricTile label="Completed" value={completed.length} icon="package" tone="green" />
+          </MetricSection>
+          <MetricSection title="Shop" className="grid-cols-2">
             <MetricTile
-              label="Low stock items"
+              label="Low stock"
               value={summary.lowStock}
-              hint="Below 10 units"
+              hint={`${activeProducts} active listings`}
               icon="boxes"
-              tone="amber"
+              tone="teal"
             />
-            <MetricTile label="Open orders" value={summary.openOrders} icon="clipboard" tone="blue" />
-          </section>
+          </MetricSection>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <OverviewPanel title="Recent orders" href="/seller/orders">
-              {recentOrders.length ? (
-                <DataTable columns={['Order', 'Buyer', 'Fulfillment', 'Total', 'Status']}>
-                  {recentOrders.map((order) => (
-                    <OrderRow
-                      key={order.id}
-                      reference={order.reference}
-                      buyer={order.buyerName}
-                      seller={order.fulfillment}
-                      total={peso(order.subtotal + order.deliveryFee)}
-                      status={order.status}
-                    />
-                  ))}
-                </DataTable>
-              ) : (
-                <p className="text-sm text-[#65766d]">Orders for your listings will show up here.</p>
-              )}
-            </OverviewPanel>
-
-            <OverviewPanel title="Your listings" href="/seller/products">
-              {products.length ? (
-                <ul className="divide-y divide-[#173c2c]/8">
-                  {products.slice(0, 5).map((product) => (
-                    <li key={product.id} className="flex items-center justify-between gap-3 py-3 first:pt-0">
-                      <div className="min-w-0">
-                        <Link href={`/seller/products/${product.id}`} className="font-semibold text-[#142016] hover:text-[#4f8d3b]">
-                          {product.name}
-                        </Link>
-                        <p className="text-xs text-[#65766d]">
-                          {peso(product.price)} / {product.unit} · {product.stock} in stock
-                        </p>
-                      </div>
-                      <StatusBadge status={pretty(product.status)} />
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-[#65766d]">Create your first product to appear on the marketplace.</p>
-              )}
-            </OverviewPanel>
-          </div>
-
-          <OverviewPanel
-            title="Farm pickup location"
-            description="This pin is shared with buyers and delivery partners."
-            href="/seller/settings"
-            linkLabel="Edit pin"
+          <WorkSection
+            title="Needs your action"
+            description="Confirm, prepare, or finish these before anything else."
+            count={needsYou.length}
+            href="/seller/orders"
+            linkLabel="Open orders"
+            empty={<p className="text-sm text-[#5c6f62]">No orders are waiting on you.</p>}
           >
-            <LocationMap lat={seller?.pickupLat} lng={seller?.pickupLng} height={240} label={`${seller?.farmName || 'Farm'} pickup pin`} />
-          </OverviewPanel>
+            <OrderPreview rows={needsYou.slice(0, 4)} />
+          </WorkSection>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <OverviewPanel title="Farm profile" description={seller ? `${seller.farmName} · ${seller.location}` : undefined}>
-              <SellerProfileForm seller={seller} />
-            </OverviewPanel>
-            <QuickActions
-              actions={[
-                { label: 'New product', href: '/seller/products/new', icon: 'package' },
-                { label: 'Update inventory', href: '/seller/inventory', icon: 'boxes' },
-                { label: 'View orders', href: '/seller/orders', icon: 'clipboard' },
-                { label: 'Marketplace', href: '/products', icon: 'store' },
-              ]}
-            />
-          </div>
+          <WorkSection
+            title="Active orders"
+            description="Already moving. The courier updates these stages."
+            count={activeOrders.length}
+            href="/seller/orders"
+            linkLabel="Open orders"
+            empty={<p className="text-sm text-[#5c6f62]">No orders are in progress with a courier.</p>}
+          >
+            <OrderPreview rows={activeOrders.slice(0, 4)} />
+          </WorkSection>
 
-          <PromoBanner
-            title="Grow your reach"
-            body="Keep photos, prices, and stock updated so buyers trust your farm listings on AgriConnect."
-            href="/seller/products"
-            actionLabel="Manage products"
-            imageUrl="https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=900&q=80"
+          <WorkSection
+            title="Completed"
+            description="Orders you have finished."
+            count={completed.length}
+            href="/seller/earnings"
+            linkLabel="View earnings"
+            empty={<p className="text-sm text-[#5c6f62]">Completed orders will show up here.</p>}
+          >
+            <OrderPreview rows={completed.slice(0, 4)} />
+          </WorkSection>
+
+          <QuickActions
+            actions={[
+              { section: 'Shop', label: 'Add product', href: '/seller/products?new=1', icon: 'package' },
+              { section: 'Shop', label: 'Inventory', href: '/seller/inventory', icon: 'boxes' },
+              { section: 'Orders', label: 'Orders', href: '/seller/orders', icon: 'clipboard' },
+              { section: 'Account', label: 'Shop settings', href: '/seller/settings', icon: 'user' },
+            ]}
           />
         </div>
 
@@ -142,5 +93,23 @@ export default async function SellerDashboardPage() {
         </aside>
       </div>
     </DashboardShell>
+  )
+}
+
+function OrderPreview({ rows }) {
+  return (
+    <ul className="ui-card divide-y divide-[#d5e4d4]">
+      {rows.map((order) => (
+        <li key={order.id} className="flex items-center justify-between gap-3 px-4 py-3">
+          <div className="min-w-0">
+            <p className="font-semibold text-[#142016]">{order.reference}</p>
+            <p className="text-[13px] text-[#5c6f62]">
+              {order.buyerName} · {order.fulfillment} · {peso(order.subtotal + order.deliveryFee)}
+            </p>
+          </div>
+          <StatusBadge status={pretty(order.status)} />
+        </li>
+      ))}
+    </ul>
   )
 }

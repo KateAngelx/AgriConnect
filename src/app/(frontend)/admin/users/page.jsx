@@ -11,7 +11,7 @@ export default async function AdminUsersPage({ searchParams }) {
   const users = await listUsers()
 
   return (
-    <DashboardShell user={user} title="Accounts" subtitle="Suspend or reactivate marketplace accounts. Role changes happen through application approval.">
+    <DashboardShell user={user} title="Accounts" subtitle="Suspend or restore marketplace accounts.">
       {error ? (
         <div className="mb-4">
           <AlertBanner tone="error">{error}</AlertBanner>
@@ -60,7 +60,7 @@ function StatusButton({ userId, status, label, danger }) {
       <input type="hidden" name="status" value={status} />
       <button
         type="submit"
-        className={`rounded-full px-4 py-2 text-xs font-bold ${danger ? 'bg-[#fff1ed] text-[#963b2d]' : 'bg-[#173c2c] text-white'}`}
+        className={danger ? 'btn btn-danger' : 'btn btn-dark'}
       >
         {label}
       </button>

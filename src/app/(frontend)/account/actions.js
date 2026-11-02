@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import {
   saveDeliveryApplicationDraft,
@@ -46,8 +47,11 @@ export async function applySellerAction(_state, formData) {
       ? await saveSellerApplicationDraft(user, fields)
       : await submitSellerApplication(user, fields)
   if (result.error) return { error: result.error }
-  if (intent === 'draft') return { ok: true, draft: true }
-  redirect('/account/become-seller?submitted=1')
+  if (intent === 'draft') {
+    revalidatePath('/account')
+    return { ok: true, draft: true }
+  }
+  redirect('/account?apply=seller&submitted=1')
 }
 
 export async function applyDeliveryAction(_state, formData) {
@@ -59,8 +63,11 @@ export async function applyDeliveryAction(_state, formData) {
       ? await saveDeliveryApplicationDraft(user, fields)
       : await submitDeliveryApplication(user, fields)
   if (result.error) return { error: result.error }
-  if (intent === 'draft') return { ok: true, draft: true }
-  redirect('/account/become-delivery?submitted=1')
+  if (intent === 'draft') {
+    revalidatePath('/account')
+    return { ok: true, draft: true }
+  }
+  redirect('/account?apply=delivery&submitted=1')
 }
 
 export async function logoutAction() {

@@ -12,7 +12,7 @@ export default async function SellerShopPage() {
   const seller = sellerRecord(store, user)
 
   return (
-    <DashboardShell user={user} title="My shop" subtitle="Your public farm profile and shop details.">
+    <DashboardShell user={user} title="My shop" subtitle="Farm profile buyers see on the marketplace.">
       {seller ? (
         <>
           <DashboardPanel title={seller.farmName}>

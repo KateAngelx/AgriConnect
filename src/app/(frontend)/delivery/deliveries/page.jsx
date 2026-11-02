@@ -1,39 +1,40 @@
 import { DashboardShell } from '@/components/dashboard-shell'
-import { DashboardPanel, StatusBadge } from '@/components/dashboard-ui'
 import { DeliveryWorkPanel } from '@/components/delivery-work-panel'
+import { WorkSection } from '@/components/dashboard-ui'
 import { requireApprovedDelivery } from '@/server/guards'
 import { listCourierWork } from '@/server/delivery'
 
 export default async function DeliveryAssignmentsPage() {
   const user = await requireApprovedDelivery()
   const work = await listCourierWork(user)
+  const available = work.filter((item) => item.status === 'open' && item.canAccept)
   const active = work.filter((item) => item.isMine && !['delivered', 'cancelled'].includes(item.status))
-  const open = work.filter((item) => item.status === 'open' && item.canAccept)
 
   return (
-    <DashboardShell user={user} title="My deliveries" subtitle="Open assignments and jobs you are handling.">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <DashboardPanel title="Available assignments" description={`${open.length} open`}>
-          {open.length ? (
-            <DeliveryWorkPanel work={open.slice(0, 5)} userId={user.id} />
-          ) : (
-            <p className="text-sm text-[#65766d]">No open delivery jobs right now.</p>
-          )}
-        </DashboardPanel>
-        <DashboardPanel title="Active deliveries" description={`${active.length} in progress`}>
-          {active.length ? (
-            <ul className="space-y-3 text-sm">
-              {active.map((item) => (
-                <li key={item.id} className="flex items-center justify-between rounded-lg bg-[#f7f7f2] px-3 py-2">
-                  <span>{item.reference || item.orderId}</span>
-                  <StatusBadge status={item.status} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-[#65766d]">Accept an assignment from the overview dashboard.</p>
-          )}
-        </DashboardPanel>
+    <DashboardShell
+      user={user}
+      title="Active deliveries"
+      subtitle="Jobs you can accept, and deliveries you are already carrying."
+    >
+      <div className="space-y-8">
+        <WorkSection
+          title="Available to accept"
+          description="You can take these jobs. The full address appears after you accept."
+          count={available.length}
+          empty={<p className="text-sm text-[#5c6f62]">No open delivery jobs right now.</p>}
+        >
+          <DeliveryWorkPanel bare work={available} userId={user.id} emptyMessage="No open delivery jobs right now." />
+        </WorkSection>
+        <WorkSection
+          title="Active deliveries"
+          description="Update pickup, transit, and delivery from here."
+          count={active.length}
+          href="/delivery/history"
+          linkLabel="View delivered"
+          empty={<p className="text-sm text-[#5c6f62]">Nothing is in progress.</p>}
+        >
+          <DeliveryWorkPanel bare work={active} userId={user.id} emptyMessage="Nothing is in progress." />
+        </WorkSection>
       </div>
     </DashboardShell>
   )

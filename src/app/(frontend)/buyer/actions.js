@@ -10,6 +10,7 @@ export async function cancelBuyerOrderAction(formData) {
   if (!user) redirect('/login')
   if (!isApprovedBuyer(user)) redirect('/products')
   const result = await cancelBuyerOrder(user, formData.get('orderId'))
-  if (result.error) redirect(`/buyer/orders/${formData.get('orderId')}?error=${encodeURIComponent(result.error)}`)
-  redirect(`/buyer/orders/${formData.get('orderId')}?success=Order%20cancelled`)
+  const orderId = encodeURIComponent(String(formData.get('orderId') || ''))
+  if (result.error) redirect(`/buyer/orders?order=${orderId}&error=${encodeURIComponent(result.error)}`)
+  redirect(`/buyer/orders?order=${orderId}&success=Order%20cancelled`)
 }

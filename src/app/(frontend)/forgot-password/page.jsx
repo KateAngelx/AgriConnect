@@ -12,7 +12,7 @@ export default function ForgotPasswordPage() {
     >
       <a
         href="mailto:support@agriconnect.ph?subject=Password%20reset%20request"
-        className="inline-block rounded-full bg-[#5dbb38] px-6 py-3.5 font-bold text-white"
+        className="btn btn-primary"
       >
         Contact support
       </a>

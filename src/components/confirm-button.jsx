@@ -3,7 +3,14 @@
 import { useRef, useState } from 'react'
 import { ConfirmDialog } from './ui-feedback'
 
-export function ConfirmButton({ message = 'Are you sure?', children, className = '', ...props }) {
+export function ConfirmButton({
+  message = 'Are you sure?',
+  confirmLabel = 'Yes, continue',
+  danger = false,
+  children,
+  className = '',
+  ...props
+}) {
   const [open, setOpen] = useState(false)
   const confirmed = useRef(false)
   const buttonRef = useRef(null)
@@ -27,7 +34,14 @@ export function ConfirmButton({ message = 'Are you sure?', children, className =
   return (
     <>
       <button ref={buttonRef} {...props} type={props.type || 'submit'} className={className} onClick={handleClick}>{children}</button>
-      <ConfirmDialog open={open} message={message} confirmLabel="Yes, continue" onConfirm={confirm} onCancel={() => setOpen(false)} />
+      <ConfirmDialog
+        open={open}
+        message={message}
+        confirmLabel={confirmLabel}
+        danger={danger}
+        onConfirm={confirm}
+        onCancel={() => setOpen(false)}
+      />
     </>
   )
 }

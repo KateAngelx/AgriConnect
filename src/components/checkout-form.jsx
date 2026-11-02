@@ -57,7 +57,7 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
                       key={item.id}
                       type="button"
                       onClick={() => selectSavedAddress(item)}
-                      className={`rounded-2xl border p-4 text-left transition ${selected ? 'border-[#5dbb38] bg-[#f4faf0] ring-2 ring-[#5dbb38]/15' : 'border-[#173c2c]/10 bg-white hover:border-[#5dbb38]/60'}`}
+                      className={`rounded-xl border p-4 text-left ${selected ? 'border-[#248a3d] bg-[#f5f5f7]' : 'border-[#e5e5ea] bg-white'}`}
                     >
                       <span className="flex items-start justify-between gap-3">
                         <span>
@@ -74,7 +74,7 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
               <button
                 type="button"
                 onClick={beginNewLocation}
-                className={`mt-3 w-full rounded-2xl border border-dashed px-4 py-3 text-sm font-bold transition ${usingNewLocation ? 'border-[#5dbb38] bg-[#f4faf0] text-[#173c2c]' : 'border-[#173c2c]/20 text-[#647066] hover:border-[#5dbb38]'}`}
+                className={`btn mt-3 w-full border-dashed ${usingNewLocation ? 'border-[#248a3d] bg-[#f5f5f7] text-[#1d1d1f]' : 'btn-secondary'}`}
               >
                 + Add another location
               </button>
@@ -89,7 +89,7 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
               required
               value={deliveryAddress}
               onChange={(event) => setDeliveryAddress(event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3"
+              className="ui-field mt-2"
               placeholder="Street, barangay, city"
             />
           </div>
@@ -102,13 +102,14 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
               name="deliveryLandmark"
               value={deliveryLandmark}
               onChange={(event) => setDeliveryLandmark(event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3"
+              className="ui-field mt-2"
               placeholder="Near church, gate color, etc."
             />
           </div>
           <div>
             <p className="text-sm font-bold">Drop delivery pin</p>
             <LocationPicker
+              kind="dropoff"
               lat={deliveryLat}
               lng={deliveryLng}
               onChange={({ lat, lng }) => {
@@ -133,7 +134,7 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
 
   return (
     <form action={checkoutAction} className="grid gap-8 lg:grid-cols-[1fr_360px]">
-      <section className="space-y-6 rounded-[2rem] border border-[#173c2c]/10 bg-white p-7 shadow-sm">
+      <section className="ui-card space-y-6 p-5 sm:p-6">
         {state.error ? (
           <p role="alert" className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">
             {state.error}
@@ -148,13 +149,13 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
             name="contactNumber"
             required
             defaultValue={user.phone || ''}
-            className="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3"
+            className="ui-field mt-2"
           />
         </div>
         <fieldset>
           <legend className="text-sm font-bold">Fulfillment</legend>
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <label className="rounded-2xl border border-black/10 p-4 has-[:checked]:border-[#5dbb38] has-[:checked]:bg-[#f4faf0]">
+            <label className="rounded-xl border border-[#e5e5ea] bg-white p-4 has-[:checked]:border-[#248a3d] has-[:checked]:bg-[#f5f5f7]">
               <input
                 type="radio"
                 name="fulfillment"
@@ -165,7 +166,7 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
               <strong>Pickup</strong>
               <span className="mt-1 block text-xs text-[#647066]">No delivery fee</span>
             </label>
-            <label className="rounded-2xl border border-black/10 p-4 has-[:checked]:border-[#5dbb38] has-[:checked]:bg-[#f4faf0]">
+            <label className="rounded-xl border border-[#e5e5ea] bg-white p-4 has-[:checked]:border-[#248a3d] has-[:checked]:bg-[#f5f5f7]">
               <input
                 type="radio"
                 name="fulfillment"
@@ -184,7 +185,7 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
         <fieldset>
           <legend className="text-sm font-bold">Payment</legend>
           <div className="mt-3 grid gap-3">
-            <label className="rounded-2xl border border-black/10 p-4 has-[:checked]:border-[#5dbb38] has-[:checked]:bg-[#f4faf0]">
+            <label className="rounded-xl border border-[#e5e5ea] bg-white p-4 has-[:checked]:border-[#248a3d] has-[:checked]:bg-[#f5f5f7]">
               <input type="radio" name="paymentMethod" value="cash" defaultChecked />{' '}
               <strong>Cash</strong>
               <span className="mt-1 block text-xs text-[#647066]">
@@ -192,7 +193,7 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
               </span>
             </label>
             {electronicPayments ? (
-              <label className="rounded-2xl border border-black/10 p-4 has-[:checked]:border-[#5dbb38] has-[:checked]:bg-[#f4faf0]">
+              <label className="rounded-xl border border-[#e5e5ea] bg-white p-4 has-[:checked]:border-[#248a3d] has-[:checked]:bg-[#f5f5f7]">
                 <input type="radio" name="paymentMethod" value={electronicProvider} />{' '}
                 <strong>Online (GCash, Maya, GrabPay, card)</strong>
                 <span className="mt-1 block text-xs text-[#647066]">
@@ -210,24 +211,24 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
             id="instructions"
             name="instructions"
             rows={3}
-            className="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3"
+            className="ui-field mt-2"
           />
         </div>
       </section>
-      <aside className="h-fit rounded-[2rem] bg-[#142a19] p-7 text-white">
-        <h2 className="text-xl font-bold">Order summary</h2>
-        <div className="mt-5 space-y-6">
+      <aside className="ui-card h-fit p-5 sm:p-6">
+        <h2 className="text-[17px] font-semibold text-[#1d1d1f]">Order summary</h2>
+        <div className="mt-4 space-y-4">
           {summary.sellerGroups.map((group) => (
-            <div key={group.sellerId} className="rounded-xl bg-white/5 p-4">
-              <p className="text-sm font-bold text-[#5dbb38]">{group.farmName}</p>
-              <p className="mt-1 text-xs leading-5 text-white/60">Area: {group.pickupLocation}</p>
+            <div key={group.sellerId} className="rounded-lg bg-[#f5f5f7] p-3">
+              <p className="text-[13px] font-semibold text-[#1d1d1f]">{group.farmName}</p>
+              <p className="mt-1 text-[12px] leading-5 text-[#6e6e73]">Area: {group.pickupLocation}</p>
               {group.landmark ? (
-                <p className="text-xs text-white/50">Landmark: {group.landmark}</p>
+                <p className="text-[12px] text-[#6e6e73]">Landmark: {group.landmark}</p>
               ) : null}
-              <ul className="mt-3 space-y-2 text-sm">
+              <ul className="mt-3 space-y-2 text-[13px]">
                 {group.items.map((line) => (
                   <li key={line.cartItemId} className="flex justify-between gap-3">
-                    <span className="text-white/65">
+                    <span className="text-[#6e6e73]">
                       {line.quantity} × {line.product.name}
                     </span>
                     <span>{peso(line.lineTotal)}</span>
@@ -235,19 +236,19 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
                 ))}
               </ul>
               {fulfillment === 'delivery' ? (
-                <p className="mt-2 text-xs text-white/55">Delivery fee: {peso(deliveryFee)}</p>
+                <p className="mt-2 text-[12px] text-[#6e6e73]">Delivery fee: {peso(deliveryFee)}</p>
               ) : null}
             </div>
           ))}
         </div>
-        <div className="mt-5 space-y-2 border-t border-white/10 pt-5 text-sm">
+        <div className="mt-4 space-y-2 border-t border-[#e5e5ea] pt-4 text-[13px]">
           <div className="flex justify-between">
-            <span className="text-white/70">Subtotal</span>
+            <span className="text-[#6e6e73]">Subtotal</span>
             <span>{peso(summary.subtotal)}</span>
           </div>
           {fulfillment === 'delivery' ? (
             <div className="flex justify-between">
-              <span className="text-white/70">Delivery fees</span>
+              <span className="text-[#6e6e73]">Delivery fees</span>
               <span>{peso(deliveryFees)}</span>
             </div>
           ) : null}
@@ -259,9 +260,9 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
         <button
           type="submit"
           disabled={pending}
-          className="mt-6 w-full rounded-full bg-[#5dbb38] px-5 py-4 font-bold disabled:opacity-60"
+          className="btn btn-primary mt-6 w-full"
         >
-          {pending ? 'Placing order…' : 'Place order →'}
+          {pending ? 'Placing order…' : 'Place order'}
         </button>
       </aside>
     </form>

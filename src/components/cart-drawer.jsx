@@ -114,7 +114,7 @@ export function CartDrawer({ open, onClose }) {
                   onClose()
                   router.push('/products')
                 }}
-                className="mt-6 rounded-full bg-[#5dbb38] px-5 py-2.5 text-sm font-bold text-white"
+                className="btn btn-primary mt-6"
               >
                 Continue shopping
               </button>
@@ -187,14 +187,14 @@ export function CartDrawer({ open, onClose }) {
               <a
                 href="/checkout"
                 onClick={onClose}
-                className="block rounded-full bg-[#5dbb38] py-3 text-center text-sm font-bold text-white"
+                className="btn btn-primary btn-block"
               >
                 Proceed to checkout
               </a>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full border border-[#173c2c]/15 py-2.5 text-sm font-bold text-[#142016]"
+                className="btn btn-secondary btn-block"
               >
                 Continue shopping
               </button>

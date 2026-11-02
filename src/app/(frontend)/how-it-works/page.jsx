@@ -7,7 +7,7 @@ export default function HowItWorksPage() {
       intro="The platform connects discovery, ordering, inventory, delivery, and account review through one shared system."
       sections={[
         {
-          title: 'For buyers',
+          title: 'Shopping',
           body: 'Create an account and shop with confidence.',
           points: [
             'Browse active agricultural products',
@@ -19,7 +19,7 @@ export default function HowItWorksPage() {
           ],
         },
         {
-          title: 'For farmers and sellers',
+          title: 'Selling',
           body: 'Seller tools become available only after account approval.',
           points: [
             'Register and submit required information',
@@ -31,7 +31,7 @@ export default function HowItWorksPage() {
           ],
         },
         {
-          title: 'For delivery personnel',
+          title: 'Delivering',
           body: 'Only approved personnel can receive eligible assignments.',
           points: [
             'Register and submit requirements',
@@ -43,7 +43,7 @@ export default function HowItWorksPage() {
           ],
         },
         {
-          title: 'For administrators',
+          title: 'Administration',
           body: 'Administrators review applications and essential marketplace operations. They do not replace sellers in routine inventory or fulfillment work.',
         },
       ]}

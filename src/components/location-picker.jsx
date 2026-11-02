@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { isValidPin, parseCoord, PH_DEFAULT_CENTER } from '@/lib/geo'
+import { mapPinIcon } from '@/lib/map-pins'
 
-export function LocationPicker({ lat, lng, onChange, height = 260 }) {
+export function LocationPicker({ lat, lng, onChange, height = 260, kind = 'place' }) {
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
   const markerRef = useRef(null)
@@ -20,18 +21,12 @@ export function LocationPicker({ lat, lng, onChange, height = 260 }) {
     if (!mapInstance.current || !isValidPin(latitude, longitude)) return
     void import('leaflet').then(({ default: L }) => {
       if (!mapInstance.current) return
-      const markerIcon = L.divIcon({
-        className: 'agriconnect-map-pin',
-        html: '<span style="display:block;width:32px;height:32px;border-radius:50% 50% 50% 0;background:#2e7d32;border:4px solid:#fff;box-shadow:0 3px 10px rgba(20,32,22,.35);transform:rotate(-45deg)"><span style="display:block;width:8px;height:8px;margin:8px;border-radius:50%;background:#fff"></span></span>',
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-      })
       if (markerRef.current) markerRef.current.remove()
-      markerRef.current = L.marker([latitude, longitude], { icon: markerIcon }).addTo(mapInstance.current)
+      markerRef.current = L.marker([latitude, longitude], { icon: mapPinIcon(L, kind) }).addTo(mapInstance.current)
       mapInstance.current.setView([latitude, longitude], 15)
       window.setTimeout(() => mapInstance.current?.invalidateSize(), 0)
     })
-  }, [lat, lng])
+  }, [lat, lng, kind])
 
   useEffect(() => {
     let cancelled = false
@@ -46,16 +41,9 @@ export function LocationPicker({ lat, lng, onChange, height = 260 }) {
         maxZoom: 19,
       }).addTo(map)
 
-      const markerIcon = L.divIcon({
-        className: 'agriconnect-map-pin',
-        html: '<span style="display:block;width:32px;height:32px;border-radius:50% 50% 50% 0;background:#2e7d32;border:4px solid:#fff;box-shadow:0 3px 10px rgba(20,32,22,.35);transform:rotate(-45deg)"><span style="display:block;width:8px;height:8px;margin:8px;border-radius:50%;background:#fff"></span></span>',
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32],
-      })
       const placeMarker = (latitude, longitude) => {
         if (markerRef.current) markerRef.current.remove()
-        markerRef.current = L.marker([latitude, longitude], { icon: markerIcon }).addTo(map)
+        markerRef.current = L.marker([latitude, longitude], { icon: mapPinIcon(L, kind) }).addTo(map)
       }
 
       if (isValidPin(parseCoord(lat), parseCoord(lng))) {
@@ -104,13 +92,7 @@ export function LocationPicker({ lat, lng, onChange, height = 260 }) {
             const L = (await import('leaflet')).default
             if (!mapInstance.current) return
             if (markerRef.current) markerRef.current.remove()
-            const currentIcon = L.divIcon({
-              className: 'agriconnect-map-pin',
-              html: '<span style="display:block;width:32px;height:32px;border-radius:50% 50% 50% 0;background:#2e7d32;border:4px solid:#fff;box-shadow:0 3px 10px rgba(20,32,22,.35);transform:rotate(-45deg)"><span style="display:block;width:8px;height:8px;margin:8px;border-radius:50%;background:#fff"></span></span>',
-              iconSize: [32, 32],
-              iconAnchor: [16, 32],
-            })
-            markerRef.current = L.marker([latitude, longitude], { icon: currentIcon }).addTo(mapInstance.current)
+            markerRef.current = L.marker([latitude, longitude], { icon: mapPinIcon(L, kind) }).addTo(mapInstance.current)
             mapInstance.current.setView([latitude, longitude], 16)
           })()
         }

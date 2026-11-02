@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { isValidPin, openStreetMapLink, parseCoord } from '@/lib/geo'
+import { mapPinIcon } from '@/lib/map-pins'
 
 /**
  * Farm pickup → buyer delivery pins on one map.
@@ -39,20 +40,13 @@ export function LocationRouteMap({
         attribution: '&copy; OpenStreetMap',
         maxZoom: 19,
       }).addTo(map)
-      const pinIcon = (color) => L.divIcon({
-        className: 'agriconnect-map-pin',
-        html: `<span style="display:block;width:32px;height:32px;border-radius:50% 50% 50% 0;background:${color};border:4px solid:#fff;box-shadow:0 3px 10px rgba(20,32,22,.35);transform:rotate(-45deg)"><span style="display:block;width:8px;height:8px;margin:8px;border-radius:50%;background:#fff"></span></span>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32],
-      })
       const bounds = []
       if (hasPickup) {
-        L.marker([plat, plng], { icon: pinIcon('#2e7d32') }).addTo(map).bindPopup('Farm pickup')
+        L.marker([plat, plng], { icon: mapPinIcon(L, 'pickup') }).addTo(map).bindPopup('Seller pickup')
         bounds.push([plat, plng])
       }
       if (hasDelivery) {
-        L.marker([dlat, dlng], { icon: pinIcon('#ef7d32') }).addTo(map).bindPopup('Delivery drop-off')
+        L.marker([dlat, dlng], { icon: mapPinIcon(L, 'dropoff') }).addTo(map).bindPopup('Buyer drop-off')
         bounds.push([dlat, dlng])
       }
       if (hasPickup && hasDelivery) {
@@ -85,20 +79,22 @@ export function LocationRouteMap({
     )
   }
 
-  const linkLat = hasDelivery ? dlat : plat
-  const linkLng = hasDelivery ? dlng : plng
+  const routeHref = hasPickup && hasDelivery
+    ? `https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${plat}%2C${plng}%3B${dlat}%2C${dlng}`
+    : openStreetMapLink(hasDelivery ? dlat : plat, hasDelivery ? dlng : plng)
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[#173c2c]/10">
-      <div ref={mapRef} style={{ height }} className="w-full bg-[#eef0ea]" aria-label="Delivery route map" />
-      <a
-        href={openStreetMapLink(linkLat, linkLng)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block border-t border-[#173c2c]/10 bg-white px-3 py-2 text-xs font-semibold text-[#4b9f30]"
-      >
-        Open in map
-      </a>
+    <div className="overflow-hidden rounded-xl border border-[#d5e4d4]">
+      <div ref={mapRef} style={{ height }} className="w-full bg-[#eef0ea]" aria-label="Route from seller pickup to buyer drop-off" />
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#d5e4d4] bg-white px-3 py-2 text-[12px] text-[#142016]">
+        <div className="flex flex-wrap gap-3">
+          {hasPickup ? <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-[#2e7d32]" /> Seller pickup</span> : <span className="text-[#5c6f62]">Seller pickup pin is missing</span>}
+          {hasDelivery ? <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-[#ef7d32]" /> Buyer drop-off</span> : <span className="text-[#5c6f62]">Buyer drop-off pin is missing</span>}
+        </div>
+        <a href={routeHref} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#2e7d32]">
+          {hasPickup && hasDelivery ? 'Open route' : 'Open in map'}
+        </a>
+      </div>
     </div>
   )
 }

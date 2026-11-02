@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { currentUser } from '@/server/auth'
 import { isApprovedAdmin } from '@/server/roles'
+import { readPeriod } from '@/lib/report-period'
 import { platformReport } from '@/server/admin'
 
 function csv(value) {
@@ -8,10 +9,11 @@ function csv(value) {
   return `"${text.replaceAll('"', '""')}"`
 }
 
-export async function GET() {
+export async function GET(request) {
   const user = await currentUser()
   if (!user || !isApprovedAdmin(user)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const report = await platformReport()
+  const period = readPeriod(new URL(request.url).searchParams.get('period'))
+  const report = await platformReport(period)
   const rows = [
     ['Metric', 'Value'],
     ...Object.entries(report).map(([metric, value]) => [metric, typeof value === 'number' ? value : String(value ?? '')]),

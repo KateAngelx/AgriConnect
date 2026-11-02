@@ -11,11 +11,11 @@ export default function AboutPage() {
           body: 'Agricultural products can pass through fragmented channels that make availability, origin, and pricing difficult for buyers to understand. Farmers also need practical ways to reach customers online.',
         },
         {
-          title: 'For farmers',
+          title: 'Selling',
           body: 'Approved sellers receive a dedicated shop, inventory tools, order management, and clear records of completed and pending earnings.',
         },
         {
-          title: 'For buyers',
+          title: 'Shopping',
           body: 'Buyers can compare active products, seller locations, units, stock, prices, and supported fulfillment methods before placing an order.',
         },
         {

@@ -1,15 +1,15 @@
 /** Shared auth pages: login, register, verify phone, forgot password. */
 
 export const authInputClass =
-  'mt-2 w-full rounded-2xl border border-black/10 bg-[#f8f8f3] px-4 py-3.5 text-[#142016] outline-none transition focus:border-[#5dbb38] focus:ring-2 focus:ring-[#5dbb38]/20'
+  'ui-field mt-2'
 
-export const authLabelClass = 'text-sm font-bold text-[#243126]'
+export const authLabelClass = 'text-[13px] font-semibold text-[#1d1d1f]'
 
 export const authPrimaryButtonClass =
-  'w-full rounded-full bg-[#5dbb38] px-5 py-4 font-bold text-white transition hover:bg-[#4fa832] disabled:opacity-60'
+  'btn btn-primary w-full'
 
 export const authCardClass =
-  'w-full max-w-md rounded-[2rem] bg-white p-7 shadow-[0_24px_70px_rgba(10,30,17,.12)] sm:p-10'
+  'ui-card w-full max-w-md p-5 sm:p-6'
 
 export function AuthCloseButton() {
   return (
@@ -37,27 +37,25 @@ export function AuthSplitLayout({
   banner,
 }) {
   return (
-    <main className="min-h-screen bg-[#132719] text-[#142016]">
-      <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-        <section
-          className="hidden bg-cover bg-center px-10 pb-14 pt-32 text-white lg:flex lg:flex-col lg:justify-end xl:px-14"
-          style={{
-            backgroundImage: `linear-gradient(90deg,rgba(8,31,15,.78),rgba(8,31,15,.25)),url('${heroImage}')`,
-          }}
-        >
-          <p className="page-eyebrow text-[#9de76d]">{heroEyebrow}</p>
-          <h1 className="page-title mt-3 max-w-xl text-4xl xl:text-5xl">{heroTitle}</h1>
-          <p className="page-lead mt-4 max-w-lg text-white/75">{heroLead}</p>
+    <main className="min-h-screen bg-[#f3f8ef] text-[#142016]">
+      <div className="grid min-h-screen lg:grid-cols-[0.9fr_1.1fr]">
+        <section className="hidden items-end bg-[#ebecef] px-10 py-14 lg:flex">
+          <div>
+            <p className="text-[13px] font-semibold text-[#248a3d]">{heroEyebrow}</p>
+            <h1 className="page-title mt-2 max-w-md text-4xl text-[#1d1d1f]">{heroTitle}</h1>
+            <p className="mt-3 max-w-md text-[15px] leading-6 text-[#6e6e73]">{heroLead}</p>
+            <img src={heroImage} alt="" className="mt-8 h-44 w-full max-w-md rounded-xl object-cover" />
+          </div>
         </section>
 
-        <section className="relative flex items-center justify-center bg-[#f7f7f2] px-5 py-12 lg:py-16">
+        <section className="relative flex items-center justify-center px-5 py-12 pb-[max(3rem,env(safe-area-inset-bottom))] lg:px-8 lg:py-16">
           <AuthCloseButton />
           <div className={authCardClass}>
-            <p className="page-eyebrow text-[#5dbb38]">{formEyebrow}</p>
-            <h2 className="page-title mt-2 text-3xl sm:text-4xl">{formTitle}</h2>
+            <p className="text-[13px] font-semibold text-[#248a3d]">{formEyebrow}</p>
+            <h2 className="page-title mt-1 text-2xl text-[#1d1d1f]">{formTitle}</h2>
             {formLead ? <p className="page-lead mt-3 text-sm text-[#647066]">{formLead}</p> : null}
             {banner ? <div className="mt-5">{banner}</div> : null}
-            <div className="mt-8">{children}</div>
+            <div className="mt-6">{children}</div>
           </div>
         </section>
       </div>

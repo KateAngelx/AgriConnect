@@ -8,7 +8,7 @@ export default async function AccountSettingsPage() {
   const user = await requireApprovedBuyer('/account/settings')
 
   return (
-    <DashboardShell user={user} title="Account settings" subtitle="Update your profile information used for orders and notifications.">
+    <DashboardShell user={user} title="Account settings" subtitle="Profile details and saved delivery locations.">
       <DashboardPanel title="Profile">
         <BuyerSettingsForm user={user} />
       </DashboardPanel>

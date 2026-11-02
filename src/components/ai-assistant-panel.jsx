@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 export function AiAssistantPanel({
   endpoint,
@@ -10,6 +10,7 @@ export function AiAssistantPanel({
   requestBody = {},
   eyebrow = 'AI assistant',
 }) {
+  const inputId = useId()
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [error, setError] = useState('')
@@ -45,32 +46,32 @@ export function AiAssistantPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-[#173c2c]/10 bg-white p-5 shadow-sm sm:p-6">
-      <p className="page-eyebrow text-[#4f8d3b]">{eyebrow}</p>
-      <h2 className="page-section-title mt-1 text-lg">{title}</h2>
-      {description ? <p className="mt-2 text-sm text-[#647066]">{description}</p> : null}
-      <form onSubmit={ask} className="mt-4 flex flex-col gap-3 sm:flex-row">
+    <section className="ui-card p-5">
+      <p className="page-eyebrow">{eyebrow}</p>
+      <h2 className="mt-2 text-lg font-semibold text-[#142016]">{title}</h2>
+      {description ? <p className="mt-2 text-sm leading-6 text-[#5c6f62]">{description}</p> : null}
+      <form onSubmit={ask} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-stretch">
+        <label htmlFor={inputId} className="sr-only">
+          Question
+        </label>
         <input
+          id={inputId}
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
           placeholder={placeholder}
-          className="flex-1 rounded-2xl border border-black/10 bg-[#fafbfa] px-4 py-3 text-sm outline-none focus:border-[#5dbb38]"
+          className="ui-field min-w-0 flex-1"
         />
-        <button
-          type="submit"
-          disabled={pending || question.trim().length < 3}
-          className="rounded-full bg-[#5dbb38] px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
-        >
+        <button type="submit" disabled={pending || question.trim().length < 3} className="btn btn-primary w-full sm:w-auto">
           {pending ? 'Thinking…' : 'Ask'}
         </button>
       </form>
       {error ? (
-        <p role="alert" className="mt-4 rounded-xl bg-[#fff8ed] px-4 py-3 text-sm text-[#7a4b12]">
+        <p role="alert" className="mt-4 rounded-[10px] bg-[#fff8ed] px-4 py-3 text-sm leading-6 text-[#7a4b12]">
           {error}
         </p>
       ) : null}
       {answer ? (
-        <div className="mt-4 rounded-2xl bg-[#f8f8f3] p-4 text-sm leading-7 text-[#243126] whitespace-pre-wrap">
+        <div className="mt-4 whitespace-pre-wrap rounded-[10px] bg-[#f3f8ef] px-4 py-3 text-sm leading-6 text-[#142016]">
           {answer}
         </div>
       ) : null}

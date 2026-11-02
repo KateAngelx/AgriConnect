@@ -11,32 +11,26 @@ const iconTones = {
   slate: 'bg-[#f1f3f4] text-[#455a64]',
 }
 
-export function DashboardHero({ label, title, description, actionHref, actionLabel, imageUrl }) {
+export function DashboardHero({ label, title, description, actionHref, actionLabel }) {
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-[#173c2c]/8 bg-[linear-gradient(105deg,#e8f5e3_0%,#f4faf0_45%,#ffffff_100%)] shadow-sm">
-      <div className="relative z-10 flex flex-col gap-4 p-5 sm:gap-5 sm:p-7 md:max-w-xl md:p-8 lg:max-w-2xl">
-        <p className="page-eyebrow text-[#4f8d3b]">{label}</p>
-        <h1 className="text-2xl font-bold tracking-tight text-[#142016] sm:text-3xl">{title}</h1>
-        <p className="text-sm leading-6 text-[#65766d] sm:text-base">{description}</p>
-        {actionHref && actionLabel ? (
-          <Link
-            href={actionHref}
-            className="inline-flex w-fit rounded-full bg-[#2e7d32] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#1b5e20]"
-          >
-            {actionLabel} →
-          </Link>
-        ) : null}
-      </div>
-      {imageUrl ? (
-        <div
-          className="pointer-events-none absolute bottom-0 right-0 hidden h-full w-[min(42%,320px)] bg-cover bg-center opacity-90 md:block"
-          style={{
-            backgroundImage: `linear-gradient(90deg,#f4faf0 0%,transparent 35%),url('${imageUrl}')`,
-            maskImage: 'linear-gradient(90deg, transparent 0%, black 40%)',
-          }}
-          aria-hidden="true"
-        />
+    <section className="ui-card p-5 sm:p-6">
+      <p className="text-[13px] font-semibold text-[#2e7d32]">{label}</p>
+      <h2 className="mt-1 text-2xl font-semibold tracking-[-0.02em] text-[#142016]">{title}</h2>
+      <p className="mt-2 max-w-2xl text-[14px] leading-6 text-[#5c6f62]">{description}</p>
+      {actionHref && actionLabel ? (
+        <Link href={actionHref} className="btn btn-primary mt-4 w-fit">
+          {actionLabel}
+        </Link>
       ) : null}
+    </section>
+  )
+}
+
+export function MetricSection({ title, children, className = 'grid-cols-2 lg:grid-cols-3' }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-[13px] font-semibold text-[#2e7d32]">{title}</h2>
+      <div className={`grid gap-3 ${className}`}>{children}</div>
     </section>
   )
 }
@@ -44,7 +38,7 @@ export function DashboardHero({ label, title, description, actionHref, actionLab
 export function MetricTile({ label, value, hint, icon = 'grid', tone = 'green' }) {
   const toneClass = iconTones[tone] || iconTones.green
   return (
-    <div className="min-h-28 flex flex-col items-start gap-3 rounded-xl border border-[#173c2c]/8 bg-white p-3.5 shadow-sm sm:min-h-32 sm:flex-row sm:p-4">
+    <div className="flex flex-col items-start gap-3 rounded-xl border border-brand-800/10 bg-white p-4 shadow-sm sm:flex-row">
       <div className={`grid size-10 shrink-0 place-items-center rounded-full sm:size-11 ${toneClass}`}>
         <DashboardIcon name={icon} className="size-5" />
       </div>
@@ -75,7 +69,7 @@ export function PanelHeader({ title, description, href, linkLabel = 'View all' }
 
 export function OverviewPanel({ title, description, href, linkLabel, children, className = '' }) {
   return (
-    <section className={`overflow-hidden rounded-2xl border border-[#173c2c]/8 bg-white shadow-sm ${className}`}>
+    <section className={`ui-card overflow-hidden ${className}`}>
       {title ? <PanelHeader title={title} description={description} href={href} linkLabel={linkLabel} /> : null}
       <div className="p-5 sm:p-6">{children}</div>
     </section>
@@ -123,21 +117,42 @@ export function NotificationFeed({ notes, emptyMessage = 'No recent updates.' })
   )
 }
 
+function actionGroups(actions) {
+  const groups = []
+  for (const action of actions) {
+    const name = action.section || ''
+    const last = groups[groups.length - 1]
+    if (!last || last.name !== name) groups.push({ name, actions: [action] })
+    else last.actions.push(action)
+  }
+  return groups
+}
+
 export function QuickActions({ actions }) {
+  const groups = actionGroups(actions)
   return (
     <OverviewPanel title="Quick actions">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {actions.map((action) => (
-          <Link
-            key={action.href}
-            href={action.href}
-            className="flex items-center gap-3 rounded-xl border border-[#173c2c]/10 bg-[#fafbfa] px-4 py-3 text-sm font-bold text-[#142016] transition hover:border-[#5dbb38]/40 hover:bg-[#f4faf0]"
-          >
-            <span className="grid size-9 place-items-center rounded-full bg-white text-[#2e7d32] shadow-sm">
-              <DashboardIcon name={action.icon} className="size-4" />
-            </span>
-            {action.label}
-          </Link>
+      <div className="space-y-5">
+        {groups.map((group) => (
+          <div key={group.name || 'actions'}>
+            {group.name ? (
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#2e7d32]">{group.name}</p>
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {group.actions.map((action) => (
+                <Link
+                  key={`${group.name}-${action.href}-${action.label}`}
+                  href={action.href}
+                  className="flex min-h-11 items-center gap-3 rounded-xl border border-[#173c2c]/10 bg-[#fafbfa] px-4 py-3 text-sm font-bold text-[#142016] transition hover:border-[#5dbb38]/40 hover:bg-[#f4faf0]"
+                >
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-[#2e7d32] shadow-sm">
+                    <DashboardIcon name={action.icon} className="size-4" />
+                  </span>
+                  {action.label}
+                </Link>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </OverviewPanel>
@@ -167,22 +182,13 @@ export function ActivityBars({ title, series }) {
 
 export function PromoBanner({ title, body, href, actionLabel, imageUrl }) {
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-[#173c2c]/8 shadow-sm">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: `linear-gradient(135deg,rgba(232,245,227,.95),rgba(255,255,255,.88)),url('${imageUrl}')`,
-        }}
-        aria-hidden="true"
-      />
-      <div className="relative p-6">
-        <h2 className="text-lg font-bold text-[#142016]">{title}</h2>
-        <p className="mt-2 max-w-md text-sm leading-6 text-[#65766d]">{body}</p>
-        <Link
-          href={href}
-          className="mt-4 inline-flex rounded-full bg-[#173c2c] px-5 py-2.5 text-sm font-bold text-white hover:opacity-90"
-        >
-          {actionLabel} →
+    <section className="ui-card overflow-hidden">
+      {imageUrl ? <img src={imageUrl} alt="" className="h-36 w-full object-cover" /> : null}
+      <div className="p-5 sm:p-6">
+        <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{title}</h2>
+        <p className="mt-2 max-w-md text-[14px] leading-6 text-[#6e6e73]">{body}</p>
+        <Link href={href} className="btn btn-primary mt-4">
+          {actionLabel}
         </Link>
       </div>
     </section>
