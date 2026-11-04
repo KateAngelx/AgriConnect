@@ -7,6 +7,7 @@ import { peso } from '@/lib/dashboard-format'
 import { currentUser } from '@/server/auth'
 import { listWishlist } from '@/server/wishlist'
 import { toggleWishlistAction } from '@/app/(frontend)/wishlist/actions'
+import { DashboardIcon } from '@/components/dashboard-icons'
 
 export default async function WishlistPage() {
   const user = await currentUser()
@@ -39,7 +40,14 @@ export default async function WishlistPage() {
                 <form action={toggleWishlistAction}>
                   <input type="hidden" name="productId" value={item.product.id} />
                   <input type="hidden" name="returnTo" value="wishlist" />
-                  <SecondaryButton type="submit">Remove</SecondaryButton>
+                  <SecondaryButton
+                    type="submit"
+                    className="!size-9 !min-h-9 !p-0 text-[#963b2d]"
+                    aria-label={`Remove ${item.product.name} from wishlist`}
+                    title="Remove from wishlist"
+                  >
+                    <DashboardIcon name="trash" className="size-4" />
+                  </SecondaryButton>
                 </form>
               </li>
             ))}

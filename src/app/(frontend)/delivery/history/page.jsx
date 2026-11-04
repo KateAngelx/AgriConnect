@@ -4,6 +4,7 @@ import { StatusBadge, WorkSection, workStackClass } from '@/components/dashboard
 import { LocationRouteMap } from '@/components/location-route-map'
 import { Modal } from '@/components/modal'
 import { PagedRows } from '@/components/paged-rows'
+import { DashboardIcon } from '@/components/dashboard-icons'
 import { inPeriod, periodLabel, readPeriod } from '@/lib/report-period'
 import { requireApprovedDelivery } from '@/server/guards'
 import { listCommissions } from '@/server/delivery'
@@ -45,8 +46,8 @@ export default async function DeliveryHistoryPage({ searchParams }) {
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <StatusBadge status={pretty(item.status)} />
-                <a href={`/delivery/history?period=${encodeURIComponent(period)}&delivery=${encodeURIComponent(item.id)}`} className="text-sm font-bold text-[#4f8d3b]">
-                  Details
+                <a href={`/delivery/history?period=${encodeURIComponent(period)}&delivery=${encodeURIComponent(item.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${item.order?.reference || item.orderId}`} title="View details">
+                  <DashboardIcon name="eye" className="size-4" />
                 </a>
               </div>
             </li>

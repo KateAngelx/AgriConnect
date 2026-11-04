@@ -33,7 +33,7 @@ export default async function AdminReportsPage({ searchParams }) {
           <StatCard icon="package" label="Applications" value={report.applicationsTotal} hint={`${report.applicationsApproved} approved · ${report.pending} waiting`} />
         </div>
         <p className="mt-4 text-sm text-[#5c6f62]">
-          A ₱3 per kilo platform share on this period would be {peso(report.platformFee)}. Checkout does not add that fee yet, so sellers still receive their product price and couriers still receive the ₱49 delivery fee.
+          The platform commission realized in this period is {peso(report.platformCommission)}. It is deducted from seller payouts and is not added to buyer totals.
         </p>
       </DashboardPanel>
       <div className="mt-4">

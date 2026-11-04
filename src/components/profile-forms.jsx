@@ -5,6 +5,7 @@ import { serviceAreaAction } from '@/app/(frontend)/delivery/actions'
 import { saveProfileAction } from '@/app/(frontend)/seller/actions'
 import { LocationPicker } from '@/components/location-picker'
 import { FieldInput, PrimaryButton } from '@/components/dashboard-ui'
+import { DashboardIcon } from '@/components/dashboard-icons'
 
 const textareaClass = 'ui-field mt-2'
 
@@ -120,7 +121,9 @@ export function ServiceAreaForm({ area, lat = '', lng = '', locations = [] }) {
           {coverageAreas.map((item) => (
             <div key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-[#173c2c]/10 p-3">
               <div><p className="text-sm font-bold">{item.label}</p><p className="text-xs text-[#647066]">{item.address}</p></div>
-              <button type="button" onClick={() => setCoverageAreas((current) => current.filter((entry) => entry.id !== item.id))} className="text-xs font-bold text-[#963b2d]">Remove</button>
+              <button type="button" onClick={() => setCoverageAreas((current) => current.filter((entry) => entry.id !== item.id))} className="grid size-9 shrink-0 place-items-center rounded-lg border border-red-200 text-[#963b2d] hover:bg-red-50" aria-label={`Remove ${item.label}`} title={`Remove ${item.label}`}>
+                <DashboardIcon name="trash" className="size-4" />
+              </button>
             </div>
           ))}
         </div>

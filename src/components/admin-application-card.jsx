@@ -57,7 +57,7 @@ export function AdminApplicationCard({ entry, reviewAction }) {
 
   return (
     <>
-    <li className="rounded-xl border border-[#173c2c]/10 bg-[#fafbfa] p-4">
+    <li className="w-full px-4 py-3 sm:px-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-base font-bold text-[#142016]">{entry.user?.name || 'Applicant'}</p>

@@ -6,16 +6,22 @@ import { groupBySection, sellerOrderSection } from '@/lib/work-sections'
 import { requireSeller } from '@/server/guards'
 import { listNotifications } from '@/server/notifications'
 import { listOwnedOrders, listOwnedProducts, sellerSnapshot } from '@/server/seller'
+import { commissionRateFrom } from '@/server/payments'
+import { readyStore } from '@/server/store'
+import { AlertBanner } from '@/components/dashboard-ui'
+import { DashboardIcon } from '@/components/dashboard-icons'
 
 export default async function SellerDashboardPage() {
   const user = await requireSeller()
 
-  const [summary, orders, products, notes] = await Promise.all([
+  const [summary, orders, products, notes, store] = await Promise.all([
     sellerSnapshot(user),
     listOwnedOrders(user),
     listOwnedProducts(user),
     listNotifications(user.id),
+    readyStore(),
   ])
+  const commissionRate = commissionRateFrom(store)
   const grouped = groupBySection(orders, sellerOrderSection)
   const needsYou = grouped['needs-you'] || []
   const activeOrders = grouped.active || []
@@ -29,6 +35,12 @@ export default async function SellerDashboardPage() {
       subtitle="Orders that need you, deliveries in progress, and shop totals."
       variant="overview"
     >
+      <div className="mb-4">
+        <AlertBanner tone="info">
+          Platform commission: ₱{commissionRate} per item is charged for eligible delivered orders. This commission is
+          deducted from payouts and is not added to the buyer&apos;s checkout price.
+        </AlertBanner>
+      </div>
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-4">
           <MetricBoard>
@@ -80,7 +92,7 @@ export default async function SellerDashboardPage() {
           <QuickActions
             columns={1}
             actions={[
-              { section: 'Shop', label: 'Add product', href: '/seller/products?new=1', icon: 'package' },
+              { section: 'Shop', label: 'Add product', href: '/seller/products?new=1', icon: 'plus' },
               { section: 'Shop', label: 'Inventory', href: '/seller/inventory', icon: 'boxes' },
               { section: 'Orders', label: 'Orders', href: '/seller/orders', icon: 'clipboard' },
               { section: 'Account', label: 'My shop', href: '/seller/shop', icon: 'user' },
@@ -105,8 +117,8 @@ function OrderPreview({ rows }) {
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <StatusBadge status={pretty(order.status)} />
-            <a href={`/seller/orders?order=${encodeURIComponent(order.id)}`} className="text-sm font-bold text-[#4f8d3b]">
-              Details
+            <a href={`/seller/orders?order=${encodeURIComponent(order.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${order.reference}`} title="View details">
+              <DashboardIcon name="eye" className="size-4" />
             </a>
           </div>
         </li>

@@ -1,5 +1,6 @@
 import { DELIVERY_FEE } from './payments'
 import { readyStore } from './store'
+import { commissionForItems, commissionRateFrom } from './payments'
 
 export async function checkoutSummaryForBuyer(userId) {
   const store = await readyStore()
@@ -40,5 +41,8 @@ export async function checkoutSummaryForBuyer(userId) {
 
   const sellerGroups = [...bySeller.values()]
   const subtotal = lines.reduce((sum, line) => sum + line.lineTotal, 0)
-  return { items: lines, sellerGroups, subtotal, deliveryFee: DELIVERY_FEE }
+  const rate = commissionRateFrom(store)
+  const commission = commissionForItems(cart.items, rate)
+  const totalQuantity = cart.items.reduce((sum, item) => sum + item.quantity, 0)
+  return { items: lines, sellerGroups, subtotal, deliveryFee: DELIVERY_FEE, totalQuantity, commission }
 }

@@ -38,7 +38,7 @@ export function MetricBoard({ children }) {
 export function MetricTile({ section, label, value, hint, icon = 'grid', tone = 'green' }) {
   const toneClass = iconTones[tone] || iconTones.green
   return (
-    <article className="flex h-full min-h-[7.5rem] flex-col rounded-xl border border-brand-800/10 bg-white p-3.5 shadow-sm">
+    <article className="ui-card flex h-full min-h-[7.5rem] flex-col p-3.5">
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e7d32]">{section}</p>
         <div className={`grid size-8 shrink-0 place-items-center rounded-full ${toneClass}`}>
@@ -60,7 +60,7 @@ export function PanelHeader({ title, description, href, linkLabel = 'View all' }
         {description ? <p className="mt-0.5 text-[13px] text-[#5c6f62]">{description}</p> : null}
       </div>
       {href ? (
-        <Link href={href} className="shrink-0 text-sm font-bold text-[#4f8d3b] hover:text-[#2e7d32]">
+        <Link href={href} className="shrink-0 text-[13px] font-bold text-[#4b9f30] hover:text-[#2e7d32]">
           {linkLabel} →
         </Link>
       ) : null}
@@ -70,9 +70,9 @@ export function PanelHeader({ title, description, href, linkLabel = 'View all' }
 
 export function OverviewPanel({ title, description, href, linkLabel, children, className = '', fit = false }) {
   return (
-    <section className={`ui-card flex flex-col overflow-hidden ${fit ? '' : 'h-[33rem]'} ${className}`}>
+    <section className={fit ? `ui-card flex flex-col overflow-hidden ${className}` : `ui-card flex h-[33rem] flex-col overflow-hidden ${className}`}>
       {title ? <PanelHeader title={title} description={description} href={href} linkLabel={linkLabel} /> : null}
-      <div className={fit ? 'p-4 sm:p-5' : 'min-h-0 flex-1 overflow-y-auto p-4 sm:p-5'}>{children}</div>
+      <div className={`min-h-0 flex-1 p-4 sm:p-5 ${fit ? '' : 'overflow-hidden'}`}>{children}</div>
     </section>
   )
 }
@@ -107,7 +107,7 @@ function actionGroups(actions) {
 export function QuickActions({ actions, columns = 2 }) {
   const groups = actionGroups(actions)
   return (
-    <OverviewPanel title="Quick actions">
+    <OverviewPanel title="Quick actions" fit>
       <div className="space-y-5">
         {groups.map((group) => (
           <div key={group.name || 'actions'}>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AiMessage } from '@/components/ai-message'
 
 const THREAD_STORAGE_KEY = 'agriconnect-ai-threads:v1'
 const MAX_MESSAGES_PER_THREAD = 50
@@ -298,13 +299,13 @@ export function FloatingAiAssistant({ user }) {
               {messages.map((msg, index) => (
                 <div
                   key={`${sessionKey}-${msg.role}-${index}`}
-                  className={`whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-6 ${
+                  className={`rounded-xl px-3 py-2 text-sm leading-6 ${
                     msg.role === 'user'
                       ? 'ml-8 bg-[#e8f5e3] text-[#142016]'
                       : 'mr-6 border border-[#d5e4d4] bg-[#f3f8ef] text-[#142016]'
                   }`}
                 >
-                  {msg.text}
+                  {msg.role === 'assistant' ? <AiMessage text={msg.text} /> : msg.text}
                 </div>
               ))}
             </div>

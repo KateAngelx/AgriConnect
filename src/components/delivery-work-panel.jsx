@@ -3,6 +3,7 @@ import { OverviewPanel } from '@/components/dashboard-overview-ui'
 import { DarkButton, FieldInput, StatusBadge } from '@/components/dashboard-ui'
 import { LocationRouteMap } from '@/components/location-route-map'
 import { peso, pretty } from '@/lib/dashboard-format'
+import { DashboardIcon } from '@/components/dashboard-icons'
 import { ConfirmButton } from '@/components/confirm-button'
 import { formatEstimatedArrival } from '@/lib/delivery-eta'
 import { PagedRows } from '@/components/paged-rows'
@@ -29,8 +30,8 @@ export function DeliveryWorkPanel({ work, detailsHref = '/delivery/deliveries', 
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <StatusBadge status={pretty(assignment.status)} />
-            <a href={`${detailsHref}?job=${encodeURIComponent(assignment.id)}`} className="text-sm font-bold text-[#4f8d3b]">
-              Details
+            <a href={`${detailsHref}?job=${encodeURIComponent(assignment.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${assignment.reference || 'assignment'}`} title="View details">
+              <DashboardIcon name="eye" className="size-4" />
             </a>
           </div>
         </li>
@@ -68,7 +69,7 @@ export function DeliveryAssignmentDetail({ assignment }) {
         </div>
         <StatusBadge status={pretty(assignment.status)} />
       </div>
-      {assignment.privacy === 'full' ? (
+      {(assignment.privacy === 'full' || (assignment.pickupLat && assignment.deliveryLat)) ? (
         <div className="mt-4">
           <LocationRouteMap
             pickupLat={assignment.pickupLat}

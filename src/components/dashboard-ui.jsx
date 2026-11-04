@@ -21,7 +21,7 @@ export function StatCard({ label, value, hint, icon }) {
 
 export function DashboardPanel({ title, description, children, action, fit = false }) {
   return (
-    <section className={`ui-card flex flex-col overflow-hidden ${fit ? '' : 'h-[33rem]'}`}>
+    <section className="ui-card flex flex-col overflow-hidden">
       {(title || action) && (
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#d5e4d4] px-4 py-3 sm:px-5">
           <div className="min-w-0">
@@ -31,7 +31,7 @@ export function DashboardPanel({ title, description, children, action, fit = fal
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       )}
-      <div className={fit ? 'p-4 sm:p-5' : 'min-h-0 flex-1 overflow-y-auto p-4 sm:p-5'}>{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </section>
   )
 }
@@ -39,8 +39,9 @@ export function DashboardPanel({ title, description, children, action, fit = fal
 export const workGridClass = 'grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 [&>:last-child:nth-child(odd)]:sm:col-span-2'
 export const workStackClass = 'grid grid-cols-1 items-stretch gap-4'
 
-export function WorkSection({ title, description, count, href, linkLabel = 'View all', action, toolbar, children, empty }) {
+export function WorkSection({ title, description, count, href, linkLabel = 'View all', linkVariant = '', action, toolbar, children, empty }) {
   const isEmpty = count === 0
+  const shouldBePrimary = linkVariant === 'primary'
   return (
     <section className="ui-card flex h-[33rem] flex-col overflow-hidden">
       {toolbar ? <div className="shrink-0 border-b border-[#d5e4d4] bg-[#f7fbf4] px-4 py-3 sm:px-5">{toolbar}</div> : null}
@@ -52,10 +53,20 @@ export function WorkSection({ title, description, count, href, linkLabel = 'View
         <div className="flex shrink-0 items-center gap-3">
           {typeof count === 'number' ? <p className="text-[13px] font-semibold text-[#2e7d32]">{count}</p> : null}
           {action}
-          {href ? <a href={href} className="text-[13px] font-semibold text-[#2e7d32]">{linkLabel}</a> : null}
+          {href ? (
+            <a
+              href={href}
+              className={shouldBePrimary
+                ? 'inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#256628] bg-[#2e7d32] px-4 py-2 text-[13px] font-bold text-white shadow-[0_3px_10px_rgba(46,125,50,0.22)] transition hover:bg-[#256628]'
+                : 'shrink-0 text-[13px] font-bold text-[#4b9f30] hover:text-[#2e7d32]'}
+            >
+              {shouldBePrimary ? <DashboardIcon name={/add|create/i.test(linkLabel) ? 'plus' : 'arrow-right'} className="size-4" /> : null}
+              {linkLabel}
+            </a>
+          ) : null}
         </div>
       </div>
-      <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${isEmpty ? 'px-4 py-4 sm:px-5' : ''}`}>{isEmpty ? empty : children}</div>
+      <div className={`min-h-0 flex-1 ${isEmpty ? 'px-4 py-4 sm:px-5' : ''}`}>{isEmpty ? empty : children}</div>
     </section>
   )
 }
@@ -76,7 +87,9 @@ export function AlertBanner({ tone = 'warning', children }) {
       ? 'border-red-200 bg-brand-error text-red-800'
       : tone === 'success'
         ? 'border-brand-100 bg-brand-50 text-brand-700'
-        : 'border-amber-200/70 bg-brand-warning text-amber-800'
+        : tone === 'info'
+          ? 'border-blue-200 bg-brand-info text-blue-800'
+          : 'border-amber-200/70 bg-brand-warning text-amber-800'
   return <p className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${styles}`}>{children}</p>
 }
 

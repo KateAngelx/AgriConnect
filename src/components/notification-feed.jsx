@@ -5,9 +5,11 @@ import { createPortal } from 'react-dom'
 import { DashboardIcon } from '@/components/dashboard-icons'
 import { formatTimeAgo } from '@/lib/dashboard-format'
 
-const previewCount = 4
+const previewCount = 5
 
 function UpdateList({ notes }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
   return (
     <ul className="space-y-4">
       {notes.map((note) => (
@@ -18,7 +20,7 @@ function UpdateList({ notes }) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-[#142016]">{note.title}</p>
             <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-[#65766d]">{note.body}</p>
-            <p className="mt-1 text-[11px] text-[#8a958c]">{formatTimeAgo(note.createdAt)}</p>
+            <p className="mt-1 text-[11px] text-[#8a958c]">{mounted ? formatTimeAgo(note.createdAt) : 'Recent'}</p>
           </div>
         </li>
       ))}
@@ -50,13 +52,15 @@ export function NotificationFeed({ notes = [], emptyMessage = 'No recent updates
       <div className="shrink-0 border-b border-[#d5e4d4] px-4 py-3 sm:px-5">
         <h2 className="text-[17px] font-semibold text-[#142016]">Recent updates</h2>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+      <div className="min-h-0 flex-1 overflow-hidden p-4 sm:p-5">
         {preview.length ? <UpdateList notes={preview} /> : <p className="text-sm text-[#65766d]">{emptyMessage}</p>}
+      </div>
+      <div className="flex h-10 shrink-0 items-center justify-center gap-2 border-t border-[#d5e4d4] px-4">
         {hasMore ? (
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="mt-4 text-sm font-bold text-[#4f8d3b] hover:text-[#2e7d32]"
+            className="text-[13px] font-bold text-[#4b9f30] hover:text-[#2e7d32]"
           >
             View more
           </button>

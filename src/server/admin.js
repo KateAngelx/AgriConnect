@@ -25,6 +25,8 @@ export async function adminSnapshot() {
     ordersAttention: orders.filter((order) => !closed.has(order.status)).length,
     payments: store.payments.filter((payment) => payment.status === 'pending').length,
     paidTransactions: store.payments.filter((payment) => payment.status === 'paid').length,
+    platformFee: orders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0),
+    platformCommission: orders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0),
   }
 }
 
@@ -135,6 +137,40 @@ export async function markCommissionPaid(actor, deliveryId) {
   return { ok: true }
 }
 
+export async function markPlatformCommissionPaid(actor, orderId) {
+  if (actor.role !== 'admin') return { error: 'Only administrators can collect platform commission.' }
+  const store = await readyStore()
+  const order = [...store.orders.values()].find((item) => item.id === orderId)
+  if (!order) return { error: 'Order not found.' }
+  if (Number(order.platformFee || 0) <= 0) return { error: 'This order has no platform commission.' }
+  if (!['delivered', 'completed', 'picked-up'].includes(order.status)) {
+    return { error: 'Record platform commission collection after fulfillment.' }
+  }
+  order.platformFeeStatus = 'paid'
+  await notify(order.buyer, 'Commission settled', `${order.reference} marketplace commission has been settled.`, '/notifications')
+  await save()
+  return { ok: true }
+}
+
+export function platformCommissionLedger(store) {
+  const settled = new Set(['delivered', 'completed', 'picked-up'])
+  const orders = [...store.orders.values()]
+    .filter((order) => settled.has(order.status) && Number(order.platformFee || 0) > 0)
+    .map((order) => ({
+      id: order.id,
+      reference: order.reference,
+      buyerName: order.buyerName || 'Buyer',
+      amount: Number(order.platformFee || 0),
+      status: order.platformFeeStatus === 'paid' ? 'paid' : 'ready',
+      paymentMethod: order.paymentMethod || 'cash',
+      updatedAt: order.updatedAt || order.createdAt,
+    }))
+  return {
+    ready: orders.filter((order) => order.status === 'ready'),
+    paid: orders.filter((order) => order.status === 'paid'),
+  }
+}
+
 export async function platformReport(period = 'all') {
   const store = await readyStore()
   const users = [...store.users.values()].filter((user) => inPeriod(user.createdAt, period))
@@ -161,6 +197,7 @@ export async function platformReport(period = 'all') {
       .filter((payment) => payment.status === 'paid')
       .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
     platformFee: kiloPlatformFee(orders),
+    platformCommission: orders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0),
   }
 }
 

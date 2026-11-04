@@ -1,13 +1,12 @@
-import { DashboardShell } from '@/components/dashboard-shell'
+import { DashboardShell, peso } from '@/components/dashboard-shell'
 import {
   ActivityBars,
-  ApplicationRow,
   MetricBoard,
   MetricTile,
   NotificationFeed,
   QuickActions,
 } from '@/components/dashboard-overview-ui'
-import { DataTable, WorkSection, workStackClass } from '@/components/dashboard-ui'
+import { StatusBadge, WorkSection, workStackClass } from '@/components/dashboard-ui'
 import {
   adminOrderActivity,
   adminSnapshot,
@@ -45,6 +44,7 @@ export default async function AdminDashboardPage() {
             <MetricTile section="Orders" label="Orders finished" value={summary.orders - summary.ordersAttention} hint="Delivered, completed, or cancelled" icon="package" tone="green" />
             <MetricTile section="Checkout" label="Unpaid checkouts" value={summary.payments} icon="wallet" tone="amber" />
             <MetricTile section="Checkout" label="Paid checkouts" value={summary.paidTransactions} icon="coin" tone="teal" />
+            <MetricTile section="Commission" label="Platform commission" value={peso(summary.platformCommission)} hint="Realized seller commission" icon="wallet" tone="green" />
           </MetricBoard>
 
           <div className={workStackClass}>
@@ -56,17 +56,19 @@ export default async function AdminDashboardPage() {
             linkLabel="Open approvals"
             empty={<p className="text-sm text-[#5c6f62]">No application is waiting.</p>}
           >
-            <DataTable embedded columns={['Applicant', 'Submitted', 'Status']}>
+            <ul className="divide-y divide-[#d5e4d4]">
               {applications.map((entry) => (
-                <ApplicationRow
-                  key={entry.id}
-                  name={entry.user?.name || 'Applicant'}
-                  role={entry.applicationType}
-                  date={entry.createdAt ? new Date(entry.createdAt).toLocaleDateString('en-PH') : '—'}
-                  status={entry.status}
-                />
+                <li key={entry.id} className="flex w-full flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[#142016]">{entry.user?.name || 'Applicant'}</p>
+                    <p className="text-[13px] text-[#5c6f62]">
+                      {entry.applicationType} · {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString('en-PH') : '—'}
+                    </p>
+                  </div>
+                  <StatusBadge status={entry.status} />
+                </li>
               ))}
-            </DataTable>
+            </ul>
           </WorkSection>
           <ActivityBars title="Orders placed" series={activity} caption="Orders placed on each of the last 7 days." />
           </div>

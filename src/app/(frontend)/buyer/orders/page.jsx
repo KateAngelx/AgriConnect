@@ -4,6 +4,7 @@ import { DashboardShell } from '@/components/dashboard-shell'
 import { AlertBanner, PrimaryLink, StatusBadge, WorkSection, workGridClass } from '@/components/dashboard-ui'
 import { Modal } from '@/components/modal'
 import { PagedRows } from '@/components/paged-rows'
+import { DashboardIcon } from '@/components/dashboard-icons'
 import { peso } from '@/lib/dashboard-format'
 import { buyerOrderSection, groupBySection } from '@/lib/work-sections'
 import { assignmentForOrder } from '@/server/delivery'
@@ -78,8 +79,8 @@ export default async function BuyerOrdersPage({ searchParams }) {
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
                         <StatusBadge status={order.status} />
-                        <Link href={`/buyer/orders?order=${encodeURIComponent(order.id)}`} className="text-sm font-bold text-[#4f8d3b]">
-                          Details
+                        <Link href={`/buyer/orders?order=${encodeURIComponent(order.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${order.reference}`} title="View details">
+                          <DashboardIcon name="eye" className="size-4" />
                         </Link>
                       </div>
                     </li>

@@ -18,6 +18,8 @@ export default async function SellerEarningsPage({ searchParams }) {
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricTile section="Completed" label="Completed sales" value={peso(finances.gross)} hint={`${finances.completedOrders} orders`} icon="coin" tone="green" />
+        <MetricTile section="Completed" label="Platform commission" value={peso(finances.commission)} hint="Deducted from delivered sales" icon="wallet" tone="amber" />
+        <MetricTile section="Completed" label="Net payout" value={peso(finances.net)} hint="After platform commission" icon="coin" tone="green" />
         <MetricTile section="Completed" label="Completed orders" value={finances.completedOrders} icon="package" tone="teal" />
         <MetricTile section="Open" label="Open order value" value={peso(finances.pending)} hint="Not completed yet" icon="wallet" tone="amber" />
         <MetricTile section="Open" label="Open orders" value={finances.openOrders} icon="clipboard" tone="blue" />

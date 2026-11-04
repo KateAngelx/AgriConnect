@@ -38,7 +38,7 @@ export async function saveProductAction(_state, formData) {
     status: formData.get('status'),
   })
   if (result.error) return result
-  redirect('/seller/products')
+  redirect(`/seller/products?success=${encodeURIComponent(formData.get('productId') ? 'Product updated' : 'Product added')}`)
 }
 
 export async function saveProfileAction(_state, formData) {
@@ -52,21 +52,21 @@ export async function saveProfileAction(_state, formData) {
     description: formData.get('description'),
   })
   if (result.error) return result
-  redirect('/seller/dashboard')
+  redirect(`/seller/dashboard?success=${encodeURIComponent('Seller profile saved')}`)
 }
 
 export async function updateStockAction(formData) {
   const user = await seller()
   const result = await updateStock(user, formData.get('productId'), formData.get('stock'))
   const error = result.error ? `?error=${encodeURIComponent(result.error)}` : ''
-  redirect(`/seller/inventory${error}`)
+  redirect(`/seller/inventory${error || '?success=Stock%20updated'}`)
 }
 
 export async function removeProductAction(formData) {
   const user = await seller()
   const result = await removeProduct(user, formData.get('productId'))
   const error = result.error ? `?error=${encodeURIComponent(result.error)}` : ''
-  redirect(`/seller/products${error}`)
+  redirect(`/seller/products${error || '?success=Listing%20removed'}`)
 }
 
 export async function advanceOrderAction(formData) {
@@ -87,5 +87,5 @@ export async function collectOrderAction(formData) {
   const user = await seller()
   const result = await sellerCollect(user, formData.get('orderId'))
   const error = result.error ? `?error=${encodeURIComponent(result.error)}` : ''
-  redirect(`/seller/orders${error}`)
+  redirect(`/seller/orders${error || '?success=Cash%20collection%20recorded'}`)
 }

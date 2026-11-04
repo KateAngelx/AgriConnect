@@ -111,7 +111,7 @@ export function NotificationsPanel({ open, onClose }) {
           )}
         </div>
         <footer className="border-t border-[#173c2c]/8 px-4 py-2.5 text-center">
-          <a href="/notifications" onClick={onClose} className="text-xs font-bold text-[#4b9f30]">
+          <a href="/notifications" onClick={onClose} className="text-xs font-bold text-[#4b9f30] hover:text-[#2e7d32]">
             View all notifications
           </a>
         </footer>

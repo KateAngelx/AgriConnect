@@ -1,6 +1,7 @@
 'use client'
 
 import { useId, useState } from 'react'
+import { AiMessage } from '@/components/ai-message'
 
 export function AiAssistantPanel({
   endpoint,
@@ -73,8 +74,8 @@ export function AiAssistantPanel({
         </p>
       ) : null}
       {answer ? (
-        <div className="mt-4 whitespace-pre-wrap rounded-[10px] bg-[#f3f8ef] px-4 py-3 text-sm leading-6 text-[#142016]">
-          {answer}
+        <div className="mt-4 rounded-[10px] bg-[#f3f8ef] px-4 py-3 text-sm leading-6 text-[#142016]">
+          <AiMessage text={answer} />
         </div>
       ) : null}
       </div>

@@ -5,8 +5,9 @@ const COLORS = {
 }
 
 const GLYPHS = {
-  pickup: `<path fill="#fff" fill-rule="evenodd" d="M0-6.6 6.6-1.3-6.6-1.3ZM-5-1h10V6.2H-5ZM-1.35 6.2V2.35h2.7V6.2z"/>`,
-  dropoff: `<path fill="#fff" fill-rule="evenodd" d="M0-6.8 7.2.2H5.3V6.2h-10.6V.2H-7.2ZM-1.4 6.2V2.55h2.8V6.2z"/>`,
+  pickup: `<text x="0" y="3.8" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700">S</text>`,
+  dropoff: `<text x="0" y="3.8" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700">B</text>`,
+  delivery: `<text x="0" y="3.8" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700">D</text>`,
   place: `<circle cx="0" cy="0" r="4.3" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="0" cy="0" r="1.7" fill="#fff"/>`,
 }
 

@@ -4,7 +4,11 @@ import { redirect } from 'next/navigation'
 import { currentUser } from '@/server/auth'
 import { isApprovedAdmin } from '@/server/roles'
 import { reviewRoleApplication } from '@/server/applications'
-import { markCommissionPaid, setUserStatus } from '@/server/admin'
+import { markCommissionPaid, markPlatformCommissionPaid, setUserStatus } from '@/server/admin'
+import { readyStore } from '@/server/store'
+import { save } from '@/server/sync'
+import { notify } from '@/server/notifications'
+import { normalizeCommissionRate, COMMISSION_MAX } from '@/server/payments'
 
 async function admin() {
   const user = await currentUser()
@@ -37,4 +41,37 @@ export async function payCommissionAction(formData) {
   const result = await markCommissionPaid(user, formData.get('deliveryId'))
   if (result.error) redirect(`/admin/payments?error=${encodeURIComponent(result.error)}`)
   redirect('/admin/payments?success=Commission marked as paid.')
+}
+
+export async function payPlatformCommissionAction(formData) {
+  const user = await admin()
+  const result = await markPlatformCommissionPaid(user, formData.get('orderId'))
+  if (result.error) redirect(`/admin/payments?error=${encodeURIComponent(result.error)}`)
+  redirect('/admin/payments?success=Platform commission marked as collected.')
+}
+
+export async function updatePlatformFeeAction(formData) {
+  const user = await admin()
+  const rate = formData.get('commissionRate')
+  const numericRate = Number(rate)
+  if (!Number.isFinite(numericRate) || numericRate < 0 || numericRate > COMMISSION_MAX) {
+    redirect(`/admin/settings?error=Commission must be between 0 and ${COMMISSION_MAX}.`)
+  }
+  const store = await readyStore()
+  if (!store.settings) store.settings = {}
+  store.settings.commissionRate = normalizeCommissionRate(numericRate)
+  await save()
+  redirect('/admin/settings?success=Commission rate updated.')
+}
+
+export async function remitPlatformFeeAction(formData) {
+  const user = await admin()
+  const deliveryId = formData.get('deliveryId')
+  const store = await readyStore()
+  const delivery = store.deliveries.find((item) => item.id === deliveryId)
+  if (!delivery) redirect(`/admin/payments?error=Delivery not found.`)
+  delivery.commissionStatus = 'paid'
+  await notify(delivery.courierId, 'Commission remitted', 'The platform commission has been remitted.', '/admin/payments')
+  await save()
+  redirect('/admin/payments?success=Commission remitted.')
 }

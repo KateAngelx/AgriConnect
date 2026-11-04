@@ -4,6 +4,7 @@ import { currentUser } from '@/server/auth'
 import { getCart } from '@/server/cart'
 import { updateCartAction } from '@/app/(frontend)/cart/actions'
 import { peso } from '@/lib/dashboard-format'
+import { DashboardIcon } from '@/components/dashboard-icons'
 export default async function CartPage() {
   const user = await currentUser()
   if (!user) redirect('/login')
@@ -57,7 +58,9 @@ export default async function CartPage() {
                       <input type="hidden" name="cartID" value={cart.id} />
                       <input type="hidden" name="itemID" value={item.id ?? ''} />
                       <input type="hidden" name="quantity" value="0" />
-                      <button className="btn btn-danger">Remove</button>
+                      <button className="btn btn-danger !size-9 !min-h-9 !p-0" aria-label={`Remove ${product.name} from cart`} title="Remove from cart">
+                        <DashboardIcon name="trash" className="size-4" />
+                      </button>
                     </form>
                     <p className="w-28 text-right text-lg font-bold">
                       {peso(product.price * item.quantity)}

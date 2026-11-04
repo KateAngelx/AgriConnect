@@ -83,6 +83,10 @@ export function deliveryAssignmentForViewer(store, delivery, order, viewerUserId
   return {
     ...base,
     deliveryAddress: null,
+    deliveryLat: order?.deliveryLat ?? null,
+    deliveryLng: order?.deliveryLng ?? null,
+    pickupLat: pickupDetails.pickupLat ?? null,
+    pickupLng: pickupDetails.pickupLng ?? null,
     contactNumber: null,
     buyerName: null,
     instructions: null,

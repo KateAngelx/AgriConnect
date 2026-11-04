@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { saveProductAction } from '@/app/(frontend)/seller/actions'
+import { DashboardIcon } from '@/components/dashboard-icons'
 
 async function loadPhoto(file) {
   if (typeof createImageBitmap === 'function') {
@@ -89,8 +90,8 @@ function ProductPhotoField({ initial }) {
             <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={onPick} disabled={busy} />
           </label>
           {preview ? (
-            <button type="button" className="btn btn-danger" onClick={() => { setPreview(''); setError('') }}>
-              Remove
+            <button type="button" className="btn btn-danger !size-9 !min-h-9 !p-0" onClick={() => { setPreview(''); setError('') }} aria-label="Remove selected photo" title="Remove selected photo">
+              <DashboardIcon name="trash" className="size-4" />
             </button>
           ) : null}
         </div>
@@ -105,11 +106,15 @@ function ProductPhotoField({ initial }) {
 const field =
   'mt-2 w-full rounded-2xl border border-black/10 bg-[#f8f8f3] px-4 py-3 outline-none focus:border-[#5dbb38]'
 
-export function ProductForm({ categories, product }) {
+export function ProductForm({ categories, product, commissionRate = 1 }) {
   const [state, action, pending] = useActionState(saveProductAction, { error: '' })
   const image = product?.images?.find((item) => item?.url)?.url || ''
   return (
     <form action={action} className="space-y-4">
+      <div className="rounded-xl border border-[#d6e9cf] bg-[#f3f9ef] px-4 py-3 text-[13px] leading-5 text-[#486044]">
+        <strong>Commission notice:</strong> ₱{commissionRate} per item may be deducted from eligible delivered-order
+        payouts. Cash pickup orders do not incur this commission.
+      </div>
       {product && <input type="hidden" name="productId" value={product.id} />}
       <div>
         <label className="text-sm font-bold" htmlFor="name">

@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { updateProfileAction } from '@/app/(frontend)/account/settings/actions'
 import { LocationPicker } from '@/components/location-picker'
+import { DashboardIcon } from '@/components/dashboard-icons'
 
 const field = 'ui-field mt-2'
 
@@ -98,6 +99,10 @@ export function BuyerSettingsForm({ user }) {
         <input id="name" name="name" required defaultValue={user.name} className={field} />
       </div>
       <div>
+        <label className="text-sm font-bold" htmlFor="phone">Contact number</label>
+        <input id="phone" name="phone" type="tel" required defaultValue={user.phone || ''} placeholder="09XXXXXXXXX" className={field} />
+      </div>
+      <div>
         <label className="text-sm font-bold" htmlFor="email">Email</label>
         <input id="email" name="email" readOnly value={user.email} className={`${field} bg-[#f7f7f2] text-[#647066]`} />
       </div>
@@ -115,8 +120,8 @@ export function BuyerSettingsForm({ user }) {
                   <p className="mt-1 text-sm text-[#647066]">{item.address}</p>
                   {item.landmark ? <p className="mt-1 text-xs text-[#647066]">{item.landmark}</p> : null}
                 </div>
-                <button type="button" onClick={() => { setAddresses((current) => current.filter((addressItem) => addressItem.id !== item.id)); setHasUnsavedLocations(true) }} className="shrink-0 text-xs font-bold text-[#963b2d]">
-                  Remove
+                <button type="button" onClick={() => { setAddresses((current) => current.filter((addressItem) => addressItem.id !== item.id)); setHasUnsavedLocations(true) }} className="grid size-9 shrink-0 place-items-center rounded-lg border border-red-200 text-[#963b2d] hover:bg-red-50" aria-label={`Remove ${item.label}`} title={`Remove ${item.label}`}>
+                  <DashboardIcon name="trash" className="size-4" />
                 </button>
               </div>
             ))}

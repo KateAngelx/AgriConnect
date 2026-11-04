@@ -14,6 +14,9 @@ export async function updateBuyerProfile(user, input) {
   const record = store.users.get(user.id)
   if (!record) return { error: 'Account not found.' }
   record.name = name
+  const phone = String(input.phone ?? '').trim()
+  if (phone.length < 7 || phone.length > 20) return { error: 'Enter a valid contact number.' }
+  record.phone = phone
   if (Array.isArray(input.savedAddresses)) {
     const cleaned = []
     for (const [index, address] of input.savedAddresses.slice(0, 10).entries()) {

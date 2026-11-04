@@ -49,6 +49,7 @@ export async function updateProfileAction(_state, formData) {
 
   const result = await updateBuyerProfile(user, {
     name: formData.get('name'),
+    phone: formData.get('phone'),
     savedAddresses,
   })
   if (result.error) return { error: result.error }

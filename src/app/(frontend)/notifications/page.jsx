@@ -3,6 +3,7 @@ import { DashboardShell } from '@/components/dashboard-shell'
 import { SecondaryButton, WorkSection, workStackClass } from '@/components/dashboard-ui'
 import { PagedRows } from '@/components/paged-rows'
 import { formatTimeAgo } from '@/lib/dashboard-format'
+import { DashboardIcon } from '@/components/dashboard-icons'
 import { readAllNotificationsAction, readNotificationAction } from '@/app/(frontend)/notifications/actions'
 import { currentUser } from '@/server/auth'
 import { listNotifications } from '@/server/notifications'
@@ -40,8 +41,8 @@ export default async function NotificationsPage() {
               <p className="mt-1 text-xs text-brand-muted">{formatTimeAgo(note.createdAt)}</p>
               <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold">
                 {note.href ? (
-                  <a href={note.href} className="text-brand-700">
-                    View details
+                  <a href={note.href} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label="View notification details" title="View details">
+                    <DashboardIcon name="eye" className="size-4" />
                   </a>
                 ) : null}
                 {!note.read ? (

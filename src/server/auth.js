@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from './passwords'
 import { phoneSmsConfigured } from './phone-verify'
 import { notify } from './notifications'
 import { mirrorAuthUser, save, signInWithSupabase } from './sync'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import { homeForRole, publicUser, readyStore } from './store'
 
 const SESSION_COOKIE = 'agriconnect-session'
@@ -43,7 +44,10 @@ export async function startSession(user) {
 
 function findUserByEmail(store, email) {
   if (!email) return null
-  return [...store.users.values()].find((user) => user.email === email) || null
+  const normalized = String(email).trim().toLowerCase()
+  return [...store.users.values()].find(
+    (user) => String(user.email || '').trim().toLowerCase() === normalized,
+  ) || null
 }
 
 function findUserByPhone(store, phone) {
@@ -139,6 +143,31 @@ export async function loginAccount(input) {
     const email = identifier.toLowerCase()
     user = findUserByEmail(store, email)
     const supabaseMatch = await signInWithSupabase(email, password)
+    if (!user && supabaseMatch) {
+      const client = getSupabaseAdmin()
+      const { data: profile } = await client
+        ?.from('profiles')
+        .select('id,name,email,phone,phone_verified,role,roles,status,seller_id,service_area,delivery_addresses')
+        .eq('email', email)
+        .maybeSingle() || {}
+      if (profile?.id) {
+        user = {
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          phone: profile.phone || '',
+          phoneVerified: Boolean(profile.phone_verified),
+          passwordHash: '',
+          role: profile.role,
+          roles: profile.roles || [profile.role],
+          status: profile.status,
+          sellerId: profile.seller_id || undefined,
+          serviceArea: profile.service_area || '',
+          savedAddresses: Array.isArray(profile.delivery_addresses) ? profile.delivery_addresses : [],
+        }
+        store.users.set(user.id, user)
+      }
+    }
     const passwordMatch = user && verifyPassword(password, user.passwordHash || user.password)
     if (!user || (!passwordMatch && !supabaseMatch)) {
       return { error: 'The email or password is incorrect.' }

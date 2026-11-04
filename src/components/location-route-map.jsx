@@ -50,13 +50,21 @@ export function LocationRouteMap({
         bounds.push([dlat, dlng])
       }
       if (hasPickup && hasDelivery) {
-        L.polyline(
-          [
-            [plat, plng],
-            [dlat, dlng],
-          ],
-          { color: '#4b9f30', weight: 3, opacity: 0.75, dashArray: '6 8' },
-        ).addTo(map)
+        const routeLine = L.polyline([[plat, plng], [dlat, dlng]], {
+          color: '#4b9f30', weight: 3, opacity: 0.75, dashArray: '6 8',
+        }).addTo(map)
+        fetch(`https://router.project-osrm.org/route/v1/driving/${plng},${plat};${dlng},${dlat}?overview=full&geometries=geojson`)
+          .then((response) => response.ok ? response.json() : Promise.reject(new Error('Route unavailable')))
+          .then((data) => {
+            const geometry = data?.routes?.[0]?.geometry?.coordinates
+            if (!cancelled && geometry?.length) {
+              map.removeLayer(routeLine)
+              L.polyline(geometry.map(([lng, lat]) => [lat, lng]), {
+                color: '#4b9f30', weight: 4, opacity: 0.9,
+              }).addTo(map)
+            }
+          })
+          .catch(() => {})
         map.fitBounds(bounds, { padding: [28, 28] })
       }
       instanceRef.current = map

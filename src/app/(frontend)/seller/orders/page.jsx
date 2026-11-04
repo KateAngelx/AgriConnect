@@ -7,6 +7,7 @@ import {
   workGridClass,
 } from '@/components/dashboard-ui'
 import { Modal } from '@/components/modal'
+import { DashboardIcon } from '@/components/dashboard-icons'
 import { PagedRows } from '@/components/paged-rows'
 import { requireApprovedSeller } from '@/server/guards'
 import { ConfirmButton } from '@/components/confirm-button'
@@ -61,8 +62,8 @@ export default async function SellerOrdersPage({ searchParams }) {
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
                       <StatusBadge status={pretty(order.status)} />
-                      <a href={`/seller/orders?order=${encodeURIComponent(order.id)}`} className="text-sm font-bold text-[#4f8d3b]">
-                        Details
+                      <a href={`/seller/orders?order=${encodeURIComponent(order.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${order.reference}`} title="View details">
+                        <DashboardIcon name="eye" className="size-4" />
                       </a>
                     </div>
                   </li>

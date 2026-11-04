@@ -11,6 +11,10 @@ import {
   itemSellerId,
   startPaymongoCheckout,
   startXenditCheckout,
+  commissionForItems,
+  commissionRateFrom,
+  computePlatformCommission,
+  settlePlatformFeeOnline,
 } from './payments'
 import { save } from './sync'
 import { readyStore } from './store'
@@ -158,6 +162,7 @@ export async function placeOrder(input) {
       status: 'placed',
       subtotal,
       deliveryFee: fulfillment === 'delivery' ? DELIVERY_FEE : 0,
+      createdAt: new Date().toISOString(),
       sellerPickup: {
         sellerId,
         farmName: sellerRecord?.farmName || lines[0]?.product?.seller?.farmName || 'Local seller',
@@ -179,9 +184,20 @@ export async function placeOrder(input) {
               deliveryLng,
             })
           : null,
-      createdAt: new Date().toISOString(),
     }
+    const platformCommission = computePlatformCommission(order, commissionRateFrom(store))
+    order.platformFee = platformCommission
+    order.platformFeeStatus =
+      platformCommission > 0
+        ? ['paymongo', 'xendit'].includes(order.paymentMethod)
+          ? 'held-online'
+          : 'held-collector'
+        : 'none'
     store.orders.set(order.id, order)
+    // Auto-settle for online payments
+    if (order.paymentMethod === 'paymongo' || order.paymentMethod === 'xendit') {
+      await settlePlatformFeeOnline(order.id)
+    }
     createPaymentRecord(store, order)
     if (fulfillment === 'delivery') {
       store.deliveries.unshift({

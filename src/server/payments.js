@@ -123,14 +123,14 @@ export function computePlatformCommission(order, commissionRate) {
   const paymentMethod = order.paymentMethod || 'cash'
 
   // Rule 1: Cash + pickup → ₱0 (no commission)
-  if (paymentMethod === 'cash' && fulfillment === 'pickup') {
+  if (['cash', 'cash-on-pickup'].includes(paymentMethod) && fulfillment === 'pickup') {
     order.platformFee = 0
     order.platformFeeStatus = 'none'
     return 0
   }
 
   // Rule 2: Cash + deliver → ₱1 × itemCount
-  if (paymentMethod === 'cash' && fulfillment === 'delivery') {
+  if (['cash', 'cash-on-delivery'].includes(paymentMethod) && fulfillment === 'delivery') {
     const commission = commissionForItems(order.items || [], rate)
     order.platformFee = commission
     order.platformFeeStatus = 'held-collector'

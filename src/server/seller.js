@@ -66,11 +66,16 @@ export function sellerRecord(store, user) {
   return store.sellers.find((seller) => seller.id === user.sellerId || seller.ownerId === user.id) || null
 }
 
+export function sellerIdForUser(store, user) {
+  return user.sellerId || sellerRecord(store, user)?.id || null
+}
+
 export async function sellerSnapshot(user) {
   const store = await readyStore()
-  const products = store.products.filter((product) => product.seller?.id === user.sellerId)
+  const sellerId = sellerIdForUser(store, user)
+  const products = store.products.filter((product) => product.seller?.id === sellerId)
   const orders = [...store.orders.values()].filter((order) =>
-    order.items.some((item) => itemSellerId(item) === user.sellerId),
+    order.items.some((item) => itemSellerId(item) === sellerId),
   )
   return {
     products: products.length,
@@ -81,8 +86,9 @@ export async function sellerSnapshot(user) {
 
 export async function listOwnedProducts(user) {
   const store = await readyStore()
+  const sellerId = sellerIdForUser(store, user)
   return store.products
-    .filter((product) => product.seller?.id === user.sellerId)
+    .filter((product) => product.seller?.id === sellerId)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 }
 
@@ -93,8 +99,9 @@ export async function ownedProduct(user, productId) {
 
 export async function listOwnedOrders(user) {
   const store = await readyStore()
+  const sellerId = sellerIdForUser(store, user)
   return [...store.orders.values()]
-    .filter((order) => order.items.some((item) => itemSellerId(item) === user.sellerId))
+    .filter((order) => order.items.some((item) => itemSellerId(item) === sellerId))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 }
 
@@ -106,29 +113,36 @@ function sellerOrderTotal(order, sellerId) {
 
 export async function sellerFinancials(user, period = 'all') {
   const orders = (await listOwnedOrders(user)).filter((order) => inPeriod(order.createdAt, period))
-  const completed = orders.filter((order) => ['completed', 'delivered', 'picked-up'].includes(order.status))
-  const gross = completed.reduce((sum, order) => sum + sellerOrderTotal(order, user.sellerId), 0)
+  const sellerId = sellerIdForUser(await readyStore(), user)
+  const normalizedStatus = (order) => String(order.status ?? '').trim().toLowerCase().replaceAll('_', '-')
+  const completed = orders.filter((order) => ['completed', 'delivered', 'picked-up'].includes(normalizedStatus(order)))
+  const gross = completed.reduce((sum, order) => sum + sellerOrderTotal(order, sellerId), 0)
+  const commission = completed.reduce((sum, order) => sum + Number(order.platformFee || 0), 0)
+  const net = Math.max(0, gross - commission)
   const pending = orders
-    .filter((order) => !['completed', 'cancelled', 'delivered', 'picked-up'].includes(order.status))
-    .reduce((sum, order) => sum + sellerOrderTotal(order, user.sellerId), 0)
+    .filter((order) => !['completed', 'cancelled', 'delivered', 'picked-up'].includes(normalizedStatus(order)))
+    .reduce((sum, order) => sum + sellerOrderTotal(order, sellerId), 0)
   return {
     gross,
+    commission,
+    net,
     pending,
     completedOrders: completed.length,
     openOrders: orders.length - completed.length,
     series: lastDaySeries(orders, (order) => ({
       key: localDayKey(order.createdAt),
-      value: sellerOrderTotal(order, user.sellerId),
+      value: sellerOrderTotal(order, sellerId),
     })),
   }
 }
 
 export async function sellerSalesReport(user, period = 'all') {
   const orders = (await listOwnedOrders(user)).filter((order) => inPeriod(order.createdAt, period))
+  const sellerId = sellerIdForUser(await readyStore(), user)
   return orders.map((order) => ({
     id: order.id,
     reference: order.reference,
-    total: sellerOrderTotal(order, user.sellerId),
+    total: sellerOrderTotal(order, sellerId),
     status: order.status,
     paymentStatus: order.paymentStatus,
     createdAt: order.createdAt,
@@ -188,7 +202,7 @@ export async function saveProduct(user, input) {
   const seller = sellerRecord(store, user)
   if (!seller || seller.status !== 'approved') return { error: 'Your seller profile is not approved.' }
   const existing = input.productId ? store.products.find((product) => product.id === input.productId) : null
-  if (input.productId && (!existing || existing.seller?.id !== user.sellerId)) {
+  if (input.productId && (!existing || existing.seller?.id !== seller.id)) {
     return { error: 'Product not found.' }
   }
   const record = existing || {
@@ -222,7 +236,8 @@ export async function updateStock(user, productId, stockValue) {
     return { error: 'Enter a whole-number stock quantity.' }
   }
   const store = await readyStore()
-  const product = store.products.find((item) => item.id === productId && item.seller?.id === user.sellerId)
+  const sellerId = sellerIdForUser(store, user)
+  const product = store.products.find((item) => item.id === productId && item.seller?.id === sellerId)
   if (!product) return { error: 'Product not found.' }
   product.stock = stock
   if (stock < 5) {
@@ -235,26 +250,30 @@ export async function updateStock(user, productId, stockValue) {
 export async function removeProduct(user, productId) {
   if (!isApprovedSeller(user)) return { error: 'Product tools are locked.' }
   const store = await readyStore()
-  const product = store.products.find((item) => item.id === productId && item.seller?.id === user.sellerId)
+  const sellerId = sellerIdForUser(store, user)
+  const product = store.products.find((item) => item.id === productId && item.seller?.id === sellerId)
   if (!product) return { error: 'Product not found.' }
   const used = [...store.orders.values()].some((order) =>
     order.items.some((item) => item.product?.id === product.id),
   )
-  if (used) product.status = 'archived'
+  const wasArchived = product.status === 'archived'
+  if (wasArchived) store.products = store.products.filter((item) => item.id !== product.id)
+  else if (used) product.status = 'archived'
   else store.products = store.products.filter((item) => item.id !== product.id)
   await save()
-  return { ok: true, archived: used }
+  return { ok: true, archived: used && !wasArchived, deleted: wasArchived || !used }
 }
 
-function ownsOrder(order, user) {
-  return order.items.length > 0 && order.items.every((item) => itemSellerId(item) === user.sellerId)
+function ownsOrder(order, sellerId) {
+  return order.items.length > 0 && order.items.every((item) => itemSellerId(item) === sellerId)
 }
 
 export async function advanceOrder(user, orderId) {
   if (!isApprovedSeller(user)) return { error: 'Order tools are locked.' }
   const store = await readyStore()
   const order = store.orders.get(orderId)
-  if (!order || !ownsOrder(order, user)) return { error: 'Order not found.' }
+  const sellerId = sellerIdForUser(store, user)
+  if (!order || !ownsOrder(order, sellerId)) return { error: 'Order not found.' }
   const next = sellerSteps[order.fulfillment]?.[order.status]
   if (!next) return { error: 'The courier updates this stage.' }
   order.status = next
@@ -283,8 +302,9 @@ export async function cancelOrder(user, orderId) {
   if (!isApprovedSeller(user)) return { error: 'Order tools are locked.' }
   const store = await readyStore()
   const order = store.orders.get(orderId)
-  if (!order || !ownsOrder(order, user)) return { error: 'Order not found.' }
-  if (['completed', 'delivered', 'picked-up', 'out-for-delivery', 'cancelled'].includes(order.status)) {
+  const sellerId = sellerIdForUser(store, user)
+  if (!order || !ownsOrder(order, sellerId)) return { error: 'Order not found.' }
+  if (['completed', 'delivered', 'picked-up', 'cancelled'].includes(order.status)) {
     return { error: 'This order can no longer be cancelled.' }
   }
   for (const item of order.items) {
@@ -292,8 +312,14 @@ export async function cancelOrder(user, orderId) {
     if (product) product.stock += item.quantity
   }
   order.status = 'cancelled'
+  order.platformFee = 0
+  order.platformFeeStatus = 'cancelled'
   const delivery = store.deliveries.find((item) => item.orderId === order.id)
-  if (delivery && delivery.status === 'open') delivery.status = 'cancelled'
+  if (delivery) delivery.status = 'cancelled'
+  if (['paid', 'captured', 'held-online'].includes(order.paymentStatus) ||
+      ['paymongo', 'xendit'].includes(order.paymentMethod)) {
+    order.paymentStatus = 'refund-pending'
+  }
   await notify(order.buyer, `${order.reference} was cancelled`, 'The seller cancelled this order and stock was restored.', `/buyer/orders/${order.id}`)
   await save()
   return { ok: true }

@@ -162,9 +162,11 @@ export function CartDrawer({ open, onClose }) {
                           type="button"
                           disabled={busy}
                           onClick={() => updateQuantity(entry, 0)}
-                          className="text-xs font-bold text-[#963b2d]"
+                          className="grid size-8 place-items-center rounded-lg border border-red-200 text-[#963b2d] hover:bg-red-50"
+                          aria-label={`Remove ${entry.product?.name || 'product'} from cart`}
+                          title="Remove from cart"
                         >
-                          Remove
+                          <DashboardIcon name="trash" className="size-4" />
                         </button>
                       </div>
                     </div>

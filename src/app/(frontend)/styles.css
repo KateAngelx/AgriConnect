@@ -24,6 +24,37 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #9aa79c transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #9aa79c;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #718173;
+  background-clip: padding-box;
+}
+
 body {
   overflow-x: hidden;
   background: var(--color-brand-page);
@@ -150,6 +181,7 @@ a {
     transform 160ms ease,
     background-color 160ms ease;
 }
+
 
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 3px solid color-mix(in srgb, var(--color-brand-500) 45%, transparent);

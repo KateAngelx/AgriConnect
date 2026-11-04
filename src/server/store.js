@@ -16,6 +16,7 @@ function createStore() {
     payments: [],
     notifications: [],
     applications: [],
+    settings: {},
   }
 }
 

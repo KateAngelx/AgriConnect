@@ -75,6 +75,8 @@ create table if not exists orders (
   status text not null,
   subtotal numeric not null default 0,
   delivery_fee numeric not null default 0,
+  platform_fee numeric not null default 0,
+  platform_fee_status text not null default 'none',
   created_at timestamptz default now(),
   items jsonb not null default '[]'::jsonb
 );
@@ -138,6 +140,12 @@ create table if not exists role_applications (
   payload jsonb not null default '{}'::jsonb,
   admin_note text default '',
   created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists platform_settings (
+  key text primary key,
+  value jsonb not null default '{}'::jsonb,
   updated_at timestamptz default now()
 );
 

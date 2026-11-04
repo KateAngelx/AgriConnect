@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { reviewApplicationAction } from '@/app/(frontend)/admin/actions'
 import { AdminApplicationCard } from '@/components/admin-application-card'
 import { DashboardShell } from '@/components/dashboard-shell'
-import { AlertBanner, WorkSection, workGridClass } from '@/components/dashboard-ui'
+import { AlertBanner, WorkSection, workStackClass } from '@/components/dashboard-ui'
 import { PagedRows } from '@/components/paged-rows'
 import { listRoleApplications } from '@/server/applications'
 import { requireAdmin } from '@/server/guards'
@@ -63,7 +63,7 @@ export default async function AdminApplicationsPage({ searchParams }) {
       {error ? <div className="mb-4"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
       {success ? <div className="mb-4"><AlertBanner tone="success">{success}</AlertBanner></div> : null}
 
-      <div className={workGridClass}>
+      <div className={workStackClass}>
         {status === 'all' ? (
           <>
             <ApplicationSection
@@ -129,7 +129,7 @@ function ApplicationSection({ title, description, rows, toolbar }) {
       toolbar={toolbar}
       empty={<p className="text-sm text-[#5c6f62]">Nothing in this section.</p>}
     >
-      <PagedRows className="space-y-4 p-4">
+      <PagedRows className="divide-y divide-[#d5e4d4]">
         {rows.map((entry) => (
           <AdminApplicationCard key={entry.id} entry={entry} reviewAction={reviewApplicationAction} />
         ))}

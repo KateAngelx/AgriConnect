@@ -7,10 +7,22 @@ function rowsOf(result, label) {
   return result.data ?? []
 }
 
+function optionalRowsOf(result) {
+  if (!result.error) return result.data ?? []
+  if (
+    result.error.code === 'PGRST205'
+    || /Could not find the table|relation .* does not exist/i.test(result.error.message || '')
+  ) return []
+  throw new Error(result.error.message)
+}
+
 async function replaceTable(client, table, rows, key = 'id') {
   const existing = rowsOf(await client.from(table).select(key), table)
   const nextIds = new Set(rows.map((row) => row[key]))
   const stale = existing.map((row) => row[key]).filter((id) => !nextIds.has(id))
+  // A partially loaded in-memory store must never erase database records.
+  // Legitimate deletions are still handled by explicit product/order actions.
+  if (!rows.length && existing.length) return
   if (stale.length) {
     const removed = await client.from(table).delete().in(key, stale)
     if (removed.error) throw new Error(`${table}: ${removed.error.message}`)
@@ -105,6 +117,8 @@ function snapshot(store) {
       status: order.status,
       subtotal: order.subtotal,
       delivery_fee: order.deliveryFee,
+      platform_fee: order.platformFee ?? 0,
+      platform_fee_status: order.platformFeeStatus ?? 'none',
       created_at: order.createdAt,
       items: order.items,
     })),
@@ -160,6 +174,10 @@ function snapshot(store) {
       created_at: item.createdAt,
       updated_at: item.updatedAt,
     })),
+    settings: Object.entries(store.settings || {}).map(([key, value]) => ({
+      key,
+      value,
+    })),
   }
 }
 
@@ -177,6 +195,10 @@ async function pushAll(client) {
   await replaceTable(client, 'wishlist_items', data.wishlist)
   await replaceTable(client, 'sessions', data.sessions, 'token')
   await replaceTable(client, 'role_applications', data.applications)
+  const settingsTable = await client.from('platform_settings').select('key').limit(1)
+  if (!settingsTable.error) {
+    await replaceTable(client, 'platform_settings', data.settings, 'key')
+  }
 }
 
 async function pullAll(client) {
@@ -193,6 +215,7 @@ async function pullAll(client) {
     wishlist,
     sessions,
     applications,
+    settings,
   ] = await Promise.all([
     client.from('profiles').select('*'),
     client.from('categories').select('*'),
@@ -206,8 +229,12 @@ async function pullAll(client) {
     client.from('wishlist_items').select('*'),
     client.from('sessions').select('*'),
     client.from('role_applications').select('*'),
+    client.from('platform_settings').select('*'),
   ])
   const store = getStore()
+  store.settings = Object.fromEntries(
+    optionalRowsOf(settings).map((row) => [row.key, row.value]),
+  )
   store.users = new Map(
     rowsOf(profiles, 'profiles').map((row) => [
       row.id,
@@ -296,6 +323,8 @@ async function pullAll(client) {
         status: row.status,
         subtotal: Number(row.subtotal),
         deliveryFee: Number(row.delivery_fee),
+        platformFee: Number(row.platform_fee || 0),
+        platformFeeStatus: row.platform_fee_status || 'none',
         createdAt: row.created_at,
       },
     ]),
@@ -480,8 +509,6 @@ export async function mirrorAuthUser({ email, password, name, role, phone }) {
 
 export async function signInWithSupabase(email, password) {
   try {
-    await ready()
-    if (globalThis.__agriconnectStatus?.mode !== 'supabase') return false
     const client = getSupabaseAdmin()
     if (!client) return false
     const { error } = await client.auth.signInWithPassword({ email, password })
