@@ -12,7 +12,7 @@ export function ActionLoadingOverlay() {
     function handleSubmit() {
       setActive(true)
       window.clearTimeout(timerRef.current)
-      timerRef.current = window.setTimeout(() => setActive(false), 30_000)
+      timerRef.current = window.setTimeout(() => setActive(false), 3_000)
     }
 
     function handleLinkClick(event) {
@@ -25,7 +25,7 @@ export function ActionLoadingOverlay() {
 
       setActive(true)
       window.clearTimeout(timerRef.current)
-      timerRef.current = window.setTimeout(() => setActive(false), 30_000)
+      timerRef.current = window.setTimeout(() => setActive(false), 3_000)
     }
 
     document.addEventListener('submit', handleSubmit, true)

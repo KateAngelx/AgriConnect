@@ -18,9 +18,11 @@ import {
   UserRound,
   Users,
   WalletCards,
+  X,
 } from 'lucide-react'
 
 const icons = {
+  close: X,
   'arrow-right': ArrowRight,
   grid: Grid2X2,
   users: Users,

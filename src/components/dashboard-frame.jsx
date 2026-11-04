@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { AuthenticatedHeaderActions } from './header-actions'
 import { activeNavHref, dashboardNav, dashboardNavRole, groupDashboardNav, homeForNav } from '@/components/dashboard-nav'
 import { DashboardIcon } from './dashboard-icons'
@@ -117,6 +117,7 @@ export function DashboardFrame({
   children,
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileNav, setMobileNav] = useState(false)
 
   useEffect(() => {
@@ -175,6 +176,16 @@ export function DashboardFrame({
       <div className="flex min-h-screen flex-col lg:pl-60">
         <header className="safe-top sticky top-0 z-30 border-b border-[#d5e4d4] bg-[#f3f8ef]">
           <div className="flex h-14 items-center gap-2 px-3 sm:h-16 sm:gap-3 sm:px-5 lg:px-8">
+            {pathname === '/checkout' ? (
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="grid size-10 shrink-0 place-items-center rounded-xl border border-brand-800/12 bg-white text-brand-900 lg:hidden"
+                aria-label="Go back"
+              >
+                <DashboardIcon name="close" className="size-5" />
+              </button>
+            ) : (
             <button
               type="button"
               onClick={() => setMobileNav((open) => !open)}
@@ -188,6 +199,7 @@ export function DashboardFrame({
                 <span className={`block h-0.5 w-4 rounded-full bg-current transition ${mobileNav ? '-translate-y-2 -rotate-45' : ''}`} />
               </span>
             </button>
+            )}
 
             <div className="min-w-0 flex-1">
               <p className="truncate text-[11px] font-semibold uppercase tracking-[0.04em] text-[#2e7d32]">{workspaceName}</p>
