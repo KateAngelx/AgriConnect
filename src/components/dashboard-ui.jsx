@@ -43,7 +43,7 @@ export function WorkSection({ title, description, count, href, linkLabel = 'View
   const isEmpty = count === 0
   const shouldBePrimary = linkVariant === 'primary'
   return (
-    <section className="ui-card flex h-[33rem] max-sm:h-[29rem] flex-col overflow-hidden">
+    <section className="ui-card flex h-[33rem] flex-col overflow-hidden max-sm:h-auto max-sm:overflow-visible">
       {toolbar ? <div className="shrink-0 border-b border-[#d5e4d4] bg-[#f7fbf4] px-4 py-3 sm:px-5">{toolbar}</div> : null}
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#d5e4d4] px-4 py-3 max-sm:flex-col max-sm:items-stretch sm:px-5">
         <div className="min-w-0">
@@ -66,7 +66,7 @@ export function WorkSection({ title, description, count, href, linkLabel = 'View
           ) : null}
         </div>
       </div>
-      <div className={`min-h-0 flex-1 ${isEmpty ? 'px-4 py-4 sm:px-5' : ''}`}>{isEmpty ? empty : children}</div>
+      <div className={`min-h-0 flex-1 max-sm:min-h-fit ${isEmpty ? 'px-4 py-4 sm:px-5' : ''}`}>{isEmpty ? empty : children}</div>
     </section>
   )
 }

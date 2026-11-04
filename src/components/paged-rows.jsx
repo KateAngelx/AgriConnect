@@ -15,7 +15,7 @@ export function PagedRows({ children, className = 'divide-y divide-[#d5e4d4]', a
   const canPage = items.length > pageSize
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden max-sm:h-auto max-sm:overflow-visible">
       <Tag className={className}>{visible}</Tag>
       <div className="mt-auto flex h-10 shrink-0 items-center justify-end gap-2 border-t border-[#d5e4d4] px-4">
           <button
