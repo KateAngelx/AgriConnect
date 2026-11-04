@@ -43,14 +43,14 @@ export function WorkSection({ title, description, count, href, linkLabel = 'View
   const isEmpty = count === 0
   const shouldBePrimary = linkVariant === 'primary'
   return (
-    <section className="ui-card flex h-[33rem] flex-col overflow-hidden">
+    <section className="ui-card flex h-[33rem] max-sm:h-[29rem] flex-col overflow-hidden">
       {toolbar ? <div className="shrink-0 border-b border-[#d5e4d4] bg-[#f7fbf4] px-4 py-3 sm:px-5">{toolbar}</div> : null}
-      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#d5e4d4] px-4 py-3 sm:px-5">
+      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#d5e4d4] px-4 py-3 max-sm:flex-col max-sm:items-stretch sm:px-5">
         <div className="min-w-0">
           <h2 className="text-[17px] font-semibold text-[#142016]">{title}</h2>
           {description ? <p className="mt-0.5 text-[13px] text-[#5c6f62]">{description}</p> : null}
         </div>
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-3 max-sm:justify-between">
           {typeof count === 'number' ? <p className="text-[13px] font-semibold text-[#2e7d32]">{count}</p> : null}
           {action}
           {href ? (

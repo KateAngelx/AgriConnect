@@ -41,10 +41,15 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
               <span className="flex items-center gap-2"><svg viewBox="0 0 24 24" className="size-4 fill-none stroke-[#c8f0b0] stroke-2" aria-hidden="true"><path d="M3 12h18M12 3v18"/></svg>Fresh pickup and delivery</span>
             </div>
           </div>
-          <div className="hidden max-w-xs justify-self-end rounded-xl bg-white p-4 text-[#142016] lg:block">
-            <p className="text-[13px] font-semibold text-[#2e7d32]">Marketplace</p>
-            <p className="mt-1 text-[15px] font-semibold">{products.length ? 'Fresh listings are live' : 'Listings are being prepared'}</p>
-            {sellers.length ? <p className="mt-1 text-[13px] text-[#5c6f62]">From approved local farms</p> : null}
+          <div className="hidden justify-self-end lg:block">
+            <div className="relative grid size-52 place-items-center rounded-full border border-white/30 bg-white/12 text-center text-white shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur-sm">
+              <div className="absolute -inset-3 rounded-full border border-dashed border-white/25" aria-hidden="true" />
+              <div>
+                <p className="text-[42px] font-bold leading-none">{products.length || 0}</p>
+                <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em]">Fresh listings</p>
+                <p className="mt-1 text-xs text-white/70">from local growers</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

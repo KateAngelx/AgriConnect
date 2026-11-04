@@ -57,26 +57,26 @@ export function AdminApplicationCard({ entry, reviewAction }) {
 
   return (
     <>
-    <li className="w-full px-4 py-3 sm:px-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <li className="w-full px-4 py-4 sm:px-5">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+        <div className="min-w-0">
           <p className="text-base font-bold text-[#142016]">{entry.user?.name || 'Applicant'}</p>
-          <p className="text-sm text-[#65766d]">
+          <p className="mt-0.5 break-words text-sm text-[#65766d]">
             {entry.user?.email} · {entry.applicationType} application
+          </p>
+          <p className="mt-2 line-clamp-2 text-sm text-[#5c6f62]">
+            {Object.entries(entry.payload || {})
+              .slice(0, 4)
+              .map(([key, value]) => `${key.replaceAll(/([A-Z])/g, ' $1')}: ${String(value)}`)
+              .join(' · ') || 'No extra details submitted.'}
           </p>
         </div>
         <StatusBadge status={entry.status} />
       </div>
-      <p className="mt-2 text-sm text-[#5c6f62]">
-        {Object.entries(entry.payload || {})
-          .slice(0, 4)
-          .map(([key, value]) => `${key.replaceAll(/([A-Z])/g, ' $1')}: ${String(value)}`)
-          .join(' · ') || 'No extra details submitted.'}
-      </p>
       {entry.adminNote ? (
         <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm text-[#647066]">Note: {entry.adminNote}</p>
       ) : null}
-      <div className="mt-3">
+      <div className="mt-3 flex flex-col items-start gap-1 border-l-2 border-[#dceccf] pl-3">
         <button
           type="button"
           onClick={requestAiHint}
@@ -107,7 +107,7 @@ export function AdminApplicationCard({ entry, reviewAction }) {
             placeholder="Note to the applicant (required when requesting additional information)"
             className="w-full rounded-xl border border-[#173c2c]/12 px-3 py-2 text-sm"
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <ReviewButton label="Under review" onClick={(event) => confirmSubmit(event, 'under-review')} />
             {entry.status !== 'needs-info' ? (
               <ReviewButton label="Request info" onClick={(event) => confirmSubmit(event, 'needs-info')} />
@@ -140,7 +140,7 @@ function ReviewButton({ label, primary, danger, onClick }) {
     <button
       type="submit"
       onClick={onClick}
-      className={primary ? 'btn btn-primary' : danger ? 'btn btn-danger' : 'btn btn-secondary'}
+      className={`w-full justify-center sm:w-auto ${primary ? 'btn btn-primary' : danger ? 'btn btn-danger' : 'btn btn-secondary'}`}
     >
       {label}
     </button>

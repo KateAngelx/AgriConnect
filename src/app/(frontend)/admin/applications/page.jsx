@@ -104,7 +104,7 @@ function DecisionFilters({ status, role, hrefFor }) {
 function FilterRow({ label, options, current, hrefFor }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <p className="w-20 text-[13px] font-semibold text-[#5c6f62]">{label}</p>
+      <p className="w-full text-[13px] font-semibold text-[#5c6f62] sm:w-20">{label}</p>
       {options.map(([value, name]) => (
         <Link
           key={value}
