@@ -100,7 +100,10 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
               <p className="text-[13px] font-semibold text-[#248a3d]">Join our community</p>
               <h2 className="mt-2 text-3xl font-semibold leading-tight text-[#1d1d1f]">Build your livelihood with AgriConnect.</h2>
               <p className="mt-3 text-[15px] leading-6 text-[#6e6e73]">Grow your customer base and sell your harvest through one trusted marketplace.</p>
-              <a href={partnerHref(user, '/account/become-seller')} className="btn btn-primary mt-5 w-fit">Apply as seller</a>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <a href={partnerHref(user, '/account/become-seller')} className="btn btn-primary w-fit">Apply as seller</a>
+                <a href={partnerHref(user, '/account/become-delivery')} className="btn btn-secondary w-fit">Apply as delivery partner</a>
+              </div>
             </div>
             <img src="https://images.unsplash.com/photo-1595855759920-86582396756a?auto=format&fit=crop&w=1200&q=85" alt="Farmer with freshly harvested produce" className="h-56 w-full object-cover lg:h-full" />
           </article>

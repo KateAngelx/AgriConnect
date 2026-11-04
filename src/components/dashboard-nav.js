@@ -20,12 +20,10 @@ export const dashboardNav = {
     { section: 'Shop', label: 'Overview', href: '/seller/dashboard', icon: 'grid' },
     { section: 'Shop', label: 'My shop', href: '/seller/shop', icon: 'store' },
     { section: 'Shop', label: 'Products', href: '/seller/products', icon: 'package' },
-    { section: 'Shop', label: 'Add product', href: '/seller/products?new=1', icon: 'leaf' },
     { section: 'Shop', label: 'Inventory', href: '/seller/inventory', icon: 'boxes' },
     { section: 'Orders', label: 'Orders', href: '/seller/orders', icon: 'clipboard' },
     { section: 'Payments', label: 'Sales reports', href: '/seller/reports', icon: 'package' },
     { section: 'Payments', label: 'Earnings', href: '/seller/earnings', icon: 'coin' },
-    { section: 'Account', label: 'Shop settings', href: '/seller/settings', icon: 'user' },
   ],
   delivery: [
     { section: 'Deliveries', label: 'Overview', href: '/delivery/dashboard', icon: 'grid' },
@@ -43,11 +41,6 @@ export const dashboardNav = {
   ],
 }
 
-export function dashboardExtrasForRole(role) {
-  if (role === 'buyer') return []
-  return [{ section: 'Marketplace', label: 'Marketplace', href: '/products', icon: 'store' }]
-}
-
 export function groupDashboardNav(items) {
   const groups = []
   for (const item of items) {
@@ -61,6 +54,8 @@ export function groupDashboardNav(items) {
 
 export function homeForNav(role) {
   if (role === 'admin') return '/admin/dashboard'
+  if (role === 'seller') return '/seller/dashboard'
+  if (role === 'delivery') return '/delivery/dashboard'
   return '/'
 }
 

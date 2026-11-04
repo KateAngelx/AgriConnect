@@ -3,15 +3,15 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { AuthenticatedHeaderActions } from './header-actions'
-import { activeNavHref, dashboardExtrasForRole, dashboardNav, dashboardNavRole, groupDashboardNav, homeForNav } from '@/components/dashboard-nav'
+import { activeNavHref, dashboardNav, dashboardNavRole, groupDashboardNav, homeForNav } from '@/components/dashboard-nav'
 import { DashboardIcon } from './dashboard-icons'
 import { InstallAppMenuButton } from './install-app-toast'
 import { pretty } from '@/lib/dashboard-format'
 
 const workspaceNames = {
   admin: 'Administration',
-  seller: 'Selling',
-  delivery: 'Delivering',
+  seller: 'Seller dashboard',
+  delivery: 'Delivery dashboard',
   buyer: 'Shopping',
 }
 
@@ -29,17 +29,45 @@ function workspaceLinks(user) {
   const roles = new Set(user?.roles ?? [])
   if (user?.role) roles.add(user.role)
   const links = []
-  if (roles.has('buyer') && user.status === 'approved') links.push({ label: 'Shopping', href: '/account', role: 'buyer' })
   if (roles.has('seller') && user.sellerId && user.status === 'approved') {
-    links.push({ label: 'Selling', href: '/seller/dashboard', role: 'seller' })
+    links.push({ label: 'Seller dashboard', hint: 'Your shop, orders, and earnings', href: '/seller/dashboard', role: 'seller' })
   }
   if (roles.has('delivery') && user.status === 'approved') {
-    links.push({ label: 'Delivering', href: '/delivery/dashboard', role: 'delivery' })
+    links.push({ label: 'Delivery dashboard', hint: 'Jobs you accept and commissions', href: '/delivery/dashboard', role: 'delivery' })
   }
   if (roles.has('admin') && user.status === 'approved') {
-    links.push({ label: 'Administration', href: '/admin/dashboard', role: 'admin' })
+    links.push({ label: 'Administration', hint: 'Approvals and payments', href: '/admin/dashboard', role: 'admin' })
   }
+  if (roles.has('buyer') && user.status === 'approved') {
+    links.push({ label: 'Shop as a customer', hint: 'Orders you placed and your wishlist', href: '/account', role: 'buyer' })
+  }
+  links.sort((a, b) => {
+    if (a.role === user.role) return -1
+    if (b.role === user.role) return 1
+    return 0
+  })
   return links
+}
+
+function WorkspaceSwitch({ workspaces, navRole, onNavigate, itemClass }) {
+  const others = workspaces.filter((item) => item.role !== navRole)
+  if (!others.length) return null
+  return (
+    <div className="mt-3 space-y-1">
+      <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">Also on this account</p>
+      {others.map((item) => (
+        <a
+          key={item.href}
+          href={item.href}
+          onClick={onNavigate}
+          className={itemClass}
+        >
+          <span className="block">{item.label}</span>
+          <span className="mt-0.5 block text-[11px] font-normal leading-4 text-[#5c6f62]">{item.hint}</span>
+        </a>
+      ))}
+    </div>
+  )
 }
 
 function NavGroups({ items, isActive, navBadges, unread, onNavigate }) {
@@ -110,7 +138,7 @@ export function DashboardFrame({
   }, [mobileNav])
   const navRole = dashboardNavRole(pathname, user)
   const roleLinks = dashboardNav[navRole] || dashboardNav.buyer
-  const navItems = [...roleLinks, ...dashboardExtrasForRole(navRole)]
+  const navItems = roleLinks
   const workspaces = workspaceLinks(user)
   const workspaceName = workspaceNames[navRole] || 'Workspace'
 
@@ -136,24 +164,11 @@ export function DashboardFrame({
         <div className="border-t border-brand-800/10 p-3">
           <p className="truncate px-2 text-sm font-semibold text-brand-900">{user.name}</p>
           <p className="px-2 text-xs text-brand-muted">{workspaceName}</p>
-          {workspaces.length > 1 ? (
-            <div className="mt-3 space-y-1">
-              <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">Switch workspace</p>
-              {workspaces.map((item) => {
-                const active = item.role === navRole
-                return (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    aria-current={active ? 'page' : undefined}
-                    className={`block rounded-lg px-2 py-1.5 text-[13px] ${active ? 'bg-white font-semibold text-[#1b5e20] shadow-[0_1px_2px_rgba(23,60,44,0.08)]' : 'text-[#142016] hover:bg-[#dcecd8]'}`}
-                  >
-                    {item.label}
-                  </a>
-                )
-              })}
-            </div>
-          ) : null}
+          <WorkspaceSwitch
+            workspaces={workspaces}
+            navRole={navRole}
+            itemClass="block rounded-lg px-2 py-1.5 text-[13px] font-semibold text-[#142016] hover:bg-[#dcecd8]"
+          />
         </div>
       </aside>
 
@@ -220,23 +235,12 @@ export function DashboardFrame({
                 </button>
               </div>
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                {workspaces.length > 1 ? (
-                  <div>
-                    <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">Switch workspace</p>
-                    <div className="space-y-1">
-                      {workspaces.map((item) => (
-                        <a
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => setMobileNav(false)}
-                          className={`flex min-h-11 items-center rounded-lg px-3 text-[15px] ${item.role === navRole ? 'bg-white font-semibold text-[#1b5e20] shadow-[0_1px_2px_rgba(23,60,44,0.08)]' : 'text-[#142016]'}`}
-                        >
-                          {item.label}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+                <WorkspaceSwitch
+                  workspaces={workspaces}
+                  navRole={navRole}
+                  onNavigate={() => setMobileNav(false)}
+                  itemClass="block rounded-lg px-3 py-2 text-[15px] font-semibold text-[#142016]"
+                />
                 <NavGroups
                   items={navItems}
                   isActive={isActive}
@@ -250,7 +254,7 @@ export function DashboardFrame({
           </div>
         ) : null}
 
-        <main className="flex-1 px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-6 lg:px-8 lg:py-8">
+        <main className={`flex-1 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-5 ${variant === 'overview' ? 'py-4 lg:px-6 lg:py-5' : 'py-5 sm:py-6 lg:px-8 lg:py-8'}`}>
           <div className={variant === 'overview' ? 'mx-auto max-w-7xl' : 'mx-auto max-w-6xl'}>
             {user.status !== 'approved' && !hasAnyRole(user, ['buyer', 'admin']) ? (
               <div className="mb-6 rounded-2xl border border-amber-200/80 bg-brand-warning px-4 py-3 text-sm text-amber-950">

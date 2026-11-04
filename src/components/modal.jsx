@@ -1,12 +1,19 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 
 export function Modal({ title, subtitle, closeHref, children, size = 'lg' }) {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
     const onKey = (event) => {
       if (event.key === 'Escape') router.push(closeHref)
     }
@@ -17,13 +24,15 @@ export function Modal({ title, subtitle, closeHref, children, size = 'lg' }) {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = previous
     }
-  }, [closeHref, router])
+  }, [closeHref, mounted, router])
 
   const width = size === 'xl' ? 'max-w-4xl' : 'max-w-2xl'
 
-  return (
+  if (!mounted) return null
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-[#142016]/40 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[1400] flex items-end justify-center bg-[#142016]/40 p-0 sm:items-center sm:p-4"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) router.push(closeHref)
@@ -46,6 +55,7 @@ export function Modal({ title, subtitle, closeHref, children, size = 'lg' }) {
         </div>
         <div className="overflow-y-auto px-5 py-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

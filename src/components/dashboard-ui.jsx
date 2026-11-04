@@ -1,47 +1,61 @@
-export function StatCard({ label, value, hint }) {
+import { DashboardIcon } from '@/components/dashboard-icons'
+
+export function StatCard({ label, value, hint, icon }) {
   const text = typeof value === 'string' || typeof value === 'number' ? String(value) : ''
   const valueClass = text.length > 12 ? 'text-xl' : 'text-3xl'
   return (
-    <div className="ui-card p-5">
-      <p className="text-sm font-medium text-brand-muted">{label}</p>
+    <div className="ui-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-medium text-brand-muted">{label}</p>
+        {icon ? (
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#e8f5e3] text-[#2e7d32]">
+            <DashboardIcon name={icon} className="size-4" />
+          </span>
+        ) : null}
+      </div>
       <p className={`mt-2 font-bold leading-none text-brand-900 ${valueClass}`}>{value}</p>
       {hint ? <p className="mt-2 text-sm text-brand-muted">{hint}</p> : null}
     </div>
   )
 }
 
-export function DashboardPanel({ title, description, children, action }) {
+export function DashboardPanel({ title, description, children, action, fit = false }) {
   return (
-    <section className="ui-card overflow-hidden">
+    <section className={`ui-card flex flex-col overflow-hidden ${fit ? '' : 'h-[33rem]'}`}>
       {(title || action) && (
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#173c2c]/8 px-5 py-4 sm:px-6">
-          <div>
-            {title ? <h2 className="text-base font-bold text-[#142016]">{title}</h2> : null}
-            {description ? <p className="mt-1 text-sm text-[#647066]">{description}</p> : null}
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#d5e4d4] px-4 py-3 sm:px-5">
+          <div className="min-w-0">
+            {title ? <h2 className="text-[17px] font-semibold text-[#142016]">{title}</h2> : null}
+            {description ? <p className="mt-0.5 text-[13px] text-[#5c6f62]">{description}</p> : null}
           </div>
-          {action}
+          {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       )}
-      <div className="p-5 sm:p-6">{children}</div>
+      <div className={fit ? 'p-4 sm:p-5' : 'min-h-0 flex-1 overflow-y-auto p-4 sm:p-5'}>{children}</div>
     </section>
   )
 }
 
-export function WorkSection({ title, description, count, href, linkLabel = 'View all', children, empty }) {
+export const workGridClass = 'grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 [&>:last-child:nth-child(odd)]:sm:col-span-2'
+export const workStackClass = 'grid grid-cols-1 items-stretch gap-4'
+
+export function WorkSection({ title, description, count, href, linkLabel = 'View all', action, toolbar, children, empty }) {
   const isEmpty = count === 0
   return (
-    <section className="space-y-3">
-      <div className="flex items-end justify-between gap-3">
-        <div>
+    <section className="ui-card flex h-[33rem] flex-col overflow-hidden">
+      {toolbar ? <div className="shrink-0 border-b border-[#d5e4d4] bg-[#f7fbf4] px-4 py-3 sm:px-5">{toolbar}</div> : null}
+      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#d5e4d4] px-4 py-3 sm:px-5">
+        <div className="min-w-0">
           <h2 className="text-[17px] font-semibold text-[#142016]">{title}</h2>
           {description ? <p className="mt-0.5 text-[13px] text-[#5c6f62]">{description}</p> : null}
         </div>
-        <div className="flex items-center gap-3">
-          <p className="text-[13px] font-semibold text-[#2e7d32]">{count}</p>
+        <div className="flex shrink-0 items-center gap-3">
+          {typeof count === 'number' ? <p className="text-[13px] font-semibold text-[#2e7d32]">{count}</p> : null}
+          {action}
           {href ? <a href={href} className="text-[13px] font-semibold text-[#2e7d32]">{linkLabel}</a> : null}
         </div>
       </div>
-      {isEmpty ? empty : children}
+      <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${isEmpty ? 'px-4 py-4 sm:px-5' : ''}`}>{isEmpty ? empty : children}</div>
     </section>
   )
 }
@@ -95,7 +109,7 @@ export function StatusBadge({ status }) {
 
 export function DataTable({ columns, children, embedded = false }) {
   const table = (
-    <div className={embedded ? '-mx-5 -my-5 overflow-x-auto sm:-mx-6 sm:-my-6' : 'overflow-x-auto'}>
+    <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead className="bg-brand-page text-xs font-semibold text-brand-muted">
           <tr>

@@ -1,6 +1,6 @@
-import { SellerInventoryAssistant } from '@/components/seller-inventory-assistant'
 import { DashboardShell, pretty } from '@/components/dashboard-shell'
-import { AlertBanner, DarkButton, EmptyState, FieldInput, StatusBadge } from '@/components/dashboard-ui'
+import { AlertBanner, DarkButton, FieldInput, StatusBadge, WorkSection, workStackClass } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { requireApprovedSeller } from '@/server/guards'
 import { listOwnedProducts } from '@/server/seller'
 import { updateStockAction } from '@/app/(frontend)/seller/actions'
@@ -15,17 +15,19 @@ export default async function InventoryPage({ searchParams }) {
     <DashboardShell user={user} title="Inventory" subtitle="Stock quantities buyers can purchase.">
       {error ? <div className="mb-6"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
 
-      <div className="mb-8">
-        <SellerInventoryAssistant />
-      </div>
-
-      {products.length ? (
-        <ul className="space-y-3">
+      <div className={workStackClass}>
+        <WorkSection
+          title="Stock"
+          description="Update how much buyers can still purchase."
+          count={products.length}
+          empty={<p className="text-sm text-[#5c6f62]">Add products first, then update quantities here.</p>}
+        >
+          <PagedRows>
           {products.map((product) => (
+            <li key={product.id}>
             <form
-              key={product.id}
               action={updateStockAction}
-              className="grid gap-4 rounded-2xl border border-brand-800/10 bg-white p-5 shadow-sm sm:grid-cols-[minmax(0,1fr)_9rem_auto] sm:items-end"
+              className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_7rem_auto] sm:items-end"
             >
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -55,11 +57,11 @@ export default async function InventoryPage({ searchParams }) {
               </div>
               <DarkButton type="submit">Save stock</DarkButton>
             </form>
+            </li>
           ))}
-        </ul>
-      ) : (
-        <EmptyState title="No inventory">Add products first, then update quantities here.</EmptyState>
-      )}
+          </PagedRows>
+        </WorkSection>
+      </div>
     </DashboardShell>
   )
 }

@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { BuyerOrderDetail } from '@/components/buyer-order-detail'
 import { DashboardShell } from '@/components/dashboard-shell'
-import { AlertBanner, PrimaryLink, StatusBadge, WorkSection } from '@/components/dashboard-ui'
+import { AlertBanner, PrimaryLink, StatusBadge, WorkSection, workGridClass } from '@/components/dashboard-ui'
 import { Modal } from '@/components/modal'
+import { PagedRows } from '@/components/paged-rows'
 import { peso } from '@/lib/dashboard-format'
 import { buyerOrderSection, groupBySection } from '@/lib/work-sections'
 import { assignmentForOrder } from '@/server/delivery'
@@ -50,8 +51,12 @@ export default async function BuyerOrdersPage({ searchParams }) {
         </div>
       ) : null}
 
+      <div className="mb-4 flex justify-end">
+        <PrimaryLink href="/products">Start shopping</PrimaryLink>
+      </div>
+
       {orders.docs.length ? (
-        <div className="space-y-8">
+        <div className={workGridClass}>
           {sections.map(([key, title, description]) => {
             const rows = grouped[key] || []
             return (
@@ -62,45 +67,37 @@ export default async function BuyerOrdersPage({ searchParams }) {
                 count={rows.length}
                 empty={<p className="text-sm text-[#5c6f62]">Nothing in this section.</p>}
               >
-                <ul className="space-y-3">
+                <PagedRows>
                   {rows.map((order) => (
-                    <li key={order.id}>
-                      <Link
-                        href={`/buyer/orders?order=${encodeURIComponent(order.id)}`}
-                        className="ui-card grid gap-4 p-5 transition hover:border-[#5dbb38] sm:grid-cols-[1fr_auto_auto] sm:items-center"
-                      >
-                        <div>
-                          <StatusBadge status={order.status} />
-                          <h3 className="mt-2 text-lg font-bold text-[#142016]">{order.reference}</h3>
-                          <p className="mt-1 text-sm text-[#647066]">
-                            {order.items.length} item{order.items.length === 1 ? '' : 's'} · {order.fulfillment}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-xs text-[#647066]">Payment</span>
-                          <p className="font-bold capitalize text-[#142016]">{order.paymentStatus}</p>
-                        </div>
-                        <p className="text-xl font-bold">{peso(order.subtotal + order.deliveryFee)}</p>
-                      </Link>
+                    <li key={order.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[#142016]">{order.reference}</p>
+                        <p className="text-[13px] text-[#5c6f62]">
+                          {order.items.length} item{order.items.length === 1 ? '' : 's'} · {order.fulfillment} · {peso(order.subtotal + order.deliveryFee)}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <StatusBadge status={order.status} />
+                        <Link href={`/buyer/orders?order=${encodeURIComponent(order.id)}`} className="text-sm font-bold text-[#4f8d3b]">
+                          Details
+                        </Link>
+                      </div>
                     </li>
                   ))}
-                </ul>
+                </PagedRows>
               </WorkSection>
             )
           })}
         </div>
       ) : (
-        <WorkSection
-          title="Active orders"
-          description="Placed and still on the way to you."
-          count={0}
-          empty={
-            <div className="text-sm text-[#5c6f62]">
-              <p>No orders yet.</p>
-              <PrimaryLink href="/products" className="mt-4">Start shopping</PrimaryLink>
-            </div>
-          }
-        />
+        <div className={workGridClass}>
+          <WorkSection
+            title="Active orders"
+            description="Placed and still on the way to you."
+            count={0}
+            empty={<p className="text-sm text-[#5c6f62]">No orders yet. Use Start shopping to browse the marketplace.</p>}
+          />
+        </div>
       )}
 
       {orderId ? (

@@ -8,9 +8,17 @@ export function LocationPicker({ lat, lng, onChange, height = 260, kind = 'place
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
   const markerRef = useRef(null)
+  const placeMarkerRef = useRef(null)
+  const onChangeRef = useRef(onChange)
   const [ready, setReady] = useState(false)
   const [locating, setLocating] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [selectedKey, setSelectedKey] = useState('')
   const [locationMessage, setLocationMessage] = useState('')
+
+  onChangeRef.current = onChange
 
   const initialLat = parseCoord(lat) ?? PH_DEFAULT_CENTER.lat
   const initialLng = parseCoord(lng) ?? PH_DEFAULT_CENTER.lng
@@ -50,10 +58,12 @@ export function LocationPicker({ lat, lng, onChange, height = 260, kind = 'place
         placeMarker(parseCoord(lat), parseCoord(lng))
       }
 
+      placeMarkerRef.current = placeMarker
+
       map.on('click', (event) => {
         const { lat: clickLat, lng: clickLng } = event.latlng
         placeMarker(clickLat, clickLng)
-        onChange?.({ lat: clickLat, lng: clickLng })
+        onChangeRef.current?.({ lat: clickLat, lng: clickLng })
       })
 
       mapInstance.current = map
@@ -68,6 +78,52 @@ export function LocationPicker({ lat, lng, onChange, height = 260, kind = 'place
       }
     }
   }, [])
+
+  const movePin = (latitude, longitude, zoom = 16, label = '') => {
+    placeMarkerRef.current?.(latitude, longitude)
+    mapInstance.current?.setView([latitude, longitude], zoom)
+    onChangeRef.current?.({ lat: latitude, lng: longitude, ...(label ? { label } : {}) })
+  }
+
+  const chooseResult = (result) => {
+    const key = `${result.lat},${result.lng}`
+    setSelectedKey(key)
+    movePin(result.lat, result.lng, result.zoom || 16, result.label || '')
+    setLocationMessage('Pin placed on the searched location. Save the form to keep it.')
+  }
+
+  const searchLocation = async () => {
+    const text = query.trim()
+    if (text.length < 2) {
+      setResults([])
+      setLocationMessage('Type a street, barangay, or city to search.')
+      return
+    }
+
+    setSearching(true)
+    setLocationMessage('Searching…')
+    try {
+      const response = await fetch(`/api/geo/search?q=${encodeURIComponent(text)}`)
+      const data = await response.json().catch(() => ({ results: [] }))
+      const matches = Array.isArray(data.results) ? data.results : []
+      if (!response.ok || !matches.length) {
+        setResults([])
+        setSelectedKey('')
+        setLocationMessage('No matching place in the Philippines. Try a more specific address.')
+        return
+      }
+      setResults(matches)
+      chooseResult(matches[0])
+      if (matches.length > 1) {
+        setLocationMessage('Pin placed on the closest match. Choose another result if this is not the exact place.')
+      }
+    } catch {
+      setResults([])
+      setLocationMessage('Search is unavailable right now. Drop the pin on the map instead.')
+    } finally {
+      setSearching(false)
+    }
+  }
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -87,16 +143,7 @@ export function LocationPicker({ lat, lng, onChange, height = 260, kind = 'place
           return
         }
 
-        if (mapInstance.current) {
-          void (async () => {
-            const L = (await import('leaflet')).default
-            if (!mapInstance.current) return
-            if (markerRef.current) markerRef.current.remove()
-            markerRef.current = L.marker([latitude, longitude], { icon: mapPinIcon(L, kind) }).addTo(mapInstance.current)
-            mapInstance.current.setView([latitude, longitude], 16)
-          })()
-        }
-        onChange?.({ lat: latitude, lng: longitude })
+        movePin(latitude, longitude, 16)
         setLocationMessage('Current location added. You can still adjust the pin on the map.')
         setLocating(false)
       },
@@ -115,8 +162,34 @@ export function LocationPicker({ lat, lng, onChange, height = 260, kind = 'place
 
   return (
     <div className="space-y-2">
+      <div className="flex gap-2">
+        <label className="sr-only" htmlFor={`pin-search-${kind}`}>Search location</label>
+        <input
+          id={`pin-search-${kind}`}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              void searchLocation()
+            }
+          }}
+          placeholder="Search street, barangay, or city"
+          className="ui-field min-w-0"
+          style={{ width: 'auto', flex: '1 1 0%' }}
+          autoComplete="off"
+        />
+        <button
+          type="button"
+          onClick={() => void searchLocation()}
+          disabled={!ready || searching}
+          className="shrink-0 rounded-xl border border-[#173c2c]/15 bg-white px-3 py-2 text-xs font-bold text-[#173c2c] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {searching ? 'Searching…' : 'Search'}
+        </button>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-[#647066]">Tap the map to set the pin, or use your current location.</p>
+        <p className="text-xs text-[#647066]">Search a place, tap the map, or use your current location.</p>
         <button
           type="button"
           onClick={useCurrentLocation}
@@ -129,6 +202,25 @@ export function LocationPicker({ lat, lng, onChange, height = 260, kind = 'place
       <div className="overflow-hidden rounded-xl border border-[#173c2c]/10">
         <div ref={mapRef} style={{ height }} className="w-full bg-[#eef0ea]" />
       </div>
+      {results.length > 1 ? (
+        <ul className="grid gap-1">
+          {results.map((result) => {
+            const key = `${result.lat},${result.lng}`
+            const selected = key === selectedKey
+            return (
+              <li key={key}>
+                <button
+                  type="button"
+                  onClick={() => chooseResult(result)}
+                  className={`w-full rounded-lg border px-3 py-2 text-left text-xs ${selected ? 'border-[#2e7d32] bg-[#f4faf0] font-semibold text-[#142016]' : 'border-[#173c2c]/10 bg-white text-[#142016]'}`}
+                >
+                  {result.label}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
       {locationMessage ? <p className="text-xs text-[#647066]" role="status">{locationMessage}</p> : null}
       {!ready ? <p className="text-xs text-[#647066]">Loading map…</p> : null}
     </div>

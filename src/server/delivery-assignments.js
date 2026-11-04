@@ -1,5 +1,6 @@
-import { readyStore } from './store'
+import { DELIVERY_FEE } from './payments'
 import { hasRole } from './roles'
+import { readyStore } from './store'
 
 function generalArea(text) {
   const value = String(text ?? '').trim()
@@ -49,7 +50,7 @@ export function deliveryAssignmentForViewer(store, delivery, order, viewerUserId
     id: delivery.id,
     orderId: delivery.orderId,
     status: delivery.status,
-    commission: delivery.commission,
+    commission: DELIVERY_FEE,
     commissionStatus: delivery.commissionStatus,
     reference: order?.reference || '',
     fulfillment: order?.fulfillment || 'delivery',

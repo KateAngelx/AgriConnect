@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { DashboardPanel } from '@/components/dashboard-ui'
 import { BuyerSettingsForm } from '@/components/buyer-settings-form'
@@ -9,14 +8,9 @@ export default async function AccountSettingsPage() {
 
   return (
     <DashboardShell user={user} title="Account settings" subtitle="Profile details and saved delivery locations.">
-      <DashboardPanel title="Profile">
+      <DashboardPanel fit title="Profile" description="Your name and the places you want orders delivered.">
         <BuyerSettingsForm user={user} />
       </DashboardPanel>
-      <p className="mt-4 text-sm text-[#647066]">
-        <Link href="/account" className="font-bold text-[#4b9f30]">
-          ← Back to account overview
-        </Link>
-      </p>
     </DashboardShell>
   )
 }

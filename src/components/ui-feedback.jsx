@@ -1,20 +1,34 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 export function ConfirmDialog({ open, title = 'Confirm action', message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, onConfirm, onCancel }) {
   const cancelRef = useRef(null)
+  const onCancelRef = useRef(onCancel)
+  onCancelRef.current = onCancel
 
   useEffect(() => {
-    if (open) cancelRef.current?.focus()
+    if (!open) return
+    cancelRef.current?.focus()
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (event) => {
+      if (event.key === 'Escape') onCancelRef.current?.()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previous
+      window.removeEventListener('keydown', onKey)
+    }
   }, [open])
 
-  if (!open) return null
-  return (
-    <div className="fixed inset-0 z-[100] grid place-items-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onCancel?.()}>
-      <div role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" className="w-full max-w-sm rounded-xl border border-[#e5e5ea] bg-white p-5 shadow-xl sm:p-6">
-        <div className="grid size-11 place-items-center rounded-full bg-[#eef8e8] text-xl" aria-hidden="true">?</div>
+  if (!open || typeof document === 'undefined') return null
+  return createPortal(
+    <div className="fixed inset-0 z-[1400] grid place-items-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onCancel?.()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" className="max-h-[min(32rem,calc(100dvh-2rem))] w-full max-w-sm overflow-y-auto rounded-xl border border-[#e5e5ea] bg-white p-5 shadow-xl sm:p-6">
+        <div className={`grid size-11 place-items-center rounded-full text-xl ${danger ? 'bg-[#fff1ed] text-[#963b2d]' : 'bg-[#eef8e8] text-[#2e7d32]'}`} aria-hidden="true">{danger ? '!' : '?'}</div>
         <h2 id="confirm-dialog-title" className="mt-4 text-lg font-bold text-[#142016]">{title}</h2>
         <p className="mt-2 text-sm leading-6 text-[#65766d]">{message}</p>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -30,7 +44,8 @@ export function ConfirmDialog({ open, title = 'Confirm action', message, confirm
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

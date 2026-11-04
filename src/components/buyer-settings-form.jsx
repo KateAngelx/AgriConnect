@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { updateProfileAction } from '@/app/(frontend)/account/settings/actions'
 import { LocationPicker } from '@/components/location-picker'
 
@@ -16,27 +16,48 @@ export function BuyerSettingsForm({ user }) {
   const [lng, setLng] = useState('')
   const [addressError, setAddressError] = useState('')
   const [hasUnsavedLocations, setHasUnsavedLocations] = useState(false)
+  const addressesInputRef = useRef(null)
+  const savedKey = JSON.stringify(user.savedAddresses ?? [])
 
   useEffect(() => {
-    if (state.ok) setHasUnsavedLocations(false)
-  }, [state.ok])
+    if (addressesInputRef.current) addressesInputRef.current.value = JSON.stringify(addresses)
+  }, [addresses])
 
-  const addAddress = () => {
+  useEffect(() => {
+    if (!state.ok) return
+    setAddresses(JSON.parse(savedKey))
+    setLabel('Home')
+    setAddress('')
+    setLandmark('')
+    setLat('')
+    setLng('')
+    setAddressError('')
+    setHasUnsavedLocations(false)
+  }, [state.ok, savedKey])
+
+  const clearDraft = () => {
+    setLabel('Home')
+    setAddress('')
+    setLandmark('')
+    setLat('')
+    setLng('')
+    setAddressError('')
+  }
+
+  const draftLocation = (currentAddresses) => {
+    const started = Boolean(address.trim() || landmark.trim() || lat || lng)
+    if (!started) return { empty: true }
     if (!label.trim() || address.trim().length < 10) {
-      setAddressError('Add a location name and a complete delivery address.')
-      return
+      return { error: 'Add a location name and a complete delivery address.' }
     }
     if (!lat || !lng) {
-      setAddressError('Drop a pin on the map before saving this location.')
-      return
+      return { error: 'Search for the place or drop a pin before saving this location.' }
     }
-    if (addresses.length >= 10) {
-      setAddressError('You can save up to 10 delivery locations.')
-      return
+    if (currentAddresses.length >= 10) {
+      return { error: 'You can save up to 10 delivery locations.' }
     }
-    setAddresses((current) => [
-      ...current,
-      {
+    return {
+      location: {
         id: crypto.randomUUID(),
         label: label.trim(),
         address: address.trim(),
@@ -44,17 +65,34 @@ export function BuyerSettingsForm({ user }) {
         lat: Number(lat),
         lng: Number(lng),
       },
-    ])
-    setAddress('')
-    setLandmark('')
-    setLat('')
-    setLng('')
-    setAddressError('')
+    }
+  }
+
+  const addAddress = () => {
+    const draft = draftLocation(addresses)
+    if (draft.empty) {
+      setAddressError('Add a location name, address, and pin first.')
+      return
+    }
+    if (draft.error) {
+      setAddressError(draft.error)
+      return
+    }
+    setAddresses((current) => [...current, draft.location])
+    clearDraft()
     setHasUnsavedLocations(true)
   }
 
+  const prepareSave = (event) => {
+    const draft = draftLocation(addresses)
+    if (draft.error) {
+      event.preventDefault()
+      setAddressError(draft.error)
+    }
+  }
+
   return (
-    <form action={action} className="max-w-2xl space-y-4">
+    <form action={action} onSubmit={prepareSave} className="max-w-2xl space-y-4">
       <div>
         <label className="text-sm font-bold" htmlFor="name">Full name</label>
         <input id="name" name="name" required defaultValue={user.name} className={field} />
@@ -63,11 +101,11 @@ export function BuyerSettingsForm({ user }) {
         <label className="text-sm font-bold" htmlFor="email">Email</label>
         <input id="email" name="email" readOnly value={user.email} className={`${field} bg-[#f7f7f2] text-[#647066]`} />
       </div>
-      <input type="hidden" name="savedAddresses" value={JSON.stringify(addresses)} />
+      <input ref={addressesInputRef} type="hidden" name="savedAddresses" defaultValue={JSON.stringify(addresses)} />
 
       <div className="border-t border-[#173c2c]/10 pt-5">
         <h3 className="text-lg font-bold">Saved delivery locations</h3>
-        <p className="mt-1 text-sm text-[#647066]">Save home, work, market, farm, or other places for faster checkout.</p>
+        <p className="mt-1 text-sm text-[#647066]">Search or drop a pin, then choose Save changes. The place is stored with your profile.</p>
         {addresses.length ? (
           <div className="mt-4 grid gap-3">
             {addresses.map((item) => (
@@ -88,19 +126,30 @@ export function BuyerSettingsForm({ user }) {
         <div className="mt-5 grid gap-4 rounded-2xl border border-[#173c2c]/10 p-4">
           <div>
             <label className="text-sm font-bold" htmlFor="addressLabel">Location name</label>
-            <input id="addressLabel" value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Home, Work, Market" className={field} />
+            <input id="addressLabel" name="draftLabel" value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Home, Work, Market" className={field} />
           </div>
           <div>
             <label className="text-sm font-bold" htmlFor="savedAddress">Complete address</label>
-            <textarea id="savedAddress" rows={3} value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Street, barangay, city/province" className={field} />
+            <textarea id="savedAddress" name="draftAddress" rows={3} value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Street, barangay, city/province" className={field} />
           </div>
           <div>
             <label className="text-sm font-bold" htmlFor="savedLandmark">Landmark or directions (optional)</label>
-            <input id="savedLandmark" value={landmark} onChange={(event) => setLandmark(event.target.value)} placeholder="Near gate, church, color of house" className={field} />
+            <input id="savedLandmark" name="draftLandmark" value={landmark} onChange={(event) => setLandmark(event.target.value)} placeholder="Near gate, church, color of house" className={field} />
           </div>
           <div>
             <p className="text-sm font-bold">Delivery pin</p>
-            <LocationPicker kind="dropoff" lat={lat} lng={lng} onChange={({ lat: nextLat, lng: nextLng }) => { setLat(String(nextLat)); setLng(String(nextLng)) }} />
+            <input type="hidden" name="draftLat" value={lat} />
+            <input type="hidden" name="draftLng" value={lng} />
+            <LocationPicker
+              kind="dropoff"
+              lat={lat}
+              lng={lng}
+              onChange={({ lat: nextLat, lng: nextLng, label: place }) => {
+                setLat(String(nextLat))
+                setLng(String(nextLng))
+                if (place) setAddress((current) => (current.trim() ? current : place))
+              }}
+            />
           </div>
           {addressError ? <p role="alert" className="text-sm font-bold text-[#963b2d]">{addressError}</p> : null}
           <button type="button" onClick={addAddress} className="btn btn-secondary w-fit">

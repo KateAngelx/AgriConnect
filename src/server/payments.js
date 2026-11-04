@@ -5,6 +5,156 @@ import { readyStore } from './store'
 export { verifyPaymongoWebhook } from './paymongo-signature.js'
 
 export const DELIVERY_FEE = 49
+export const PLATFORM_FEE_PER_KILO = 3
+
+const KILO_UNITS = new Set(['kg', 'kilo', 'kilos', 'kilogram', 'kilograms'])
+
+/** What a ₱3-per-kilo platform share would be. Checkout does not add this yet. */
+export function kiloPlatformFee(orders) {
+  let kilos = 0
+  for (const order of orders || []) {
+    for (const item of order.items || []) {
+      const unit = String(item.unit || '').toLowerCase()
+      if (KILO_UNITS.has(unit)) kilos += Number(item.quantity) || 0
+    }
+  }
+  return kilos * PLATFORM_FEE_PER_KILO
+}
+
+/* ── Per‑item platform commission ─────────────────────────────────────── */
+
+export const COMMISSION_PER_ITEM = 1          // default: ₱1 per item
+export const COMMISSION_MAX = 50              // maximum allowed rate
+
+/** Validate that a rate is between 0 and COMMISSION_MAX. */
+export function normalizeCommissionRate(value) {
+  const n = Number(value)
+  if (Number.isNaN(n)) return 0
+  if (n < 0) return 0
+  if (n > COMMISSION_MAX) return COMMISSION_MAX
+  return n
+}
+
+/** Read the current commission rate from admin settings stored in the store. */
+export function commissionRateFrom(store) {
+  // Try to read from store settings; fall back to default
+  const settings = store.settings || {}
+  if (settings.commissionRate !== undefined) {
+    return normalizeCommissionRate(settings.commissionRate)
+  }
+  return COMMISSION_PER_ITEM
+}
+
+/** Async version – reads the rate from the store via readyStore(). */
+export async function commissionRate() {
+  const store = await readyStore()
+  return commissionRateFrom(store)
+}
+
+/** Compute commission for a list of items at the given rate. */
+export function commissionForItems(items, rate) {
+  const r = normalizeCommissionRate(rate)
+  let totalQty = 0
+  for (const item of items || []) {
+    // Count each line's quantity; if unit is a kilo unit we still count qty as items
+    totalQty += Number(item.quantity) || 0
+  }
+  return totalQty * r
+}
+
+/** Get commission for a specific seller's items in an order. */
+export function commissionForSeller(order, sellerId, rate) {
+  const r = normalizeCommissionRate(rate)
+  const items = (order.items || []).filter((it) => {
+    const sid = itemSellerId(it)
+    return sid === sellerId
+  })
+  return commissionForItems(items, r)
+}
+
+/** Return the stored platform commission for this order (0 if not yet set). */
+export function orderPlatformFee(order) {
+  return Number(order.platformFee || 0)
+}
+
+/** Return commission computed from item quantities (no stored value needed). */
+export function orderReportPlatformFee(order) {
+  // Use default rate; callers that have a store should use commissionRateFrom(store)
+  const rate = COMMISSION_PER_ITEM
+  return commissionForItems(order.items || [], rate)
+}
+
+/** Determine who currently holds the commission cash: courier, seller, or platform. */
+export function platformFeeHolder(order) {
+  // Cash‑COD: collector (courier) holds it until admin remits
+  // Online: platform holds it until settlePlatformFeeOnline runs
+  if (order.paymentMethod === 'cash') return 'collector'
+  if (['paymongo', 'xendit'].includes(order.paymentMethod)) return 'platform'
+  return 'none'
+}
+
+/** Auto‑settle online platform commission for a single order. */
+export async function settlePlatformFeeOnline(orderId) {
+  const store = await readyStore()
+  const order = store.orders.get(orderId)
+  if (!order) return { error: 'Order not found.' }
+
+  const rate = await commissionRate()
+  const commission = commissionForItems(order.items || [], rate)
+
+  // For online payments the platform simply "holds" the commission;
+  // we record it on the order and notify the admin.
+  order.platformFee = commission
+  order.platformFeeStatus = 'held-online'
+  await notify(
+    order.buyer,
+    `Platform commission of ₱${commission} recorded for ${order.reference}.`,
+    `The ₱${commission} platform commission will be remitted to the admin.`,
+    `/admin/payments`
+  )
+  await save()
+  return { ok: true, commission }
+}
+
+/** Apply the platform commission rules and attach to the order. */
+export function computePlatformCommission(order, commissionRate) {
+  const rate = normalizeCommissionRate(commissionRate ?? COMMISSION_PER_ITEM)
+  const fulfillment = order.fulfillment || 'pickup'
+  const paymentMethod = order.paymentMethod || 'cash'
+
+  // Rule 1: Cash + pickup → ₱0 (no commission)
+  if (paymentMethod === 'cash' && fulfillment === 'pickup') {
+    order.platformFee = 0
+    order.platformFeeStatus = 'none'
+    return 0
+  }
+
+  // Rule 2: Cash + deliver → ₱1 × itemCount
+  if (paymentMethod === 'cash' && fulfillment === 'delivery') {
+    const commission = commissionForItems(order.items || [], rate)
+    order.platformFee = commission
+    order.platformFeeStatus = 'held-collector'
+    return commission
+  }
+
+  // Rule 3: Deliver + online → ₱1 × itemCount (auto‑settled)
+  if (fulfillment === 'delivery' && ['paymongo', 'xendit'].includes(paymentMethod)) {
+    const commission = commissionForItems(order.items || [], rate)
+    order.platformFee = commission
+    order.platformFeeStatus = 'held-online'
+    return commission
+  }
+
+  // Default: no commission
+  order.platformFee = 0
+  order.platformFeeStatus = 'none'
+  return 0
+}
+
+/** Alias for backward compatibility → reads from admin settings. */
+export function platformFeeRate(store) {
+  return commissionRateFrom(store)
+}
 
 export function orderTotal(order) {
   return Number(order.subtotal || 0) + Number(order.deliveryFee || 0)

@@ -51,7 +51,7 @@ export async function applySellerAction(_state, formData) {
     revalidatePath('/account')
     return { ok: true, draft: true }
   }
-  redirect('/account?apply=seller&submitted=1')
+  redirect('/account/become-seller?submitted=1')
 }
 
 export async function applyDeliveryAction(_state, formData) {
@@ -67,7 +67,7 @@ export async function applyDeliveryAction(_state, formData) {
     revalidatePath('/account')
     return { ok: true, draft: true }
   }
-  redirect('/account?apply=delivery&submitted=1')
+  redirect('/account/become-delivery?submitted=1')
 }
 
 export async function logoutAction() {

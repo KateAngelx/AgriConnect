@@ -1,7 +1,8 @@
 import { payCommissionAction } from '@/app/(frontend)/admin/actions'
 import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
 import { PeriodFilter } from '@/components/period-filter'
-import { AlertBanner, ListRow, StatusBadge, WorkSection } from '@/components/dashboard-ui'
+import { AlertBanner, StatusBadge, WorkSection, workGridClass } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { inPeriod, periodLabel, readPeriod } from '@/lib/report-period'
 import { listAssignments } from '@/server/admin'
 import { requireAdmin } from '@/server/guards'
@@ -17,86 +18,99 @@ export default async function AdminPaymentsPage({ searchParams }) {
   const [payments, deliveries] = await Promise.all([listPayments(), listAssignments()])
   const paymentsInRange = payments.filter((payment) => inPeriod(payment.createdAt, period))
   const deliveriesInRange = deliveries.filter((delivery) => inPeriod(delivery.updatedAt || delivery.order?.createdAt, period))
-  const readyToPay = deliveries.filter((delivery) => delivery.status === 'delivered' && delivery.commissionStatus !== 'paid')
+  const readyToPay = deliveries.filter((delivery) => ['delivered', 'completed'].includes(delivery.status) && delivery.commissionStatus !== 'paid')
   const paidOut = deliveriesInRange.filter((delivery) => delivery.commissionStatus === 'paid')
-  const buyerPayments = paymentsInRange
 
   return (
     <DashboardShell
       user={user}
       title="Commission payouts"
-      subtitle={`${periodLabel(period)} · buyer payments, and courier commissions still waiting to be paid.`}
+      subtitle={`${periodLabel(period)} · buyer checkouts, and the ₱49 courier fee after a delivery is finished.`}
     >
-      <div className="mb-6">
+      <div className="mb-4">
         <PeriodFilter period={period} pathname="/admin/payments" />
       </div>
-      {error ? <div className="mb-6"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
-      {success ? <div className="mb-6"><AlertBanner tone="success">{success}</AlertBanner></div> : null}
+      {error ? <div className="mb-4"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
+      {success ? <div className="mb-4"><AlertBanner tone="success">{success}</AlertBanner></div> : null}
 
-      <div className="space-y-8">
+      <div className={workGridClass}>
         <WorkSection
           title="Buyer payments"
-          description="Money recorded when a buyer checks out."
-          count={buyerPayments.length}
+          description="Recorded when a buyer checks out, including online payments."
+          count={paymentsInRange.length}
           empty={<p className="text-sm text-[#5c6f62]">No buyer payments yet.</p>}
         >
-          <ul className="space-y-3">
-            {buyerPayments.map((payment) => (
-              <ListRow
-                key={payment.id}
-                badge={<StatusBadge status={pretty(payment.status)} />}
-                title={payment.order?.reference || 'Order'}
-                meta={`${pretty(payment.method)} · ${payment.provider}${payment.providerReference ? ` · Ref ${payment.providerReference}` : ''}`}
-                amount={peso(payment.amount)}
-              />
+          <PagedRows>
+            {paymentsInRange.map((payment) => (
+              <li key={payment.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-[#142016]">{payment.order?.reference || 'Order'}</p>
+                  <p className="text-[13px] text-[#5c6f62]">
+                    {pretty(payment.method)} · {payment.provider}
+                    {payment.providerReference ? ` · ${payment.providerReference}` : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <p className="text-sm font-semibold">{peso(payment.amount)}</p>
+                  <StatusBadge status={pretty(payment.status)} />
+                </div>
+              </li>
             ))}
-          </ul>
+          </PagedRows>
         </WorkSection>
 
         <WorkSection
           title="Commissions ready to pay"
-          description="Every delivered job that is still unpaid. This queue stays visible in every period."
+          description="Finished deliveries, including orders the buyer paid online. Each courier fee is ₱49."
           count={readyToPay.length}
           empty={<p className="text-sm text-[#5c6f62]">No commission is waiting for payout.</p>}
         >
-          <ul className="space-y-3">
+          <PagedRows>
             {readyToPay.map((delivery) => (
-              <ListRow
-                key={delivery.id}
-                title={delivery.order?.reference || delivery.orderId}
-                meta={`${pretty(delivery.status)} · ${delivery.courier?.name || 'Unassigned'}`}
-                badge={<StatusBadge status={pretty(delivery.commissionStatus)} />}
-                amount={peso(delivery.commission)}
-                actions={
+              <li key={delivery.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-[#142016]">{delivery.order?.reference || delivery.orderId}</p>
+                  <p className="text-[13px] text-[#5c6f62]">
+                    {pretty(delivery.order?.paymentMethod)} · {pretty(delivery.status)} · {delivery.courier?.name || 'Unassigned'}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <p className="text-sm font-semibold">{peso(delivery.commission)}</p>
+                  <StatusBadge status={pretty(delivery.commissionStatus)} />
                   <form action={payCommissionAction}>
                     <input type="hidden" name="deliveryId" value={delivery.id} />
                     <button type="submit" className="btn btn-dark">
-                      Mark commission paid
+                      Mark paid
                     </button>
                   </form>
-                }
-              />
+                </div>
+              </li>
             ))}
-          </ul>
+          </PagedRows>
         </WorkSection>
 
         <WorkSection
           title="Commissions paid"
-          description="Payouts you have already marked paid."
+          description="Payouts already marked paid."
           count={paidOut.length}
           empty={<p className="text-sm text-[#5c6f62]">No commission has been marked paid.</p>}
         >
-          <ul className="space-y-3">
+          <PagedRows>
             {paidOut.map((delivery) => (
-              <ListRow
-                key={delivery.id}
-                title={delivery.order?.reference || delivery.orderId}
-                meta={`${pretty(delivery.status)} · ${delivery.courier?.name || 'Unassigned'}`}
-                badge={<StatusBadge status={pretty(delivery.commissionStatus)} />}
-                amount={peso(delivery.commission)}
-              />
+              <li key={delivery.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-[#142016]">{delivery.order?.reference || delivery.orderId}</p>
+                  <p className="text-[13px] text-[#5c6f62]">
+                    {pretty(delivery.order?.paymentMethod)} · {delivery.courier?.name || 'Unassigned'}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <p className="text-sm font-semibold">{peso(delivery.commission)}</p>
+                  <StatusBadge status={pretty(delivery.commissionStatus)} />
+                </div>
+              </li>
             ))}
-          </ul>
+          </PagedRows>
         </WorkSection>
       </div>
     </DashboardShell>

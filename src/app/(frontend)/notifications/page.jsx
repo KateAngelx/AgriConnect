@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { DashboardShell } from '@/components/dashboard-shell'
-import { EmptyState, SecondaryButton } from '@/components/dashboard-ui'
+import { SecondaryButton, WorkSection, workStackClass } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { formatTimeAgo } from '@/lib/dashboard-format'
 import { readAllNotificationsAction, readNotificationAction } from '@/app/(frontend)/notifications/actions'
 import { currentUser } from '@/server/auth'
@@ -14,19 +15,21 @@ export default async function NotificationsPage() {
 
   return (
     <DashboardShell user={user} title="Notifications" subtitle="Orders, approvals, payments, and deliveries.">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-brand-muted">
-          {unread ? `${unread} unread update${unread === 1 ? '' : 's'}` : 'No unread updates'}
-        </p>
-        <form action={readAllNotificationsAction}>
-          <SecondaryButton type="submit" disabled={!unread}>
-            Mark all read
-          </SecondaryButton>
-        </form>
-      </div>
-
-      {notes.length ? (
-        <ul className="ui-card divide-y divide-brand-800/10">
+      <div className={workStackClass}>
+        <WorkSection
+          title="Updates"
+          description={unread ? `${unread} unread` : 'No unread updates'}
+          count={notes.length}
+          action={
+            <form action={readAllNotificationsAction}>
+              <SecondaryButton type="submit" disabled={!unread}>
+                Mark all read
+              </SecondaryButton>
+            </form>
+          }
+          empty={<p className="text-sm text-[#5c6f62]">You are all caught up.</p>}
+        >
+          <PagedRows>
           {notes.map((note) => (
             <li key={note.id} className={`px-5 py-4 ${note.read ? '' : 'bg-brand-50/70'}`}>
               <div className="flex flex-wrap items-center gap-2">
@@ -52,10 +55,9 @@ export default async function NotificationsPage() {
               </div>
             </li>
           ))}
-        </ul>
-      ) : (
-        <EmptyState title="No updates">You are all caught up.</EmptyState>
-      )}
+          </PagedRows>
+        </WorkSection>
+      </div>
     </DashboardShell>
   )
 }

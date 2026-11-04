@@ -5,6 +5,7 @@ import { LocationRouteMap } from '@/components/location-route-map'
 import { peso, pretty } from '@/lib/dashboard-format'
 import { ConfirmButton } from '@/components/confirm-button'
 import { formatEstimatedArrival } from '@/lib/delivery-eta'
+import { PagedRows } from '@/components/paged-rows'
 
 const nextLabel = {
   open: 'Accept assignment',
@@ -13,83 +14,89 @@ const nextLabel = {
   'in-transit': 'Mark delivered',
 }
 
-export function DeliveryWorkPanel({ work, userId, bare = false, emptyMessage = 'Open jobs in your service area will appear here.' }) {
+export function DeliveryWorkPanel({ work, detailsHref = '/delivery/deliveries', bare = false, emptyMessage = 'Open jobs in your service area will appear here.' }) {
   const body = work.length ? (
-        <ul className="space-y-4">
-          {work.map((assignment) => (
-            <li
-              key={assignment.id}
-              className="rounded-xl border border-[#173c2c]/10 bg-[#fafbfa] p-4 sm:p-5"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-bold text-[#142016]">{assignment.reference || 'Assignment'}</p>
-                  {assignment.privacy === 'preview' ? (
-                    <p className="mt-1 text-sm text-[#65766d]">
-                      Pickup area: {assignment.pickupArea} · Delivery area: {assignment.deliveryAreaGeneral} ·
-                      Commission {peso(assignment.commission)}
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-sm text-[#65766d]">
-                      Deliver to: {assignment.deliveryAddress} · Contact {assignment.contactNumber || 'on file'} ·
-                      Commission {peso(assignment.commission)}
-                    </p>
-                  )}
-                  {assignment.privacy === 'preview' ? (
-                    <p className="mt-2 text-xs text-[#65766d]">
-                      Full pickup and delivery details appear after you accept this assignment.
-                    </p>
-                  ) : (
-                    <p className="mt-2 text-xs text-[#65766d]">
-                      Pickup: {assignment.pickupLocations} · Buyer: {assignment.buyerName || 'Buyer'}
-                      {assignment.estimatedArrivalAt ? (
-                        <> · ETA {formatEstimatedArrival(assignment.estimatedArrivalAt)}</>
-                      ) : null}
-                    </p>
-                  )}
-                </div>
-                <StatusBadge status={pretty(assignment.status)} />
-              </div>
-              {assignment.privacy === 'full' ? (
-                <div className="mt-4">
-                  <LocationRouteMap
-                    pickupLat={assignment.pickupLat}
-                    pickupLng={assignment.pickupLng}
-                    deliveryLat={assignment.deliveryLat}
-                    deliveryLng={assignment.deliveryLng}
-                    height={200}
-                  />
-                </div>
-              ) : null}
-              {nextLabel[assignment.status] &&
-              (assignment.status === 'open' || assignment.isMine) ? (
-                <form action={trackAction} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <input type="hidden" name="deliveryId" value={assignment.id} />
-                  <FieldInput name="note" placeholder="Tracking note (optional)" className="flex-1" />
-                  <ConfirmButton
-                    type="submit"
-                    message={`Confirm: ${nextLabel[assignment.status]}?`}
-                    className="btn btn-dark"
-                  >
-                    {nextLabel[assignment.status]}
-                  </ConfirmButton>
-                </form>
-              ) : null}
-              {assignment.isMine &&
-                assignment.order?.paymentMethod === 'cash-on-delivery' &&
-                assignment.order?.paymentStatus !== 'paid' &&
-                ['delivered', 'completed'].includes(assignment.order?.status) && (
-                  <form action={collectDeliveryAction} className="mt-3">
-                    <input type="hidden" name="orderId" value={assignment.orderId} />
-                    <DarkButton type="submit">Record cash collected</DarkButton>
-                  </form>
-                )}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-[#5c6f62]">{emptyMessage}</p>
-      )
+    <PagedRows>
+      {work.map((assignment) => (
+        <li key={assignment.id} className="flex items-center justify-between gap-3 px-4 py-3">
+          <div className="min-w-0">
+            <p className="font-semibold text-[#142016]">{assignment.reference || 'Assignment'}</p>
+            <p className="text-[13px] text-[#5c6f62]">
+              {assignment.privacy === 'preview'
+                ? `${assignment.pickupArea} → ${assignment.deliveryAreaGeneral} · ${peso(assignment.commission)}`
+                : `${assignment.buyerName || 'Buyer'} · ${peso(assignment.commission)}`}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <StatusBadge status={pretty(assignment.status)} />
+            <a href={`${detailsHref}?job=${encodeURIComponent(assignment.id)}`} className="text-sm font-bold text-[#4f8d3b]">
+              Details
+            </a>
+          </div>
+        </li>
+      ))}
+    </PagedRows>
+  ) : (
+    <p className="text-sm text-[#5c6f62]">{emptyMessage}</p>
+  )
   if (bare) return body
   return <OverviewPanel title="Manage assignments">{body}</OverviewPanel>
+}
+
+export function DeliveryAssignmentDetail({ assignment }) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          {assignment.privacy === 'preview' ? (
+            <p className="text-sm text-[#65766d]">
+              Pickup area: {assignment.pickupArea} · Delivery area: {assignment.deliveryAreaGeneral} · Commission {peso(assignment.commission)}
+            </p>
+          ) : (
+            <p className="text-sm text-[#65766d]">
+              Deliver to: {assignment.deliveryAddress} · Contact {assignment.contactNumber || 'on file'} · Commission {peso(assignment.commission)}
+            </p>
+          )}
+          {assignment.privacy === 'preview' ? (
+            <p className="mt-2 text-xs text-[#65766d]">Full pickup and delivery details appear after you accept this assignment.</p>
+          ) : (
+            <p className="mt-2 text-xs text-[#65766d]">
+              Pickup: {assignment.pickupLocations} · Buyer: {assignment.buyerName || 'Buyer'}
+              {assignment.estimatedArrivalAt ? <> · ETA {formatEstimatedArrival(assignment.estimatedArrivalAt)}</> : null}
+            </p>
+          )}
+        </div>
+        <StatusBadge status={pretty(assignment.status)} />
+      </div>
+      {assignment.privacy === 'full' ? (
+        <div className="mt-4">
+          <LocationRouteMap
+            pickupLat={assignment.pickupLat}
+            pickupLng={assignment.pickupLng}
+            deliveryLat={assignment.deliveryLat}
+            deliveryLng={assignment.deliveryLng}
+            height={220}
+          />
+        </div>
+      ) : null}
+      {nextLabel[assignment.status] && (assignment.status === 'open' || assignment.isMine) ? (
+        <form action={trackAction} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <input type="hidden" name="deliveryId" value={assignment.id} />
+          <FieldInput name="note" placeholder="Tracking note (optional)" className="flex-1" />
+          <ConfirmButton type="submit" message={`Confirm: ${nextLabel[assignment.status]}?`} className="btn btn-dark">
+            {nextLabel[assignment.status]}
+          </ConfirmButton>
+        </form>
+      ) : null}
+      {assignment.isMine &&
+      assignment.order?.paymentMethod === 'cash-on-delivery' &&
+      assignment.order?.paymentStatus !== 'paid' &&
+      ['delivered', 'completed'].includes(assignment.order?.status) ? (
+        <form action={collectDeliveryAction} className="mt-3">
+          <input type="hidden" name="orderId" value={assignment.orderId} />
+          <DarkButton type="submit">Record cash collected</DarkButton>
+        </form>
+      ) : null}
+    </div>
+  )
 }

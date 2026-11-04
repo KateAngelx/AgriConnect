@@ -1,5 +1,5 @@
 import { DashboardShell } from '@/components/dashboard-shell'
-import { DashboardPanel, DataTable, StatusBadge } from '@/components/dashboard-ui'
+import { DashboardPanel, DataTable, StatusBadge, workStackClass } from '@/components/dashboard-ui'
 import { listAuditEvents } from '@/server/admin'
 import { requireAdmin } from '@/server/guards'
 import Link from 'next/link'
@@ -39,9 +39,10 @@ export default async function AdminAuditPage({ searchParams }) {
         </form>
         <Link href="/api/admin/audit/export" className="btn btn-secondary">Export CSV</Link>
       </div>
-      <DashboardPanel title="Application decisions">
+      <div className={workStackClass}>
+      <DashboardPanel title="Application decisions" description={`${events.length} recorded in this view.`}>
         {events.length ? (
-          <DataTable columns={['Applicant', 'Type', 'Status', 'Note', 'Updated']}>
+          <DataTable embedded columns={['Applicant', 'Type', 'Status', 'Note', 'Updated']}>
             {events.map((event) => (
               <tr key={event.id}>
                 <td className="px-5 py-3 font-semibold">{event.applicant}</td>
@@ -60,6 +61,7 @@ export default async function AdminAuditPage({ searchParams }) {
           <p className="text-sm text-[#65766d]">No review events recorded yet.</p>
         )}
       </DashboardPanel>
+      </div>
     </DashboardShell>
   )
 }

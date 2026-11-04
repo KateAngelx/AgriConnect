@@ -1,7 +1,7 @@
 import { DashboardShell, peso } from '@/components/dashboard-shell'
 import { DeliveryWorkPanel } from '@/components/delivery-work-panel'
-import { MetricSection, MetricTile, NotificationFeed, QuickActions } from '@/components/dashboard-overview-ui'
-import { AlertBanner, WorkSection } from '@/components/dashboard-ui'
+import { MetricBoard, MetricTile, NotificationFeed, QuickActions } from '@/components/dashboard-overview-ui'
+import { AlertBanner, WorkSection, workGridClass } from '@/components/dashboard-ui'
 import { requireDelivery } from '@/server/guards'
 import { deliverySnapshot, listCourierWork } from '@/server/delivery'
 import { listNotifications } from '@/server/notifications'
@@ -29,22 +29,15 @@ export default async function DeliveryDashboardPage({ searchParams }) {
       {error ? <div className="mb-6"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
       {success ? <div className="mb-6"><AlertBanner tone="success">{success}</AlertBanner></div> : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-        <div className="min-w-0 space-y-6">
-          <MetricSection title="Deliveries" className="grid-cols-2">
-            <MetricTile label="Available to accept" value={available.length} icon="truck" tone="amber" />
-            <MetricTile label="Active deliveries" value={summary.active} icon="clipboard" tone="blue" />
-          </MetricSection>
-          <MetricSection title="Payments" className="grid-cols-2">
-            <MetricTile
-              label="Unpaid commission"
-              value={peso(summary.commission)}
-              hint="Delivered, not yet paid"
-              icon="coin"
-              tone="green"
-            />
-          </MetricSection>
+      <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+        <div className="min-w-0 space-y-4">
+          <MetricBoard>
+            <MetricTile section="Deliveries" label="Available to accept" value={available.length} icon="truck" tone="amber" />
+            <MetricTile section="Deliveries" label="Active deliveries" value={summary.active} icon="clipboard" tone="blue" />
+            <MetricTile section="Payments" label="Unpaid commission" value={peso(summary.commission)} hint="Delivered, not yet paid" icon="coin" tone="green" />
+          </MetricBoard>
 
+          <div className={workGridClass}>
           <WorkSection
             title="Available to accept"
             description="Open jobs in your service area. Details stay limited until you accept."
@@ -53,7 +46,7 @@ export default async function DeliveryDashboardPage({ searchParams }) {
             linkLabel="Open deliveries"
             empty={<p className="text-sm text-[#5c6f62]">No open jobs right now.</p>}
           >
-            <DeliveryWorkPanel bare work={available.slice(0, 3)} userId={user.id} emptyMessage="No open jobs right now." />
+            <DeliveryWorkPanel bare work={available} emptyMessage="No open jobs right now." />
           </WorkSection>
 
           <WorkSection
@@ -64,10 +57,16 @@ export default async function DeliveryDashboardPage({ searchParams }) {
             linkLabel="Open deliveries"
             empty={<p className="text-sm text-[#5c6f62]">You have no delivery in progress.</p>}
           >
-            <DeliveryWorkPanel bare work={active.slice(0, 3)} userId={user.id} emptyMessage="You have no delivery in progress." />
+            <DeliveryWorkPanel bare work={active} emptyMessage="You have no delivery in progress." />
           </WorkSection>
+          </div>
 
+        </div>
+
+        <aside className="space-y-4">
+          <NotificationFeed notes={notes} />
           <QuickActions
+            columns={1}
             actions={[
               { section: 'Deliveries', label: 'Active deliveries', href: '/delivery/deliveries', icon: 'truck' },
               { section: 'Deliveries', label: 'Delivered', href: '/delivery/history', icon: 'clipboard' },
@@ -75,10 +74,6 @@ export default async function DeliveryDashboardPage({ searchParams }) {
               { section: 'Account', label: 'Settings', href: '/delivery/settings', icon: 'user' },
             ]}
           />
-        </div>
-
-        <aside className="space-y-6">
-          <NotificationFeed notes={notes.slice(0, 5)} />
         </aside>
       </div>
     </DashboardShell>

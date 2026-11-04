@@ -2,7 +2,7 @@ import { refreshDeliveryEtaIso } from '@/lib/delivery-eta'
 import { isValidPin } from '@/lib/geo'
 import { deliveryAssignmentForViewer, listDeliveryWorkForUser } from './delivery-assignments'
 import { notify } from './notifications'
-import { collectCash } from './payments'
+import { collectCash, DELIVERY_FEE } from './payments'
 import { isApprovedDelivery, hasRole, rolesFromLegacy } from './roles'
 import { save } from './sync'
 import { readyStore } from './store'
@@ -48,11 +48,11 @@ const steps = {
 export async function deliverySnapshot(user) {
   const store = await readyStore()
   const mine = store.deliveries.filter((item) => item.courierId === user.id)
-  const pending = mine.filter((item) => item.commissionStatus === 'pending' && item.status === 'delivered')
+  const pending = mine.filter((item) => item.commissionStatus !== 'paid' && ['delivered', 'completed'].includes(item.status))
   return {
     open: store.deliveries.filter((item) => item.status === 'open').length,
-    active: mine.filter((item) => !['delivered', 'cancelled'].includes(item.status)).length,
-    commission: pending.reduce((sum, item) => sum + item.commission, 0),
+    active: mine.filter((item) => !['delivered', 'cancelled', 'completed'].includes(item.status)).length,
+    commission: pending.length * DELIVERY_FEE,
   }
 }
 
@@ -70,7 +70,7 @@ export async function listCommissions(user) {
       const delivery = store.deliveries.find((entry) => entry.id === item.id)
       return {
         ...item,
-        commission: delivery?.commission ?? item.commission ?? 0,
+        commission: DELIVERY_FEE,
         commissionStatus: delivery?.commissionStatus || 'pending',
         updatedAt: delivery?.updatedAt || '',
         order: store.orders.get(delivery?.orderId) ? {
@@ -110,7 +110,10 @@ export async function updateAssignment(user, deliveryId, note) {
   if (next === 'accepted') order.status = 'delivery-assigned'
   if (next === 'picked-up') order.status = 'courier-picked-up'
   if (next === 'in-transit') order.status = 'out-for-delivery'
-  if (next === 'delivered') order.status = 'delivered'
+  if (next === 'delivered') {
+    order.status = 'delivered'
+    delivery.commission = DELIVERY_FEE
+  }
   if (order.fulfillment === 'delivery') {
     order.estimatedArrivalAt = refreshDeliveryEtaIso(order, next)
   }

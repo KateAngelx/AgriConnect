@@ -1,12 +1,16 @@
-/** Role helpers — users keep buyer access while gaining seller/delivery/admin capabilities. */
+/** Role helpers — sellers and couriers keep buyer access. Administrators stay on the admin workspace. */
 
 const PARTNER_ROLES = new Set(['seller', 'delivery'])
 
 export function rolesFromLegacy(user) {
   if (!user) return []
-  if (Array.isArray(user.roles) && user.roles.length) return [...new Set(user.roles)]
+  if (Array.isArray(user.roles) && user.roles.length) {
+    const roles = [...new Set(user.roles)]
+    if (roles.includes('admin')) return ['admin']
+    return roles
+  }
   const role = user.role || 'buyer'
-  if (role === 'admin') return ['admin', 'buyer']
+  if (role === 'admin') return ['admin']
   if (role === 'seller') return ['buyer', 'seller']
   if (role === 'delivery') return ['buyer', 'delivery']
   return ['buyer']
@@ -20,7 +24,9 @@ export function normalizeUserRoles(user) {
     user.roles = ['buyer', ...roles]
   }
   if (roles.includes('admin')) {
+    user.roles = ['admin']
     user.role = 'admin'
+    return user
   } else if (roles.includes('seller') && !roles.includes('delivery')) {
     user.role = 'seller'
   } else if (roles.includes('delivery') && !roles.includes('seller')) {
@@ -75,5 +81,8 @@ export function publicRoles(user) {
 
 export function homeForRoles(user) {
   if (isApprovedAdmin(user)) return '/admin/dashboard'
+  if (user?.role === 'delivery' && isApprovedDelivery(user)) return '/delivery/dashboard'
+  if (isApprovedSeller(user)) return '/seller/dashboard'
+  if (isApprovedDelivery(user)) return '/delivery/dashboard'
   return '/'
 }

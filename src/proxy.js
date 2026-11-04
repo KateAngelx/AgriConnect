@@ -14,7 +14,7 @@ const PROTECTED_PREFIXES = [
   '/notifications',
 ]
 
-export function middleware(request) {
+export function proxy(request) {
   const { pathname } = request.nextUrl
   const needsSession = PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),

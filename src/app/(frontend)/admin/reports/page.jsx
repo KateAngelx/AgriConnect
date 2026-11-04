@@ -1,56 +1,43 @@
 import Link from 'next/link'
 import { DashboardShell, peso } from '@/components/dashboard-shell'
 import { PeriodFilter } from '@/components/period-filter'
+import { ActivityBars } from '@/components/dashboard-overview-ui'
 import { DashboardPanel, StatCard } from '@/components/dashboard-ui'
 import { periodLabel, readPeriod } from '@/lib/report-period'
-import { platformReport } from '@/server/admin'
+import { adminVolumeActivity, platformReport } from '@/server/admin'
 import { requireAdmin } from '@/server/guards'
 
 export default async function AdminReportsPage({ searchParams }) {
   const user = await requireAdmin()
   const query = await searchParams
   const period = readPeriod(query.period)
-  const report = await platformReport(period)
+  const [report, volume] = await Promise.all([platformReport(period), adminVolumeActivity()])
 
   return (
-    <DashboardShell user={user} title="Reports" subtitle={`${periodLabel(period)} · orders, payments, and applications in this range.`}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <DashboardShell user={user} title="Reports" subtitle={`${periodLabel(period)} · marketplace totals. Each seller still fulfills their own orders.`}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <PeriodFilter period={period} pathname="/admin/reports" />
         <Link href={`/api/admin/reports/export?period=${period}`} className="btn btn-secondary">
           Export CSV
         </Link>
       </div>
-      <div className="space-y-8">
-        <section className="space-y-3">
-          <h2 className="text-[13px] font-semibold text-[#2e7d32]">Orders</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard label="Orders" value={report.orders} hint={`${report.ordersAttention} still active`} />
-            <StatCard label="Order total" value={peso(report.orderVolume)} hint="Subtotal plus delivery fees" />
-          </div>
-        </section>
-        <section className="space-y-3">
-          <h2 className="text-[13px] font-semibold text-[#2e7d32]">Payments</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard label="Paid transactions" value={report.paidTransactions} hint={peso(report.paidVolume)} />
-            <StatCard label="Pending payments" value={report.payments} />
-          </div>
-        </section>
-        <section className="space-y-3">
-          <h2 className="text-[13px] font-semibold text-[#2e7d32]">Approving</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="New accounts" value={report.users} hint={`${report.buyers} buyers`} />
-            <StatCard label="Approved sellers" value={report.approvedSellers} />
-            <StatCard label="Delivery partners" value={report.approvedDelivery} />
-            <StatCard label="Applications" value={report.applicationsTotal} hint={`${report.applicationsApproved} approved · ${report.pending} waiting`} />
-          </div>
-        </section>
-      </div>
-      <div className="mt-6">
-        <DashboardPanel title="Marketplace volume" description="These totals follow the period above. Sellers still fulfill their own orders.">
-          <p className="text-sm text-[#5c6f62]">
-            {report.orders} orders · {peso(report.orderVolume)} in order value · {report.ordersAttention} still active · {report.activeProducts} listings are live on the marketplace.
-          </p>
-        </DashboardPanel>
+      <DashboardPanel fit title="This period" description="Combined totals for every seller. This is the marketplace view, not one farm's order list.">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard icon="clipboard" label="Orders" value={report.orders} hint={`${report.ordersAttention} still active`} />
+          <StatCard icon="coin" label="Order total" value={peso(report.orderVolume)} hint="Subtotal plus delivery fees" />
+          <StatCard icon="wallet" label="Paid transactions" value={report.paidTransactions} hint={peso(report.paidVolume)} />
+          <StatCard icon="wallet" label="Pending payments" value={report.payments} />
+          <StatCard icon="users" label="New accounts" value={report.users} hint={`${report.buyers} buyers`} />
+          <StatCard icon="store" label="Approved sellers" value={report.approvedSellers} />
+          <StatCard icon="truck" label="Delivery partners" value={report.approvedDelivery} />
+          <StatCard icon="package" label="Applications" value={report.applicationsTotal} hint={`${report.applicationsApproved} approved · ${report.pending} waiting`} />
+        </div>
+        <p className="mt-4 text-sm text-[#5c6f62]">
+          A ₱3 per kilo platform share on this period would be {peso(report.platformFee)}. Checkout does not add that fee yet, so sellers still receive their product price and couriers still receive the ₱49 delivery fee.
+        </p>
+      </DashboardPanel>
+      <div className="mt-4">
+        <ActivityBars title="Order value" series={volume} caption="Order total, including delivery fees, for each of the last 7 days." />
       </div>
     </DashboardShell>
   )

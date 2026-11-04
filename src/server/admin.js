@@ -1,6 +1,8 @@
+import { lastDaySeries, localDayKey } from '@/lib/day-series'
 import { inPeriod } from '@/lib/report-period'
 import { listRoleApplications } from './applications'
 import { notify } from './notifications'
+import { DELIVERY_FEE, kiloPlatformFee } from './payments'
 import { save } from './sync'
 import { readyStore } from './store'
 
@@ -68,20 +70,17 @@ export async function listRecentOrdersForAdmin(limit = 5) {
 
 export async function adminOrderActivity() {
   const store = await readyStore()
-  const days = []
-  for (let index = 6; index >= 0; index -= 1) {
-    const date = new Date()
-    date.setHours(0, 0, 0, 0)
-    date.setDate(date.getDate() - index)
-    const key = date.toISOString().slice(0, 10)
-    days.push({ label: date.toLocaleDateString('en-PH', { weekday: 'short' }), key, value: 0 })
-  }
-  for (const order of store.orders.values()) {
-    const key = String(order.createdAt || '').slice(0, 10)
-    const bucket = days.find((day) => day.key === key)
-    if (bucket) bucket.value += 1
-  }
-  return days.map(({ label, value }) => ({ label, value }))
+  const orders = [...store.orders.values()]
+  return lastDaySeries(orders, (order) => ({ key: localDayKey(order.createdAt), value: 1 }))
+}
+
+export async function adminVolumeActivity() {
+  const store = await readyStore()
+  const orders = [...store.orders.values()]
+  return lastDaySeries(orders, (order) => ({
+    key: localDayKey(order.createdAt),
+    value: (Number(order.subtotal) || 0) + (Number(order.deliveryFee) || 0),
+  }))
 }
 
 export async function listUsers() {
@@ -126,9 +125,12 @@ export async function markCommissionPaid(actor, deliveryId) {
   const store = await readyStore()
   const delivery = store.deliveries.find((item) => item.id === deliveryId)
   if (!delivery) return { error: 'Assignment not found.' }
-  if (delivery.status !== 'delivered') return { error: 'Pay a commission after delivery is complete.' }
+  if (!['delivered', 'completed'].includes(delivery.status)) {
+    return { error: 'Pay a commission after delivery is complete.' }
+  }
+  delivery.commission = DELIVERY_FEE
   delivery.commissionStatus = 'paid'
-  await notify(delivery.courierId, 'Commission paid', `₱${delivery.commission} was marked paid.`, '/delivery/commissions')
+  await notify(delivery.courierId, 'Commission paid', `₱${DELIVERY_FEE} was marked paid.`, '/delivery/commissions')
   await save()
   return { ok: true }
 }
@@ -158,6 +160,7 @@ export async function platformReport(period = 'all') {
     paidVolume: payments
       .filter((payment) => payment.status === 'paid')
       .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
+    platformFee: kiloPlatformFee(orders),
   }
 }
 
@@ -183,6 +186,7 @@ export async function listAssignments() {
   return store.deliveries
     .map((delivery) => ({
       ...delivery,
+      commission: DELIVERY_FEE,
       order: store.orders.get(delivery.orderId) || null,
       courier: store.users.get(delivery.courierId) || null,
     }))

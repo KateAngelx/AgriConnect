@@ -9,6 +9,7 @@ export function AiAssistantPanel({
   placeholder,
   requestBody = {},
   eyebrow = 'AI assistant',
+  framed = false,
 }) {
   const inputId = useId()
   const [question, setQuestion] = useState('')
@@ -46,7 +47,8 @@ export function AiAssistantPanel({
   }
 
   return (
-    <section className="ui-card p-5">
+    <section className={framed ? 'ui-card flex h-[33rem] flex-col overflow-hidden' : 'ui-card p-5'}>
+      <div className={framed ? 'min-h-0 flex-1 overflow-y-auto p-4 sm:p-5' : undefined}>
       <p className="page-eyebrow">{eyebrow}</p>
       <h2 className="mt-2 text-lg font-semibold text-[#142016]">{title}</h2>
       {description ? <p className="mt-2 text-sm leading-6 text-[#5c6f62]">{description}</p> : null}
@@ -75,6 +77,7 @@ export function AiAssistantPanel({
           {answer}
         </div>
       ) : null}
+      </div>
     </section>
   )
 }

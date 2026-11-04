@@ -10,7 +10,7 @@ export default async function AdminSettingsPage() {
 
   return (
     <DashboardShell user={user} title="Settings" subtitle="Preferences and payment connections for this account.">
-      <DashboardPanel title="Integrations">
+      <DashboardPanel title="Settings" description="Connections for this account, and what an administrator is responsible for.">
         <ul className="space-y-3 text-sm text-[#647066]">
           <li>
             <strong className="text-[#142016]">Supabase sync:</strong>{' '}
@@ -31,12 +31,14 @@ export default async function AdminSettingsPage() {
             {integrations.phoneOtp ? 'Enabled' : 'Off (email registration)'}
           </li>
         </ul>
-      </DashboardPanel>
-      <DashboardPanel title="AI assistant (Google Gemini & others)">
-        <AiIntegrationPanel />
-      </DashboardPanel>
-      <DashboardPanel title="Administrator scope">
-        <p className="text-sm leading-6 text-[#647066]">
+        <div className="mt-6 border-t border-[#d5e4d4] pt-6">
+          <h3 className="text-[15px] font-semibold text-[#142016]">AI assistant</h3>
+          <p className="mt-1 text-[13px] text-[#5c6f62]">Google Gemini and the other model connections.</p>
+          <div className="mt-4">
+            <AiIntegrationPanel />
+          </div>
+        </div>
+        <p className="mt-6 border-t border-[#d5e4d4] pt-6 text-sm leading-6 text-[#647066]">
           Platform administrators review applications, monitor marketplace activity, manage account access, and
           process courier commission payouts. Individual seller products, inventory, and order fulfillment remain
           the responsibility of each approved seller.

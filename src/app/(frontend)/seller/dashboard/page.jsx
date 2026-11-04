@@ -1,6 +1,7 @@
 import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
-import { MetricSection, MetricTile, NotificationFeed, QuickActions } from '@/components/dashboard-overview-ui'
-import { StatusBadge, WorkSection } from '@/components/dashboard-ui'
+import { MetricBoard, MetricTile, NotificationFeed, QuickActions } from '@/components/dashboard-overview-ui'
+import { StatusBadge, WorkSection, workGridClass } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { groupBySection, sellerOrderSection } from '@/lib/work-sections'
 import { requireSeller } from '@/server/guards'
 import { listNotifications } from '@/server/notifications'
@@ -28,23 +29,16 @@ export default async function SellerDashboardPage() {
       subtitle="Orders that need you, deliveries in progress, and shop totals."
       variant="overview"
     >
-      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-        <div className="min-w-0 space-y-6">
-          <MetricSection title="Orders">
-            <MetricTile label="Needs your action" value={needsYou.length} icon="clipboard" tone="amber" />
-            <MetricTile label="Active orders" value={activeOrders.length} hint="Waiting on the courier" icon="truck" tone="blue" />
-            <MetricTile label="Completed" value={completed.length} icon="package" tone="green" />
-          </MetricSection>
-          <MetricSection title="Shop" className="grid-cols-2">
-            <MetricTile
-              label="Low stock"
-              value={summary.lowStock}
-              hint={`${activeProducts} active listings`}
-              icon="boxes"
-              tone="teal"
-            />
-          </MetricSection>
+      <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+        <div className="min-w-0 space-y-4">
+          <MetricBoard>
+            <MetricTile section="Orders" label="Needs your action" value={needsYou.length} icon="clipboard" tone="amber" />
+            <MetricTile section="Orders" label="Active orders" value={activeOrders.length} hint="Waiting on the courier" icon="truck" tone="blue" />
+            <MetricTile section="Orders" label="Completed" value={completed.length} icon="package" tone="green" />
+            <MetricTile section="Shop" label="Low stock" value={summary.lowStock} hint={`${activeProducts} active listings`} icon="boxes" tone="teal" />
+          </MetricBoard>
 
+          <div className={workGridClass}>
           <WorkSection
             title="Needs your action"
             description="Confirm, prepare, or finish these before anything else."
@@ -53,7 +47,7 @@ export default async function SellerDashboardPage() {
             linkLabel="Open orders"
             empty={<p className="text-sm text-[#5c6f62]">No orders are waiting on you.</p>}
           >
-            <OrderPreview rows={needsYou.slice(0, 4)} />
+            <OrderPreview rows={needsYou} />
           </WorkSection>
 
           <WorkSection
@@ -64,7 +58,7 @@ export default async function SellerDashboardPage() {
             linkLabel="Open orders"
             empty={<p className="text-sm text-[#5c6f62]">No orders are in progress with a courier.</p>}
           >
-            <OrderPreview rows={activeOrders.slice(0, 4)} />
+            <OrderPreview rows={activeOrders} />
           </WorkSection>
 
           <WorkSection
@@ -75,21 +69,23 @@ export default async function SellerDashboardPage() {
             linkLabel="View earnings"
             empty={<p className="text-sm text-[#5c6f62]">Completed orders will show up here.</p>}
           >
-            <OrderPreview rows={completed.slice(0, 4)} />
+            <OrderPreview rows={completed} />
           </WorkSection>
+          </div>
 
+        </div>
+
+        <aside className="space-y-4">
+          <NotificationFeed notes={notes} />
           <QuickActions
+            columns={1}
             actions={[
               { section: 'Shop', label: 'Add product', href: '/seller/products?new=1', icon: 'package' },
               { section: 'Shop', label: 'Inventory', href: '/seller/inventory', icon: 'boxes' },
               { section: 'Orders', label: 'Orders', href: '/seller/orders', icon: 'clipboard' },
-              { section: 'Account', label: 'Shop settings', href: '/seller/settings', icon: 'user' },
+              { section: 'Account', label: 'My shop', href: '/seller/shop', icon: 'user' },
             ]}
           />
-        </div>
-
-        <aside className="space-y-6">
-          <NotificationFeed notes={notes.slice(0, 5)} />
         </aside>
       </div>
     </DashboardShell>
@@ -98,7 +94,7 @@ export default async function SellerDashboardPage() {
 
 function OrderPreview({ rows }) {
   return (
-    <ul className="ui-card divide-y divide-[#d5e4d4]">
+    <PagedRows>
       {rows.map((order) => (
         <li key={order.id} className="flex items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
@@ -107,9 +103,14 @@ function OrderPreview({ rows }) {
               {order.buyerName} · {order.fulfillment} · {peso(order.subtotal + order.deliveryFee)}
             </p>
           </div>
-          <StatusBadge status={pretty(order.status)} />
+          <div className="flex shrink-0 items-center gap-3">
+            <StatusBadge status={pretty(order.status)} />
+            <a href={`/seller/orders?order=${encodeURIComponent(order.id)}`} className="text-sm font-bold text-[#4f8d3b]">
+              Details
+            </a>
+          </div>
         </li>
       ))}
-    </ul>
+    </PagedRows>
   )
 }

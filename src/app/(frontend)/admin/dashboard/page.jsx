@@ -2,12 +2,12 @@ import { DashboardShell } from '@/components/dashboard-shell'
 import {
   ActivityBars,
   ApplicationRow,
-  MetricSection,
+  MetricBoard,
   MetricTile,
   NotificationFeed,
   QuickActions,
 } from '@/components/dashboard-overview-ui'
-import { DataTable, WorkSection } from '@/components/dashboard-ui'
+import { DataTable, WorkSection, workStackClass } from '@/components/dashboard-ui'
 import {
   adminOrderActivity,
   adminSnapshot,
@@ -35,36 +35,19 @@ export default async function AdminDashboardPage() {
       subtitle="Approvals, live orders, and payments that need attention."
       variant="overview"
     >
-      <div className="grid gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-5 sm:space-y-6">
-          <MetricSection title="Approving">
-            <MetricTile
-              label="Waiting for approval"
-              value={summary.pending}
-              hint={summary.pending ? 'Needs a decision' : 'Queue is clear'}
-              icon="clipboard"
-              tone="amber"
-            />
-            <MetricTile label="Approved sellers" value={summary.approvedSellers} icon="store" tone="teal" />
-            <MetricTile label="Delivery partners" value={summary.approvedDelivery} icon="truck" tone="blue" />
-          </MetricSection>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-4">
+          <MetricBoard>
+            <MetricTile section="Queue" label="Applications waiting" value={summary.pending} hint={summary.pending ? 'Needs a decision' : 'Queue is clear'} icon="clipboard" tone="amber" />
+            <MetricTile section="Sellers" label="Approved sellers" value={summary.approvedSellers} icon="store" tone="teal" />
+            <MetricTile section="Delivery" label="Approved couriers" value={summary.approvedDelivery} icon="truck" tone="blue" />
+            <MetricTile section="Orders" label="Orders in progress" value={summary.ordersAttention} hint="Not delivered or completed" icon="boxes" tone="amber" />
+            <MetricTile section="Orders" label="Orders finished" value={summary.orders - summary.ordersAttention} hint="Delivered, completed, or cancelled" icon="package" tone="green" />
+            <MetricTile section="Checkout" label="Unpaid checkouts" value={summary.payments} icon="wallet" tone="amber" />
+            <MetricTile section="Checkout" label="Paid checkouts" value={summary.paidTransactions} icon="coin" tone="teal" />
+          </MetricBoard>
 
-          <MetricSection title="Orders" className="grid-cols-2">
-            <MetricTile label="Active orders" value={summary.ordersAttention} hint="Not delivered or completed" icon="boxes" tone="amber" />
-            <MetricTile
-              label="Closed orders"
-              value={summary.orders - summary.ordersAttention}
-              hint="Delivered, completed, or cancelled"
-              icon="package"
-              tone="green"
-            />
-          </MetricSection>
-
-          <MetricSection title="Payments" className="grid-cols-2">
-            <MetricTile label="Pending buyer payments" value={summary.payments} icon="wallet" tone="amber" />
-            <MetricTile label="Paid buyer payments" value={summary.paidTransactions} icon="coin" tone="teal" />
-          </MetricSection>
-
+          <div className={workStackClass}>
           <WorkSection
             title="Waiting for approval"
             description="Pending and under-review partner applications."
@@ -73,31 +56,19 @@ export default async function AdminDashboardPage() {
             linkLabel="Open approvals"
             empty={<p className="text-sm text-[#5c6f62]">No application is waiting.</p>}
           >
-            <div className="ui-card overflow-hidden">
-              <DataTable embedded columns={['Applicant', 'Submitted', 'Status']}>
-                {applications.map((entry) => (
-                  <ApplicationRow
-                    key={entry.id}
-                    name={entry.user?.name || 'Applicant'}
-                    role={entry.applicationType}
-                    date={entry.createdAt ? new Date(entry.createdAt).toLocaleDateString('en-PH') : '—'}
-                    status={entry.status}
-                  />
-                ))}
-              </DataTable>
-            </div>
+            <DataTable embedded columns={['Applicant', 'Submitted', 'Status']}>
+              {applications.map((entry) => (
+                <ApplicationRow
+                  key={entry.id}
+                  name={entry.user?.name || 'Applicant'}
+                  role={entry.applicationType}
+                  date={entry.createdAt ? new Date(entry.createdAt).toLocaleDateString('en-PH') : '—'}
+                  status={entry.status}
+                />
+              ))}
+            </DataTable>
           </WorkSection>
-
-          <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
-            <ActivityBars title="Orders placed" series={activity} />
-            <QuickActions
-              actions={[
-                { section: 'Approving', label: 'Approvals', href: '/admin/applications', icon: 'clipboard' },
-                { section: 'Approving', label: 'Accounts', href: '/admin/users', icon: 'users' },
-                { section: 'Payments', label: 'Commission payouts', href: '/admin/payments', icon: 'wallet' },
-                { section: 'Payments', label: 'Reports', href: '/admin/reports', icon: 'package' },
-              ]}
-            />
+          <ActivityBars title="Orders placed" series={activity} caption="Orders placed on each of the last 7 days." />
           </div>
 
           <p className="text-[13px] text-[#5c6f62]">
@@ -107,8 +78,17 @@ export default async function AdminDashboardPage() {
           </p>
         </div>
 
-        <aside className="space-y-6">
-          <NotificationFeed notes={notes.slice(0, 5)} />
+        <aside className="space-y-4">
+          <NotificationFeed notes={notes} />
+          <QuickActions
+            columns={1}
+            actions={[
+              { section: 'Approving', label: 'Approvals', href: '/admin/applications', icon: 'clipboard' },
+              { section: 'Approving', label: 'Accounts', href: '/admin/users', icon: 'users' },
+              { section: 'Payments', label: 'Commission payouts', href: '/admin/payments', icon: 'wallet' },
+              { section: 'Payments', label: 'Reports', href: '/admin/reports', icon: 'package' },
+            ]}
+          />
         </aside>
       </div>
     </DashboardShell>

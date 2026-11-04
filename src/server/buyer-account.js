@@ -15,17 +15,22 @@ export async function updateBuyerProfile(user, input) {
   if (!record) return { error: 'Account not found.' }
   record.name = name
   if (Array.isArray(input.savedAddresses)) {
-    record.savedAddresses = input.savedAddresses
-      .slice(0, 10)
-      .map((address, index) => ({
+    const cleaned = []
+    for (const [index, address] of input.savedAddresses.slice(0, 10).entries()) {
+      const item = {
         id: String(address.id || '').trim() || `address-${index + 1}-${crypto.randomUUID().slice(0, 8)}`,
         label: String(address.label || '').trim().slice(0, 40),
         address: String(address.address || '').trim().slice(0, 300),
         landmark: String(address.landmark || '').trim().slice(0, 240),
         lat: Number(address.lat),
         lng: Number(address.lng),
-      }))
-      .filter((address) => address.label && address.address.length >= 10 && isValidPin(address.lat, address.lng))
+      }
+      if (!item.label || item.address.length < 10 || !isValidPin(item.lat, item.lng)) {
+        return { error: 'Each saved location needs a name, a full address, and a pin inside the Philippines.' }
+      }
+      cleaned.push(item)
+    }
+    record.savedAddresses = cleaned
   }
   const client = getSupabaseAdmin()
   if (client) {

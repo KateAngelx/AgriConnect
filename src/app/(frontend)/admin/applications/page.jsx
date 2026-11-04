@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { reviewApplicationAction } from '@/app/(frontend)/admin/actions'
 import { AdminApplicationCard } from '@/components/admin-application-card'
 import { DashboardShell } from '@/components/dashboard-shell'
-import { AlertBanner, WorkSection } from '@/components/dashboard-ui'
+import { AlertBanner, WorkSection, workGridClass } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { listRoleApplications } from '@/server/applications'
 import { requireAdmin } from '@/server/guards'
 
@@ -62,23 +63,20 @@ export default async function AdminApplicationsPage({ searchParams }) {
       {error ? <div className="mb-4"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
       {success ? <div className="mb-4"><AlertBanner tone="success">{success}</AlertBanner></div> : null}
 
-      <div className="mb-6 space-y-3">
-        <FilterRow label="Decision" options={statusFilters} current={status} hrefFor={(value) => hrefFor(value, role)} />
-        <FilterRow label="Role" options={roleFilters} current={role} hrefFor={(value) => hrefFor(status, value)} />
-      </div>
-
-      <div className="space-y-8">
+      <div className={workGridClass}>
         {status === 'all' ? (
           <>
             <ApplicationSection
               title="Waiting for approval"
               description="Pending, under review, or waiting on more information."
               rows={waiting}
+              toolbar={<DecisionFilters status={status} role={role} hrefFor={hrefFor} />}
             />
             <ApplicationSection
               title="Already decided"
               description="Approved and rejected applications."
               rows={decided}
+              toolbar={<DecisionFilters status={status} role={role} hrefFor={hrefFor} />}
             />
           </>
         ) : (
@@ -86,10 +84,20 @@ export default async function AdminApplicationsPage({ searchParams }) {
             title={statusFilters.find(([value]) => value === status)?.[1] || 'Applications'}
             description={status === 'queue' ? 'These still need a decision.' : 'Applications that match this decision.'}
             rows={shown}
+            toolbar={<DecisionFilters status={status} role={role} hrefFor={hrefFor} />}
           />
         )}
       </div>
     </DashboardShell>
+  )
+}
+
+function DecisionFilters({ status, role, hrefFor }) {
+  return (
+    <div className="space-y-3">
+      <FilterRow label="Decision" options={statusFilters} current={status} hrefFor={(value) => hrefFor(value, role)} />
+      <FilterRow label="Role" options={roleFilters} current={role} hrefFor={(value) => hrefFor(status, value)} />
+    </div>
   )
 }
 
@@ -102,7 +110,7 @@ function FilterRow({ label, options, current, hrefFor }) {
           key={value}
           href={hrefFor(value)}
           className={`rounded-lg px-3 py-1.5 text-[13px] font-medium ${
-            current === value ? 'bg-[#e3f3d8] text-[#1b5e20]' : 'text-[#142016] hover:bg-[#e3f3d8]'
+            current === value ? 'bg-white text-[#1b5e20] shadow-sm' : 'bg-white/70 text-[#142016] hover:bg-white'
           }`}
         >
           {name}
@@ -112,19 +120,20 @@ function FilterRow({ label, options, current, hrefFor }) {
   )
 }
 
-function ApplicationSection({ title, description, rows }) {
+function ApplicationSection({ title, description, rows, toolbar }) {
   return (
     <WorkSection
       title={title}
       description={description}
       count={rows.length}
+      toolbar={toolbar}
       empty={<p className="text-sm text-[#5c6f62]">Nothing in this section.</p>}
     >
-      <ul className="space-y-4">
+      <PagedRows className="space-y-4 p-4">
         {rows.map((entry) => (
           <AdminApplicationCard key={entry.id} entry={entry} reviewAction={reviewApplicationAction} />
         ))}
-      </ul>
+      </PagedRows>
     </WorkSection>
   )
 }

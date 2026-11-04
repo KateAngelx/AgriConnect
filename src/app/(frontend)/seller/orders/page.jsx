@@ -2,10 +2,12 @@ import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
 import {
   AlertBanner,
   DarkButton,
-  DashboardPanel,
   StatusBadge,
   WorkSection,
+  workGridClass,
 } from '@/components/dashboard-ui'
+import { Modal } from '@/components/modal'
+import { PagedRows } from '@/components/paged-rows'
 import { requireApprovedSeller } from '@/server/guards'
 import { ConfirmButton } from '@/components/confirm-button'
 import { LocationMap } from '@/components/location-map'
@@ -29,13 +31,15 @@ export default async function SellerOrdersPage({ searchParams }) {
   const success = typeof query.success === 'string' ? query.success : ''
   const orders = await listOwnedOrders(user)
   const grouped = groupBySection(orders, sellerOrderSection)
+  const orderId = typeof query.order === 'string' ? query.order : ''
+  const selected = orders.find((order) => order.id === orderId) || null
 
   return (
     <DashboardShell user={user} title="Orders" subtitle="Orders that need you, ones still moving, and finished orders.">
       {error ? <div className="mb-6"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
       {success ? <div className="mb-6"><AlertBanner tone="success">{success}</AlertBanner></div> : null}
 
-      <div className="space-y-8">
+      <div className={workGridClass}>
         {sections.map(([key, title, description]) => {
           const rows = grouped[key] || []
           return (
@@ -46,15 +50,38 @@ export default async function SellerOrdersPage({ searchParams }) {
               count={rows.length}
               empty={<p className="text-sm text-[#5c6f62]">Nothing in this section.</p>}
             >
-              <div className="space-y-4">
+              <PagedRows>
                 {rows.map((order) => (
-                  <SellerOrderCard key={order.id} order={order} />
+                  <li key={order.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[#142016]">{order.reference}</p>
+                      <p className="text-[13px] text-[#5c6f62]">
+                        {order.buyerName} · {order.fulfillment} · {peso(order.subtotal + order.deliveryFee)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <StatusBadge status={pretty(order.status)} />
+                      <a href={`/seller/orders?order=${encodeURIComponent(order.id)}`} className="text-sm font-bold text-[#4f8d3b]">
+                        Details
+                      </a>
+                    </div>
+                  </li>
                 ))}
-              </div>
+              </PagedRows>
             </WorkSection>
           )
         })}
       </div>
+      {orderId ? (
+        <Modal
+          title={selected?.reference || 'Order'}
+          subtitle={selected ? `${selected.buyerName} · ${selected.fulfillment}` : 'This order is not in your shop.'}
+          closeHref="/seller/orders"
+          size="xl"
+        >
+          {selected ? <SellerOrderDetail order={selected} /> : <p className="text-sm text-[#5c6f62]">This order is not in your shop.</p>}
+        </Modal>
+      ) : null}
     </DashboardShell>
   )
 }
@@ -84,19 +111,17 @@ function OrderRoute({ order }) {
   )
 }
 
-function SellerOrderCard({ order }) {
+function SellerOrderDetail({ order }) {
   const nextAction = nextSellerAction(order.fulfillment, order.status)
   return (
-    <DashboardPanel
-      title={order.reference}
-      description={`${order.buyerName} · ${order.fulfillment} · ${pretty(order.paymentStatus)} payment`}
-      action={
+    <div>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <p className="text-sm text-[#5c6f62]">{pretty(order.paymentStatus)} payment</p>
         <div className="text-right">
           <StatusBadge status={pretty(order.status)} />
           <p className="mt-2 text-xl font-bold">{peso(order.subtotal + order.deliveryFee)}</p>
         </div>
-      }
-    >
+      </div>
       <ul className="space-y-1 text-sm text-[#647066]">
         {order.items.map((item) => (
           <li key={item.id}>
@@ -142,6 +167,6 @@ function SellerOrderCard({ order }) {
           </form>
         )}
       </div>
-    </DashboardPanel>
+    </div>
   )
 }

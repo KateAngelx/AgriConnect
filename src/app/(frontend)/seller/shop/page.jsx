@@ -14,21 +14,19 @@ export default async function SellerShopPage() {
   return (
     <DashboardShell user={user} title="My shop" subtitle="Farm profile buyers see on the marketplace.">
       {seller ? (
-        <>
-          <DashboardPanel title={seller.farmName}>
+        <DashboardPanel fit title={seller.farmName} description="What buyers see, and the details you can update.">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <StatusBadge status={seller.status} />
-            <p className="mt-3 text-sm text-[#647066]">{seller.location}</p>
-            <p className="mt-2 text-sm leading-6 text-[#647066]">{seller.description || 'Add a description for buyers.'}</p>
-            <Link href={`/sellers/${seller.id}`} className="mt-4 inline-block text-sm font-bold text-[#4b9f30]">
+            <Link href={`/sellers/${seller.id}`} className="text-sm font-bold text-[#4b9f30]">
               View public shop page →
             </Link>
-          </DashboardPanel>
-          <div className="mt-6">
-            <DashboardPanel title="Update shop profile">
-              <SellerProfileForm seller={seller} />
-            </DashboardPanel>
           </div>
-        </>
+          <p className="mt-3 text-sm text-[#647066]">{seller.location}</p>
+          <p className="mt-2 text-sm leading-6 text-[#647066]">{seller.description || 'Add a description for buyers.'}</p>
+          <div className="mt-6 border-t border-[#d5e4d4] pt-6">
+            <SellerProfileForm seller={seller} />
+          </div>
+        </DashboardPanel>
       ) : (
         <p className="text-sm text-[#647066]">Shop profile will appear after seller approval.</p>
       )}

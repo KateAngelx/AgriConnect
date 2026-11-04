@@ -47,50 +47,45 @@ function canUseBuyerTools(user) {
 }
 
 function profileLinks(user) {
-  const links = []
+  const partner = []
+  if (hasUserRole(user, 'seller') && user.sellerId && user.status === 'approved') {
+    partner.push({ href: '/seller/dashboard', label: 'Seller dashboard', icon: 'store', group: 'Account' })
+  }
+  if (hasUserRole(user, 'delivery') && user.status === 'approved') {
+    partner.push({ href: '/delivery/dashboard', label: 'Delivery dashboard', icon: 'truck', group: 'Account' })
+  }
+  if (hasUserRole(user, 'admin') && user.status === 'approved') {
+    partner.push({ href: '/admin/dashboard', label: 'Administration', icon: 'grid', group: 'Account' })
+  }
+  if (partner.length) {
+    const links = [...partner]
+    if (canUseBuyerTools(user)) {
+      links.push({ href: '/account', label: 'Shop as a customer', icon: 'cart', group: 'Account' })
+      links.push({ href: '/account/settings', label: 'Account settings', icon: 'user', group: 'Account' })
+    } else if (hasUserRole(user, 'admin')) {
+      links.push({ href: '/admin/settings', label: 'Settings', icon: 'user', group: 'Account' })
+    }
+    return links
+  }
   if (canUseBuyerTools(user)) {
-    links.push(
+    return [
       { href: '/account', label: 'Overview', icon: 'user', group: 'Shopping' },
       { href: '/buyer/orders', label: 'My orders', icon: 'clipboard', group: 'Shopping' },
       { href: '/wishlist', label: 'Wishlist', icon: 'heart', group: 'Shopping' },
       { href: '/account/settings', label: 'Account settings', icon: 'grid', group: 'Shopping' },
-    )
+    ]
   }
-  if (hasUserRole(user, 'seller') && user.sellerId && user.status === 'approved') {
-    links.push(
-      { href: '/seller/dashboard', label: 'Overview', icon: 'grid', group: 'Selling' },
-      { href: '/seller/products', label: 'Products', icon: 'package', group: 'Selling' },
-      { href: '/seller/orders', label: 'Orders', icon: 'clipboard', group: 'Selling' },
-    )
-  }
-  if (hasUserRole(user, 'delivery') && user.status === 'approved') {
-    links.push(
-      { href: '/delivery/dashboard', label: 'Overview', icon: 'grid', group: 'Delivering' },
-      { href: '/delivery/deliveries', label: 'Active deliveries', icon: 'truck', group: 'Delivering' },
-      { href: '/delivery/settings', label: 'Settings', icon: 'user', group: 'Delivering' },
-    )
-  }
-  if (hasUserRole(user, 'admin') && user.status === 'approved') {
-    links.push(
-      { href: '/admin/dashboard', label: 'Overview', icon: 'grid', group: 'Administration' },
-      { href: '/admin/applications', label: 'Approvals', icon: 'clipboard', group: 'Administration' },
-      { href: '/admin/users', label: 'Accounts', icon: 'users', group: 'Administration' },
-    )
-  }
-  if (!links.length) {
-    links.push({ href: homeForNav(user.role), label: 'Dashboard', icon: 'grid', group: 'Account' })
-  }
-  return links
+  return [{ href: homeForNav(user.role), label: 'Dashboard', icon: 'grid', group: 'Account' }]
 }
 
 export function RoleDashboardLinks({ user }) {
   if (!user) return null
   const links = []
   if (hasUserRole(user, 'seller') && user.sellerId && user.status === 'approved') {
-    links.push({ href: '/seller/dashboard', label: 'Selling' })
+    links.push({ href: '/seller/dashboard', label: 'Seller dashboard' })
   }
   if (hasUserRole(user, 'delivery') && user.status === 'approved') {
-    links.push({ href: '/delivery/dashboard', label: 'Delivering' })
+    links.push({ href: '/delivery/dashboard', label: 'Delivery dashboard' })
   }
   if (hasUserRole(user, 'admin') && user.status === 'approved') {
     links.push({ href: '/admin/dashboard', label: 'Administration' })

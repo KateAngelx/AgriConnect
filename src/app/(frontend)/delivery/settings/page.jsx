@@ -1,5 +1,5 @@
 import { DashboardShell } from '@/components/dashboard-shell'
-import { DashboardPanel } from '@/components/dashboard-ui'
+import { DashboardPanel, workStackClass } from '@/components/dashboard-ui'
 import { ServiceAreaForm } from '@/components/profile-forms'
 import { requireDelivery } from '@/server/guards'
 
@@ -8,7 +8,8 @@ export default async function DeliverySettingsPage() {
 
   return (
     <DashboardShell user={user} title="Settings" subtitle="Service area used when matching delivery jobs.">
-      <DashboardPanel title="Service area">
+      <div className={workStackClass}>
+      <DashboardPanel title="Service area" description="Where you can pick up and deliver orders.">
         <ServiceAreaForm
           area={user.serviceArea || ''}
           lat={user.serviceAreaLat}
@@ -16,6 +17,7 @@ export default async function DeliverySettingsPage() {
           locations={user.savedAddresses}
         />
       </DashboardPanel>
+      </div>
     </DashboardShell>
   )
 }

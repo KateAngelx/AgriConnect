@@ -39,10 +39,14 @@ export function AppHeader({
   const roles = new Set(user?.roles ?? [])
   if (user?.role) roles.add(user.role)
   const roleLinks = []
-  if (roles.has('admin')) roleLinks.push(['Administration', '/admin/dashboard'], ['Approvals', '/admin/applications'])
-  if (roles.has('seller')) roleLinks.push(['Selling', '/seller/dashboard'], ['Products', '/seller/products'])
-  if (roles.has('delivery')) roleLinks.push(['Delivering', '/delivery/dashboard'], ['Active deliveries', '/delivery/deliveries'])
-  if (roles.has('buyer')) roleLinks.push(['Shopping', '/account'], ['My orders', '/buyer/orders'])
+  if (roles.has('admin')) roleLinks.push(['Administration', '/admin/dashboard'])
+  if (roles.has('seller') && user?.sellerId) roleLinks.push(['Seller dashboard', '/seller/dashboard'])
+  if (roles.has('delivery')) roleLinks.push(['Delivery dashboard', '/delivery/dashboard'])
+  if (roles.has('buyer') && (roles.has('seller') || roles.has('delivery') || roles.has('admin'))) {
+    roleLinks.push(['Shop as a customer', '/account'])
+  } else if (roles.has('buyer')) {
+    roleLinks.push(['My orders', '/buyer/orders'])
+  }
   const showWishlist = roles.has('buyer') && user?.status === 'approved'
   const initials = String(user?.name || '')
     .trim()

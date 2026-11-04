@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { DashboardIcon } from '@/components/dashboard-icons'
-import { formatTimeAgo } from '@/lib/dashboard-format'
 import { StatusBadge } from '@/components/dashboard-ui'
+
+export { NotificationFeed } from '@/components/notification-feed'
 
 const iconTones = {
   green: 'bg-[#e8f5e3] text-[#2e7d32]',
@@ -26,37 +27,37 @@ export function DashboardHero({ label, title, description, actionHref, actionLab
   )
 }
 
-export function MetricSection({ title, children, className = 'grid-cols-2 lg:grid-cols-3' }) {
+export function MetricBoard({ children }) {
   return (
-    <section className="space-y-3">
-      <h2 className="text-[13px] font-semibold text-[#2e7d32]">{title}</h2>
-      <div className={`grid gap-3 ${className}`}>{children}</div>
-    </section>
+    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-[repeat(auto-fit,minmax(12.5rem,1fr))] [&>:last-child:nth-child(odd)]:max-lg:col-span-2">
+      {children}
+    </div>
   )
 }
 
-export function MetricTile({ label, value, hint, icon = 'grid', tone = 'green' }) {
+export function MetricTile({ section, label, value, hint, icon = 'grid', tone = 'green' }) {
   const toneClass = iconTones[tone] || iconTones.green
   return (
-    <div className="flex flex-col items-start gap-3 rounded-xl border border-brand-800/10 bg-white p-4 shadow-sm sm:flex-row">
-      <div className={`grid size-10 shrink-0 place-items-center rounded-full sm:size-11 ${toneClass}`}>
-        <DashboardIcon name={icon} className="size-5" />
+    <article className="flex h-full min-h-[7.5rem] flex-col rounded-xl border border-brand-800/10 bg-white p-3.5 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e7d32]">{section}</p>
+        <div className={`grid size-8 shrink-0 place-items-center rounded-full ${toneClass}`}>
+          <DashboardIcon name={icon} className="size-4" />
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-[#65766d]">{label}</p>
-        <p className="mt-1 text-2xl font-bold leading-none text-[#142016] sm:text-[1.7rem]">{value}</p>
-        {hint ? <p className="mt-1 text-xs text-[#4f8d3b]">{hint}</p> : null}
-      </div>
-    </div>
+      <p className="mt-auto pt-3 text-2xl font-bold leading-none tracking-[-0.03em] text-[#142016]">{value}</p>
+      <p className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-4 text-[#142016]">{label}</p>
+      {hint ? <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-[#5c6f62]">{hint}</p> : null}
+    </article>
   )
 }
 
 export function PanelHeader({ title, description, href, linkLabel = 'View all' }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-[#173c2c]/8 px-5 py-4">
-      <div>
-        <h2 className="text-base font-bold text-[#142016]">{title}</h2>
-        {description ? <p className="mt-1 text-sm text-[#65766d]">{description}</p> : null}
+    <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#d5e4d4] px-4 py-3 sm:px-5">
+      <div className="min-w-0">
+        <h2 className="text-[17px] font-semibold text-[#142016]">{title}</h2>
+        {description ? <p className="mt-0.5 text-[13px] text-[#5c6f62]">{description}</p> : null}
       </div>
       {href ? (
         <Link href={href} className="shrink-0 text-sm font-bold text-[#4f8d3b] hover:text-[#2e7d32]">
@@ -67,11 +68,11 @@ export function PanelHeader({ title, description, href, linkLabel = 'View all' }
   )
 }
 
-export function OverviewPanel({ title, description, href, linkLabel, children, className = '' }) {
+export function OverviewPanel({ title, description, href, linkLabel, children, className = '', fit = false }) {
   return (
-    <section className={`ui-card overflow-hidden ${className}`}>
+    <section className={`ui-card flex flex-col overflow-hidden ${fit ? '' : 'h-[33rem]'} ${className}`}>
       {title ? <PanelHeader title={title} description={description} href={href} linkLabel={linkLabel} /> : null}
-      <div className="p-5 sm:p-6">{children}</div>
+      <div className={fit ? 'p-4 sm:p-5' : 'min-h-0 flex-1 overflow-y-auto p-4 sm:p-5'}>{children}</div>
     </section>
   )
 }
@@ -92,31 +93,6 @@ export function UserAvatar({ name, className = 'size-9' }) {
   )
 }
 
-export function NotificationFeed({ notes, emptyMessage = 'No recent updates.' }) {
-  return (
-    <OverviewPanel title="Recent updates" href="/notifications" linkLabel="View all">
-      {notes.length ? (
-        <ul className="space-y-4">
-          {notes.map((note) => (
-            <li key={note.id} className="flex gap-3">
-              <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-[#f1f3f4] text-[#455a64]">
-                <DashboardIcon name="bell" className="size-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-[#142016]">{note.title}</p>
-                <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-[#65766d]">{note.body}</p>
-                <p className="mt-1 text-[11px] text-[#8a958c]">{formatTimeAgo(note.createdAt)}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-[#65766d]">{emptyMessage}</p>
-      )}
-    </OverviewPanel>
-  )
-}
-
 function actionGroups(actions) {
   const groups = []
   for (const action of actions) {
@@ -128,7 +104,7 @@ function actionGroups(actions) {
   return groups
 }
 
-export function QuickActions({ actions }) {
+export function QuickActions({ actions, columns = 2 }) {
   const groups = actionGroups(actions)
   return (
     <OverviewPanel title="Quick actions">
@@ -138,7 +114,7 @@ export function QuickActions({ actions }) {
             {group.name ? (
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#2e7d32]">{group.name}</p>
             ) : null}
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className={columns === 1 ? 'grid gap-3' : 'grid gap-3 sm:grid-cols-2'}>
               {group.actions.map((action) => (
                 <Link
                   key={`${group.name}-${action.href}-${action.label}`}
@@ -159,23 +135,24 @@ export function QuickActions({ actions }) {
   )
 }
 
-export function ActivityBars({ title, series }) {
+export function ActivityBars({ title, series, caption = 'Last 7 days' }) {
   const max = Math.max(...series.map((item) => item.value), 1)
   return (
-    <OverviewPanel title={title}>
-      <div className="flex h-36 items-end justify-between gap-2">
+    <OverviewPanel title={title} fit>
+      <div className="flex h-40 items-end justify-between gap-2">
         {series.map((item) => (
-          <div key={item.label} className="flex flex-1 flex-col items-center gap-2">
+          <div key={item.label} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
+            <span className="text-[10px] font-semibold text-[#142016]">{item.value >= 1000 ? `${Math.round(item.value / 1000)}k` : item.value}</span>
             <div
-              className="w-full max-w-[2.5rem] rounded-t-md bg-[#a5d6a7] transition-all"
-              style={{ height: `${Math.max(8, (item.value / max) * 100)}%` }}
+              className={`w-full max-w-[2.5rem] rounded-t-md ${item.value ? 'bg-[#2e7d32]' : 'bg-[#d5e4d4]'}`}
+              style={{ height: item.value ? `${Math.max(12, (item.value / max) * 100)}%` : '4px' }}
               title={`${item.label}: ${item.value}`}
             />
             <span className="text-[10px] font-medium text-[#65766d]">{item.label}</span>
           </div>
         ))}
       </div>
-      <p className="mt-3 text-xs text-[#65766d]">Orders placed in the last 7 days</p>
+      <p className="mt-3 text-xs text-[#65766d]">{caption}</p>
     </OverviewPanel>
   )
 }

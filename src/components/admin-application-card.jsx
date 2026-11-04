@@ -67,14 +67,12 @@ export function AdminApplicationCard({ entry, reviewAction }) {
         </div>
         <StatusBadge status={entry.status} />
       </div>
-      <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-        {Object.entries(entry.payload || {}).map(([key, value]) => (
-          <div key={key}>
-            <dt className="font-semibold capitalize text-[#142016]">{key.replaceAll(/([A-Z])/g, ' $1')}</dt>
-            <dd className="text-[#65766d]">{String(value)}</dd>
-          </div>
-        ))}
-      </dl>
+      <p className="mt-2 text-sm text-[#5c6f62]">
+        {Object.entries(entry.payload || {})
+          .slice(0, 4)
+          .map(([key, value]) => `${key.replaceAll(/([A-Z])/g, ' $1')}: ${String(value)}`)
+          .join(' · ') || 'No extra details submitted.'}
+      </p>
       {entry.adminNote ? (
         <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm text-[#647066]">Note: {entry.adminNote}</p>
       ) : null}

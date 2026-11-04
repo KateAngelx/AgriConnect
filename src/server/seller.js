@@ -1,4 +1,5 @@
 import { isValidPin } from '@/lib/geo'
+import { lastDaySeries, localDayKey } from '@/lib/day-series'
 import { inPeriod } from '@/lib/report-period'
 import { eligibleCouriersForOrder } from './delivery'
 import { notify } from './notifications'
@@ -115,6 +116,10 @@ export async function sellerFinancials(user, period = 'all') {
     pending,
     completedOrders: completed.length,
     openOrders: orders.length - completed.length,
+    series: lastDaySeries(orders, (order) => ({
+      key: localDayKey(order.createdAt),
+      value: sellerOrderTotal(order, user.sellerId),
+    })),
   }
 }
 
