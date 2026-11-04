@@ -1,5 +1,6 @@
 import { save } from './sync'
 import { readyStore } from './store'
+import { sendPushNotifications } from './push-notifications'
 
 export async function notify(userId, title, body, href) {
   if (!userId) return null
@@ -15,6 +16,10 @@ export async function notify(userId, title, body, href) {
   }
   store.notifications.unshift(note)
   await save()
+  const subscriptions = store.pushSubscriptions
+    .filter((item) => item.userId === userId)
+    .map((item) => item.subscription)
+  void sendPushNotifications(subscriptions, note)
   return note
 }
 

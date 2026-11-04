@@ -18,5 +18,5 @@ export async function loginAction(_state, formData) {
   const next = String(formData.get('next') ?? '')
   const destination =
     next.startsWith('/') && !next.startsWith('//') ? next : homeForRole(result.user)
-  redirect(destination)
+  redirect(`${destination}${destination.includes('?') ? '&' : '?'}success=${encodeURIComponent('Logged in successfully')}`)
 }

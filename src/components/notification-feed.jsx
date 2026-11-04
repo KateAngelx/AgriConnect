@@ -94,7 +94,7 @@ export function NotificationFeed({ notes = [], emptyMessage = 'No recent updates
                 ×
               </button>
             </div>
-            <div className="overflow-y-auto px-5 py-5">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 [-webkit-overflow-scrolling:touch]">
               <UpdateList notes={notes} />
             </div>
           </div>

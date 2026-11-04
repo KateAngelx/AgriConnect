@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { FloatingAiAssistant } from '@/components/floating-ai-assistant'
 import { InstallAppToast } from '@/components/install-app-toast'
 import { RouteFeedbackToast } from '@/components/ui-feedback'
+import { BrowserNotifications } from '@/components/browser-notifications'
 import { currentUser } from '@/server/auth'
 import { ready } from '@/server/sync'
 import './styles.css'
@@ -51,6 +52,7 @@ export default async function RootLayout({ children }) {
           {children}
           <Suspense fallback={null}><RouteFeedbackToast /></Suspense>
           <InstallAppToast />
+          <BrowserNotifications enabled={Boolean(user)} />
           <FloatingAiAssistant user={user} />
         </div>
       </body>

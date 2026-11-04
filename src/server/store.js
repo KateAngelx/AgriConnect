@@ -15,6 +15,7 @@ function createStore() {
     deliveries: [],
     payments: [],
     notifications: [],
+    pushSubscriptions: [],
     applications: [],
     settings: {},
   }

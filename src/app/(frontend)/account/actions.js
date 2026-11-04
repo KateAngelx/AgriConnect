@@ -72,5 +72,5 @@ export async function applyDeliveryAction(_state, formData) {
 
 export async function logoutAction() {
   await logoutAccount()
-  redirect('/')
+  redirect('/?success=Signed%20out%20successfully')
 }

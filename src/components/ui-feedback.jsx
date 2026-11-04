@@ -79,7 +79,7 @@ export function RouteFeedbackToast() {
   if (!feedback) return null
   const success = feedback.tone === 'success'
   return (
-    <div role={success ? 'status' : 'alert'} className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-[110] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl border border-[#173c2c]/10 bg-white px-4 py-3 shadow-xl sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:left-auto sm:right-6 sm:w-auto sm:max-w-sm sm:translate-x-0">
+    <div role={success ? 'status' : 'alert'} className="fixed left-1/2 top-[calc(env(safe-area-inset-top)+0.75rem)] z-[1200] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 rounded-2xl border border-[#173c2c]/10 bg-white px-4 py-3 shadow-xl sm:left-auto sm:right-6 sm:w-auto sm:max-w-sm sm:translate-x-0">
       <div className="flex items-start gap-3">
         <span className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold ${success ? 'bg-[#e8f5e3] text-[#2e7d32]' : 'bg-[#fff1ed] text-[#963b2d]'}`}>
           {success ? '✓' : '!'}
