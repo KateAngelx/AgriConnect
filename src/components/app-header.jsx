@@ -6,6 +6,7 @@ import { logoutAction } from '@/app/(frontend)/account/actions'
 import { InstallAppMenuButton } from './install-app-toast'
 import { AuthenticatedHeaderActions } from './header-actions'
 import { homeForNav, publicNav } from '@/components/dashboard-nav'
+import { SignOutButton } from './sign-out-button'
 
 function navLinkClass(active) {
   return active
@@ -204,9 +205,7 @@ export function AppHeader({
                     Account settings
                   </a>
                   <form action={logoutAction}>
-                    <button type="submit" className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-[15px] font-semibold text-[#963b2d]">
-                      Sign out
-                    </button>
+                    <SignOutButton className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-[15px] font-semibold text-[#963b2d]" />
                   </form>
                 </div>
               ) : null}

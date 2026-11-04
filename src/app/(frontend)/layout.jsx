@@ -3,6 +3,7 @@ import { FloatingAiAssistant } from '@/components/floating-ai-assistant'
 import { InstallAppToast } from '@/components/install-app-toast'
 import { RouteFeedbackToast } from '@/components/ui-feedback'
 import { BrowserNotifications } from '@/components/browser-notifications'
+import { ActionLoadingOverlay } from '@/components/action-loading-overlay'
 import { currentUser } from '@/server/auth'
 import { ready } from '@/server/sync'
 import './styles.css'
@@ -53,6 +54,7 @@ export default async function RootLayout({ children }) {
           <Suspense fallback={null}><RouteFeedbackToast /></Suspense>
           <InstallAppToast />
           <BrowserNotifications enabled={Boolean(user)} />
+          <ActionLoadingOverlay />
           <FloatingAiAssistant user={user} />
         </div>
       </body>

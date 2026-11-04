@@ -7,6 +7,7 @@ import { activeNavHref, homeForNav } from '@/components/dashboard-nav'
 import { DashboardIcon } from './dashboard-icons'
 import { CartDrawer } from './cart-drawer'
 import { NotificationsPanel } from './notifications-panel'
+import { SignOutButton } from './sign-out-button'
 
 function iconButtonClass(active) {
   return `relative grid size-9 place-items-center rounded-lg text-[#1d1d1f] hover:bg-[#e8e8ed] ${active ? 'bg-[#e8e8ed]' : ''}`
@@ -189,13 +190,7 @@ export function UserProfileMenu({ user, pathname = '' }) {
             </div>
           ))}
           <form action={logoutAction} className="border-t border-[#173c2c]/8 px-2 pt-2">
-            <button
-              type="submit"
-              role="menuitem"
-              className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#963b2d] hover:bg-[#fff1ed]"
-            >
-              Sign out
-            </button>
+            <SignOutButton className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#963b2d] hover:bg-[#fff1ed]" />
           </form>
         </div>
       ) : null}
