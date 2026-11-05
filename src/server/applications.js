@@ -247,6 +247,9 @@ export async function reviewRoleApplication(actor, applicationId, decision, admi
   const store = await readyStore()
   const application = findApplication(store, applicationId)
   if (!application) return { error: 'Application not found.' }
+  if (application.status === 'approved' || application.status === 'rejected') {
+    return { error: 'This application has already been decided.' }
+  }
   if (!ACTIVE_STATUSES.has(application.status) && application.status !== 'under-review') {
     if (!(application.status === 'needs-info' && normalized === 'under-review')) {
       return { error: 'This application has already been decided.' }

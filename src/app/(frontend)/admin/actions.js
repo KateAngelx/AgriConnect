@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { currentUser } from '@/server/auth'
 import { isApprovedAdmin } from '@/server/roles'
 import { reviewRoleApplication } from '@/server/applications'
@@ -33,6 +34,9 @@ export async function reviewApplicationAction(formData) {
     formData.get('adminNote'),
   )
   if (result.error) redirect(`/admin/applications?error=${encodeURIComponent(result.error)}`)
+  revalidatePath('/admin/applications')
+  revalidatePath('/admin/dashboard')
+  revalidatePath('/account')
   redirect(`/admin/applications?success=${encodeURIComponent(`Application marked ${String(formData.get('decision')).replaceAll('-', ' ')}`)}&filter=pending`)
 }
 

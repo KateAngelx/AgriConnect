@@ -19,20 +19,6 @@ const pins = [
     landmark: 'Near municipal hall',
     location: 'Laguna',
   },
-  {
-    id: 'benguet-growers',
-    pickup_lat: 16.4023,
-    pickup_lng: 120.596,
-    landmark: 'Highland market road',
-    location: 'Benguet',
-  },
-  {
-    id: 'nueva-ecija-rice',
-    pickup_lat: 15.5784,
-    pickup_lng: 121.034,
-    landmark: 'Rice mill gate',
-    location: 'Nueva Ecija',
-  },
 ]
 
 let updated = 0

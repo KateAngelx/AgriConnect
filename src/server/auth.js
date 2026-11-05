@@ -128,6 +128,7 @@ export async function registerAccount(input) {
   if (authMethod === 'phone') {
     return { ok: true, needsPhoneVerification: true, phone, user: publicUser(user) }
   }
+  await startSession(user)
   return { ok: true, user: publicUser(user) }
 }
 

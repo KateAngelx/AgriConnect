@@ -18,5 +18,5 @@ export async function registerAction(_state, formData) {
   if (result.needsPhoneVerification && result.phone) {
     redirect(`/register/verify-phone?${await phoneVerifyRedirectQuery(result.phone)}`)
   }
-  redirect('/login?registered=1')
+  redirect('/account?registered=1')
 }

@@ -1,13 +1,15 @@
 -- AgriConnect starter data (run after schema.sql in the Supabase SQL editor).
 -- Demo login password for all seeded accounts: password1
--- Emails: buyer@, seller@, delivery@, admin@, pending.seller@, pending.delivery@ agriconnect.ph
+-- Emails: buyer@, seller@, delivery@, and admin@ agriconnect.ph
 
 -- scrypt hash for "password1" (salt:hash format used by the app)
 -- Regenerate with: node -e "import('./src/server/passwords.js').then(m => console.log(m.hashPassword('password1')))"
 
--- Remove the unowned Benguet demo seller and its products.
+-- Remove demo records without their own working account.
 delete from products where seller_id = 'benguet-growers';
 delete from sellers where id = 'benguet-growers';
+delete from products where seller_id = 'nueva-ecija-rice';
+delete from sellers where id = 'nueva-ecija-rice';
 
 insert into categories (id, name, description, image) values
   ('vegetables', 'Vegetables', 'Leafy greens, tomatoes, and everyday market vegetables.', '{"url":"https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?auto=format&fit=crop&w=900&q=80","alt":"Fresh vegetables"}'::jsonb),
@@ -20,8 +22,7 @@ on conflict (id) do update set
   image = excluded.image;
 
 insert into sellers (id, farm_name, location, status, description, owner_id, image) values
-  ('laguna-greens', 'Laguna Greens Farm', 'Laguna', 'approved', 'A family farm growing vegetables and herbs for nearby households.', 'user-pedro', '{"url":"https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80","alt":"Laguna Greens Farm"}'::jsonb),
-  ('nueva-ecija-rice', 'Nueva Ecija Rice Collective', 'Nueva Ecija', 'approved', 'A growers collective selling freshly milled rice by the sack.', null, '{"url":"https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=600&q=80","alt":"Rice harvest"}'::jsonb)
+  ('laguna-greens', 'Laguna Greens Farm', 'Laguna', 'approved', 'A family farm growing vegetables and herbs for nearby households.', 'user-pedro', '{"url":"https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80","alt":"Laguna Greens Farm"}'::jsonb)
 on conflict (id) do update set
   farm_name = excluded.farm_name,
   location = excluded.location,
@@ -34,9 +35,7 @@ insert into profiles (id, name, email, password_hash, role, status, seller_id, s
   ('user-maria', 'Maria Santos', 'buyer@agriconnect.ph', '141de44e01a05b9a2fc7394bcad856d0:4f469f16feb4f263ed20f7413e89927d54bf456da648f2203f411d2ff03bbbee', 'buyer', 'approved', null, '', '2026-10-01T00:00:00.000Z'),
   ('user-pedro', 'Pedro Reyes', 'seller@agriconnect.ph', '141de44e01a05b9a2fc7394bcad856d0:4f469f16feb4f263ed20f7413e89927d54bf456da648f2203f411d2ff03bbbee', 'seller', 'approved', 'laguna-greens', '', '2026-10-01T00:00:00.000Z'),
   ('user-liza', 'Liza Cruz', 'delivery@agriconnect.ph', '141de44e01a05b9a2fc7394bcad856d0:4f469f16feb4f263ed20f7413e89927d54bf456da648f2203f411d2ff03bbbee', 'delivery', 'approved', null, 'Laguna and Batangas', '2026-10-01T00:00:00.000Z'),
-  ('user-ana', 'Ana Dela Cruz', 'admin@agriconnect.ph', '141de44e01a05b9a2fc7394bcad856d0:4f469f16feb4f263ed20f7413e89927d54bf456da648f2203f411d2ff03bbbee', 'admin', 'approved', null, '', '2026-10-01T00:00:00.000Z'),
-  ('user-jun', 'Jun Bautista', 'pending.seller@agriconnect.ph', '141de44e01a05b9a2fc7394bcad856d0:4f469f16feb4f263ed20f7413e89927d54bf456da648f2203f411d2ff03bbbee', 'buyer', 'approved', null, '', '2026-10-01T00:00:00.000Z'),
-  ('user-carlo', 'Carlo Mendoza', 'pending.delivery@agriconnect.ph', '141de44e01a05b9a2fc7394bcad856d0:4f469f16feb4f263ed20f7413e89927d54bf456da648f2203f411d2ff03bbbee', 'buyer', 'approved', null, '', '2026-10-01T00:00:00.000Z')
+  ('user-ana', 'Ana Dela Cruz', 'admin@agriconnect.ph', '141de44e01a05b9a2fc7394bcad856d0:4f469f16feb4f263ed20f7413e89927d54bf456da648f2203f411d2ff03bbbee', 'admin', 'approved', null, '', '2026-10-01T00:00:00.000Z')
 on conflict (id) do update set
   name = excluded.name,
   email = excluded.email,
@@ -49,8 +48,7 @@ on conflict (id) do update set
 insert into products (id, name, description, price, unit, stock, location, status, pickup, delivery, category_id, seller_id, created_at, images) values
   ('tomatoes', 'Market tomatoes', 'Ripe tomatoes harvested this week, sold by the kilogram.', 80, 'kilogram', 38, 'Laguna', 'active', true, true, 'vegetables', 'laguna-greens', '2026-10-20T08:00:00.000Z', '[{"id":"tomatoes-1","url":"https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1200&q=80","alt":"Red tomatoes"}]'::jsonb),
   ('kangkong', 'Kangkong bundle', 'Fresh water spinach, tied in market bundles.', 25, 'bundle', 60, 'Laguna', 'active', true, false, 'vegetables', 'laguna-greens', '2026-10-22T08:00:00.000Z', '[{"id":"kangkong-1","url":"https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=1200&q=80","alt":"Leafy greens"}]'::jsonb),
-  ('bananas', 'Lakatan bananas', 'Ripe lakatan bananas, sold by the kilogram.', 70, 'kilogram', 35, 'Laguna', 'active', false, true, 'fruits', 'laguna-greens', '2026-10-18T08:00:00.000Z', '[{"id":"bananas-1","url":"https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=1200&q=80","alt":"Bananas"}]'::jsonb),
-  ('rice', 'Milled white rice', 'Locally milled white rice, packed in a 5-kilo sack.', 280, 'sack', 24, 'Nueva Ecija', 'active', true, true, 'rice', 'nueva-ecija-rice', '2026-10-15T08:00:00.000Z', '[{"id":"rice-1","url":"https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=1200&q=80","alt":"White rice"}]'::jsonb)
+  ('bananas', 'Lakatan bananas', 'Ripe lakatan bananas, sold by the kilogram.', 70, 'kilogram', 35, 'Laguna', 'active', false, true, 'fruits', 'laguna-greens', '2026-10-18T08:00:00.000Z', '[{"id":"bananas-1","url":"https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=1200&q=80","alt":"Bananas"}]'::jsonb)
 on conflict (id) do update set
   name = excluded.name,
   description = excluded.description,
@@ -114,37 +112,9 @@ on conflict (id) do update set
   status = excluded.status;
 
 insert into notifications (id, user_id, title, body, href, read, created_at) values
-  ('note-admin-1', 'user-ana', 'Accounts waiting for review', 'Jun Harvest and Carlo Mendoza are waiting for approval.', '/admin/users', false, '2026-10-24T08:00:00.000Z'),
   ('note-seller-1', 'user-pedro', 'Order AGR-DEMO1001 is ready for delivery', 'A courier can now accept the Laguna delivery.', '/seller/orders', false, '2026-10-25T02:00:00.000Z'),
   ('note-buyer-1', 'user-maria', 'Order AGR-DEMO1001 is awaiting a courier', 'Cash on delivery is due when the order arrives.', '/buyer/orders/order-demo-1', false, '2026-10-25T02:00:00.000Z')
 on conflict (id) do update set
   title = excluded.title,
   body = excluded.body,
   read = excluded.read;
-
-insert into role_applications (id, user_id, application_type, status, payload, admin_note, created_at, updated_at) values
-  (
-    'app-jun-seller',
-    'user-jun',
-    'seller',
-    'pending',
-    '{"farmName":"Jun Harvest","applicantName":"Jun Bautista","contactNumber":"09171230001","location":"Batangas","categories":"Vegetables","description":"Small vegetable plots waiting for marketplace approval."}'::jsonb,
-    '',
-    '2026-10-20T08:00:00.000Z',
-    '2026-10-20T08:00:00.000Z'
-  ),
-  (
-    'app-carlo-delivery',
-    'user-carlo',
-    'delivery',
-    'pending',
-    '{"fullName":"Carlo Mendoza","contactNumber":"09171230002","serviceArea":"Quezon","experience":"Motorcycle deliveries within Quezon province."}'::jsonb,
-    '',
-    '2026-10-21T08:00:00.000Z',
-    '2026-10-21T08:00:00.000Z'
-  )
-on conflict (id) do update set
-  status = excluded.status,
-  payload = excluded.payload,
-  admin_note = excluded.admin_note,
-  updated_at = excluded.updated_at;

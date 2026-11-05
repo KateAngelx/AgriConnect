@@ -2,6 +2,46 @@ import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { normalizeUserRoles, rolesFromLegacy } from './roles'
 import { getStore } from './store'
 
+function isRemovedBenguetSeller(item) {
+  return item?.id === 'benguet-growers'
+    || /benguet/i.test(item?.farmName || item?.farm_name || item?.location || '')
+}
+
+function isRemovedBenguetProduct(item) {
+  return item?.seller === 'benguet-growers'
+    || item?.seller_id === 'benguet-growers'
+    || item?.seller?.id === 'benguet-growers'
+    || /highland\s+(strawberries|potatoes)/i.test(item?.name || '')
+}
+
+function isRemovedNuevaEcijaSeller(item) {
+  return item?.id === 'nueva-ecija-rice'
+    || /nueva ecija/i.test(item?.farmName || item?.farm_name || item?.location || '')
+}
+
+function isRemovedNuevaEcijaProduct(item) {
+  return item?.seller === 'nueva-ecija-rice'
+    || item?.seller_id === 'nueva-ecija-rice'
+    || item?.seller?.id === 'nueva-ecija-rice'
+    || (/nueva ecija/i.test(item?.location || '') && /rice/i.test(item?.name || ''))
+}
+
+const coreDemoEmails = new Set([
+  'admin@agriconnect.ph',
+  'buyer@agriconnect.ph',
+  'delivery@agriconnect.ph',
+  'seller@agriconnect.ph',
+])
+
+const removedSeedProfileIds = new Set(['user-jun', 'user-carlo'])
+
+function shouldKeepProfile(item) {
+  if (removedSeedProfileIds.has(item?.id)) return false
+  const email = String(item?.email || '').trim().toLowerCase()
+  if (email) return coreDemoEmails.has(email) || !/@agriconnect\.ph$/i.test(email)
+  return item?.status !== 'suspended'
+}
+
 function rowsOf(result, label) {
   if (result.error) throw new Error(`${label}: ${result.error.message}`)
   return result.data ?? []
@@ -48,7 +88,7 @@ async function replaceTable(client, table, rows, key = 'id') {
 
 function snapshot(store) {
   return {
-    profiles: [...store.users.values()].map((user) => ({
+    profiles: [...store.users.values()].filter(shouldKeepProfile).map((user) => ({
       id: user.id,
       name: user.name,
       email: user.email || null,
@@ -69,7 +109,7 @@ function snapshot(store) {
       description: item.description || '',
       image: item.image || {},
     })),
-    sellers: store.sellers.map((item) => ({
+    sellers: store.sellers.filter((item) => !isRemovedBenguetSeller(item) && !isRemovedNuevaEcijaSeller(item)).map((item) => ({
       id: item.id,
       farm_name: item.farmName,
       location: item.location || '',
@@ -81,7 +121,7 @@ function snapshot(store) {
       owner_id: item.ownerId || null,
       image: item.image || {},
     })),
-    products: store.products.map((item) => ({
+    products: store.products.filter((item) => !isRemovedBenguetProduct(item) && !isRemovedNuevaEcijaProduct(item)).map((item) => ({
       id: item.id,
       name: item.name,
       description: item.description || '',
@@ -236,7 +276,7 @@ async function pullAll(client) {
     optionalRowsOf(settings).map((row) => [row.key, row.value]),
   )
   store.users = new Map(
-    rowsOf(profiles, 'profiles').map((row) => [
+    rowsOf(profiles, 'profiles').filter(shouldKeepProfile).map((row) => [
       row.id,
       {
         id: row.id,
@@ -271,7 +311,7 @@ async function pullAll(client) {
     description: row.description || '',
     image: row.image || {},
   }))
-  store.sellers = rowsOf(sellers, 'sellers').map((row) => ({
+  store.sellers = rowsOf(sellers, 'sellers').filter((row) => !isRemovedBenguetSeller(row) && !isRemovedNuevaEcijaSeller(row)).map((row) => ({
     id: row.id,
     farmName: row.farm_name,
     location: row.location || '',
@@ -283,7 +323,7 @@ async function pullAll(client) {
     ownerId: row.owner_id || '',
     image: row.image || {},
   }))
-  store.products = rowsOf(products, 'products').map((row) => ({
+  store.products = rowsOf(products, 'products').filter((row) => !isRemovedBenguetProduct(row) && !isRemovedNuevaEcijaProduct(row)).map((row) => ({
     id: row.id,
     name: row.name,
     description: row.description || '',
