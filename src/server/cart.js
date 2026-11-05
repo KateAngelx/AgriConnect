@@ -1,7 +1,7 @@
 import { currentUser } from './auth'
 import { getProduct } from './catalog'
 import { isApprovedBuyer } from './roles'
-import { save } from './sync'
+import { saveCart } from './sync'
 import { readyStore } from './store'
 
 async function requireBuyer() {
@@ -52,7 +52,7 @@ export async function addToCart(input) {
   if (existing) existing.quantity = nextQuantity
   else cart.items.push({ id: crypto.randomUUID(), productId: product.id, quantity })
   store.carts.set(buyer.user.id, cart)
-  await save()
+  await saveCart(cart)
   return { cart: presentCart(store, cart) }
 }
 
@@ -69,7 +69,7 @@ export async function updateCart(input) {
   if (quantity > product.stock) return { error: 'The requested quantity exceeds available stock.' }
   if (quantity === 0) cart.items = cart.items.filter((entry) => entry.id !== item.id)
   else item.quantity = quantity
-  await save()
+  await saveCart(cart)
   return { cart: presentCart(store, cart) }
 }
 
@@ -90,6 +90,6 @@ export async function buyNow(input) {
     items: [{ id: crypto.randomUUID(), productId: product.id, quantity }],
   }
   store.carts.set(buyer.user.id, cart)
-  await save()
+  await saveCart(cart)
   return { cart: presentCart(store, cart) }
 }

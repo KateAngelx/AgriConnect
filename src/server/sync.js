@@ -499,6 +499,27 @@ export function ready() {
   return globalThis.__agriconnectHydrate
 }
 
+export async function saveCart(cart) {
+  await ready()
+  const client = getSupabaseAdmin()
+  if (!client || globalThis.__agriconnectStatus?.mode !== 'supabase') return
+
+  const existing = await client
+    .from('carts')
+    .select('id')
+    .eq('buyer_id', cart.buyer)
+    .maybeSingle()
+  if (existing.error) throw new Error(`carts: ${existing.error.message}`)
+  if (existing.data?.id) cart.id = existing.data.id
+
+  const saved = await client.from('carts').upsert({
+    id: existing.data?.id || cart.id,
+    buyer_id: cart.buyer,
+    items: cart.items,
+  }, { onConflict: 'buyer_id' })
+  if (saved.error) throw new Error(`carts: ${saved.error.message}`)
+}
+
 export async function save() {
   await ready()
   if (globalThis.__agriconnectStatus?.mode !== 'supabase') return
