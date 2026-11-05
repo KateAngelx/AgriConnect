@@ -16,7 +16,7 @@ export function CartDrawer({ open, onClose }) {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch('/api/cart', { cache: 'no-store' })
+      const response = await fetch('/api/cart', { cache: 'no-store', credentials: 'same-origin' })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Could not load cart.')
       setCart(data.cart)
@@ -53,6 +53,7 @@ export function CartDrawer({ open, onClose }) {
     try {
       const response = await fetch('/api/cart', {
         method: 'PATCH',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cartID: cart.id, itemID: item.id, quantity }),
       })

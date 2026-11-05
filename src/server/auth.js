@@ -25,7 +25,8 @@ export async function currentUser() {
   if (!userId) {
     const client = getSupabaseAdmin()
     if (client) {
-      const { data } = await client.from('sessions').select('user_id').eq('token', token).maybeSingle()
+      const { data, error } = await client.from('sessions').select('user_id').eq('token', token).maybeSingle()
+      if (error) console.error('Could not recover AgriConnect session:', error.message)
       userId = data?.user_id || ''
       if (userId) store.sessions.set(token, userId)
     }
@@ -44,6 +45,13 @@ export async function startSession(user) {
     path: '/',
     maxAge: 60 * 60 * 24 * 7,
   })
+  const client = getSupabaseAdmin()
+  if (client) {
+    const { error } = await client.from('sessions').upsert({ token, user_id: user.id })
+    if (error) {
+      console.error('Could not persist AgriConnect session:', error.message)
+    }
+  }
   try {
     await save()
   } catch {

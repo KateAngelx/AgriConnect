@@ -14,7 +14,7 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch('/api/notifications', { cache: 'no-store' })
+      const response = await fetch('/api/notifications', { cache: 'no-store', credentials: 'same-origin' })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Could not load notifications.')
       setItems(data.notifications ?? [])
@@ -44,6 +44,7 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
   async function markRead(id) {
     const response = await fetch('/api/notifications', {
       method: 'PATCH',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     })
@@ -56,6 +57,7 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
   async function markAllRead() {
     const response = await fetch('/api/notifications', {
       method: 'PATCH',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ all: true }),
     })
