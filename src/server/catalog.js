@@ -12,9 +12,31 @@ function pageResult(docs, page, limit) {
   }
 }
 
+export function isPublicProduct(product) {
+  return product?.status === 'active' && product.seller?.status === 'approved'
+}
+
+export function summarizeRatings(reviews = []) {
+  const ratings = reviews
+    .map((review) => Number(review.rating))
+    .filter((rating) => Number.isInteger(rating) && rating >= 1 && rating <= 5)
+  const reviewCount = ratings.length
+  const average = reviewCount
+    ? Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / reviewCount) * 10) / 10
+    : null
+  return { rating: average, reviewCount }
+}
+
+function reviewsFor(store, productId) {
+  return store.productReviews.filter((review) => review.productId === productId)
+}
+
+function withRating(store, product) {
+  return { ...product, ...summarizeRatings(reviewsFor(store, product.id)) }
+}
+
 function matchesProduct(product, filters) {
-  if (product.status !== 'active') return false
-  if (product.seller?.status !== 'approved') return false
+  if (!isPublicProduct(product)) return false
   if (filters.category && product.category?.id !== filters.category) return false
   if (filters.fulfillment === 'pickup' && !product.pickup) return false
   if (filters.fulfillment === 'delivery' && !product.delivery) return false
@@ -41,25 +63,43 @@ export async function listProducts(filters = {}) {
     store.products.filter((product) => matchesProduct(product, filters)),
     filters.sort,
   )
-  return pageResult(docs, page, limit)
+  const result = pageResult(docs, page, limit)
+  return { ...result, docs: result.docs.map((product) => withRating(store, product)) }
 }
 
 export async function getProduct(id) {
   const store = await readyStore()
-  return store.products.find((product) => product.id === id) ?? null
+  const product = store.products.find((item) => item.id === id && isPublicProduct(item))
+  return product ? withRating(store, product) : null
+}
+
+export async function listProductReviews(productId) {
+  const store = await readyStore()
+  const product = store.products.find((item) => item.id === productId && isPublicProduct(item))
+  if (!product) return pageResult([], 1, 50)
+  const docs = reviewsFor(store, productId)
+    .filter((review) => Number.isInteger(Number(review.rating)) && Number(review.rating) >= 1 && Number(review.rating) <= 5)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map((review) => ({
+      id: review.id,
+      reviewerName: review.reviewerName || 'Marketplace customer',
+      rating: Number(review.rating),
+      body: review.body || '',
+      createdAt: review.createdAt || '',
+    }))
+  return pageResult(docs, 1, 50)
 }
 
 export async function listRelatedProducts(product) {
   const store = await readyStore()
   const docs = store.products.filter(
       (item) =>
-        item.status === 'active' &&
-        item.seller?.status === 'approved' &&
+        isPublicProduct(item) &&
         item.id !== product?.id &&
         item.category?.id === product?.category?.id,
     )
     .slice(0, 3)
-  return pageResult(docs, 1, 3)
+  return { ...pageResult(docs, 1, 3), docs: docs.map((item) => withRating(store, item)) }
 }
 
 function activeProductCounts(store) {
@@ -100,13 +140,15 @@ export async function listSellers(filters = {}) {
 
 export async function getSeller(id) {
   const store = await readyStore()
-  return store.sellers.find((seller) => seller.id === id) ?? null
+  return store.sellers.find((seller) => seller.id === id && seller.status === 'approved') ?? null
 }
 
 export async function listSellerProducts(sellerId) {
   const store = await readyStore()
+  const seller = store.sellers.find((item) => item.id === sellerId && item.status === 'approved')
+  if (!seller) return pageResult([], 1, 24)
   const docs = store.products.filter(
-    (product) => product.status === 'active' && product.seller?.id === sellerId,
+    (product) => isPublicProduct(product) && product.seller?.id === sellerId,
   )
-  return pageResult(docs, 1, 24)
+  return { ...pageResult(docs, 1, 24), docs: docs.map((item) => withRating(store, item)) }
 }

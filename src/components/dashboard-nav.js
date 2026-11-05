@@ -1,6 +1,7 @@
 export const publicNav = [
   ['Home', '/'],
   ['Shop Products', '/products'],
+  ['Sellers', '/sellers'],
   ['Categories', '/categories'],
   ['How It Works', '/how-it-works'],
   ['About Us', '/about'],

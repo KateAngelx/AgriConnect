@@ -11,7 +11,7 @@ function mediaURL(product) {
 
 function stockBadge(stock) {
   if (!stock || stock <= 0) return { text: 'Sold out', className: 'bg-[#f5f5f7] text-[#6e6e73]' }
-  if (stock < 10) return { text: `Low stock · ${stock} left`, className: 'bg-[#fff4e5] text-[#9a6700]' }
+  if (stock < 10) return { text: `Low stock Â· ${stock} left`, className: 'bg-[#fff4e5] text-[#9a6700]' }
   return { text: 'In stock', className: 'bg-white text-[#248a3d]' }
 }
 
@@ -46,8 +46,18 @@ export function ProductCard({ product }) {
             {product.name}
           </h2>
           <p className="mt-1 truncate text-[13px] text-[#6e6e73]">
-            {product.location || 'Philippines'} · {fulfillmentLabel(product)}
+            {product.location || 'Philippines'} Â· {fulfillmentLabel(product)}
           </p>
+          {product.reviewCount > 0 ? (
+            <p
+              className="mt-2 text-[12px] font-medium text-[#5c6f62]"
+              aria-label={`Rated ${product.rating} out of 5 from ${product.reviewCount} reviews`}
+            >
+              <span aria-hidden="true" className="text-[#d28b00]">?</span>{' '}
+              {Number(product.rating).toFixed(1)} ({product.reviewCount}{' '}
+              {product.reviewCount === 1 ? 'review' : 'reviews'})
+            </p>
+          ) : null}
           <p className="mt-auto pt-3 text-[17px] font-semibold tracking-[-0.02em] text-[#1d1d1f]">
             {peso(product.price)}
             <span className="text-[13px] font-normal text-[#6e6e73]"> / {product.unit}</span>

@@ -130,6 +130,14 @@ function snapshot(store) {
       created_at: item.createdAt,
       images: item.images || [],
     })),
+    productReviews: store.productReviews.map((review) => ({
+      id: review.id,
+      product_id: review.productId,
+      reviewer_name: review.reviewerName || '',
+      rating: review.rating,
+      body: review.body || '',
+      created_at: review.createdAt,
+    })),
     orders: [...store.orders.values()].map((order) => ({
       id: order.id,
       reference: order.reference,
@@ -220,6 +228,7 @@ async function pushAll(client) {
   await replaceTable(client, 'categories', data.categories)
   await replaceTable(client, 'sellers', data.sellers)
   await replaceTable(client, 'products', data.products)
+  await replaceTable(client, 'product_reviews', data.productReviews)
   await replaceTable(client, 'orders', data.orders)
   await replaceTable(client, 'deliveries', data.deliveries)
   await replaceTable(client, 'payments', data.payments)
@@ -240,6 +249,7 @@ async function pullAll(client) {
     categories,
     sellers,
     products,
+    productReviews,
     orders,
     deliveries,
     payments,
@@ -254,6 +264,7 @@ async function pullAll(client) {
     client.from('categories').select('*'),
     client.from('sellers').select('*'),
     client.from('products').select('*'),
+    client.from('product_reviews').select('*'),
     client.from('orders').select('*'),
     client.from('deliveries').select('*'),
     client.from('payments').select('*'),
@@ -331,6 +342,14 @@ async function pullAll(client) {
     images: row.images || [],
     category: store.categories.find((item) => item.id === row.category_id) || null,
     seller: store.sellers.find((item) => item.id === row.seller_id) || null,
+  }))
+  store.productReviews = optionalRowsOf(productReviews).map((row) => ({
+    id: row.id,
+    productId: row.product_id,
+    reviewerName: row.reviewer_name || '',
+    rating: Number(row.rating),
+    body: row.body || '',
+    createdAt: row.created_at || '',
   }))
   store.orders = new Map(
     rowsOf(orders, 'orders').map((row) => [

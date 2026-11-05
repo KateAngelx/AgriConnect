@@ -1,5 +1,6 @@
 import { MarketplaceAssistant } from '@/components/marketplace-assistant'
 import { ProductCard } from '@/components/product-card'
+import { SellerCard } from '@/components/seller-card'
 
 function partnerHref(user, path) {
   if ((user?.roles?.includes('buyer') || user?.role === 'buyer') && user.status === 'approved') return path
@@ -97,6 +98,23 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
             </div>
           ) : <div className="page-empty mt-6">Fresh listings are being prepared.</div>}
       </section>
+
+      {sellers.length ? (
+        <section className="page-container page-section">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="page-eyebrow">Meet the growers</p>
+              <h2 className="page-section-title mt-2 text-3xl text-brand-900">Farms in our marketplace</h2>
+            </div>
+            <a href="/sellers" className="btn btn-secondary">Browse all sellers</a>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {sellers.slice(0, 4).map((seller) => (
+              <SellerCard key={seller.id} seller={seller} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="page-container page-section">
         <div className="grid gap-4 lg:grid-cols-[1fr_340px] lg:gap-6">

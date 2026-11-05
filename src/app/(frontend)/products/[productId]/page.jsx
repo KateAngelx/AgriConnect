@@ -5,7 +5,7 @@ import { ProductCard } from '@/components/product-card'
 import { SiteShell } from '@/components/site-shell'
 import { currentUser } from '@/server/auth'
 import { isApprovedBuyer } from '@/server/roles'
-import { getProduct, listRelatedProducts } from '@/server/catalog'
+import { getProduct, listProductReviews, listRelatedProducts } from '@/server/catalog'
 import { wished } from '@/server/wishlist'
 import { ProductPurchaseActions } from '@/components/product-purchase-actions'
 import { toggleWishlistAction } from '@/app/(frontend)/wishlist/actions'
@@ -18,7 +18,10 @@ export default async function ProductDetailsPage({ params }) {
   const saved = user ? await wished(user.id, product.id) : false
   const seller = typeof product.seller === 'object' ? product.seller : null
   const category = typeof product.category === 'object' ? product.category : null
-  const related = await listRelatedProducts(product)
+  const [related, reviews] = await Promise.all([
+    listRelatedProducts(product),
+    listProductReviews(product.id),
+  ])
   const images = product.images?.filter((image) => typeof image === 'object' && image.url) ?? []
   return (
     <SiteShell>
@@ -76,6 +79,17 @@ export default async function ProductDetailsPage({ params }) {
               {peso(product.price)}{' '}
               <span className="text-base font-normal text-brand-muted">per {product.unit}</span>
             </p>
+            <a href="#reviews" className="mt-2 inline-flex rounded-md focus-visible:outline">
+              {product.reviewCount > 0 ? (
+                <span className="text-sm font-medium text-[#5c6f62]" aria-label={`Rated ${product.rating} out of 5 from ${product.reviewCount} reviews`}>
+                  <span aria-hidden="true" className="text-[#d28b00]">?</span>{' '}
+                  {Number(product.rating).toFixed(1)} ? {product.reviewCount}{' '}
+                  {product.reviewCount === 1 ? 'review' : 'reviews'}
+                </span>
+              ) : (
+                <span className="text-sm text-[#5c6f62]">No reviews yet</span>
+              )}
+            </a>
             <p className="mt-6 leading-7 text-[#65766d]">
               {product.description || 'Contact the seller for additional product details.'}
             </p>
@@ -84,7 +98,7 @@ export default async function ProductDetailsPage({ params }) {
                 <span className="text-xs text-[#65766d]">Stock</span>
                 <p className="mt-1 font-semibold">
                   {product.stock > 0 ? `${product.stock} ${product.unit} available` : 'Sold out'}
-                  {product.stock > 0 && product.stock < 10 ? ' · Low stock' : ''}
+                  {product.stock > 0 && product.stock < 10 ? ' Â· Low stock' : ''}
                 </p>
               </div>
               <div className="ui-card p-4">
@@ -92,7 +106,7 @@ export default async function ProductDetailsPage({ params }) {
                 <p className="mt-1 font-semibold">
                   {[product.pickup && 'Pickup', product.delivery && 'Delivery']
                     .filter(Boolean)
-                    .join(' · ') || 'Ask seller'}
+                    .join(' Â· ') || 'Ask seller'}
                 </p>
               </div>
             </div>
@@ -152,6 +166,55 @@ export default async function ProductDetailsPage({ params }) {
         </div>
         <section className="mt-12">
           <MarketplaceAssistant compact />
+        </section>
+        <section id="reviews" className="mt-12 scroll-mt-24" aria-labelledby="product-reviews-heading">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="page-eyebrow">Customer feedback</p>
+              <h2 id="product-reviews-heading" className="page-section-title mt-2 text-2xl text-brand-900">
+                Product reviews
+              </h2>
+            </div>
+            {product.reviewCount > 0 ? (
+              <p className="text-sm font-medium text-[#5c6f62]">
+                {Number(product.rating).toFixed(1)} out of 5 ? {product.reviewCount}{' '}
+                {product.reviewCount === 1 ? 'review' : 'reviews'}
+              </p>
+            ) : null}
+          </div>
+          {reviews.docs.length ? (
+            <div className="mt-5 grid gap-3">
+              {reviews.docs.map((review) => {
+                const reviewDate = review.createdAt ? new Date(review.createdAt) : null
+                const validDate = reviewDate && !Number.isNaN(reviewDate.getTime())
+                return (
+                  <article key={review.id} className="ui-card p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="font-semibold text-brand-900">{review.reviewerName}</h3>
+                      {validDate ? (
+                        <time dateTime={review.createdAt} className="text-sm text-brand-muted">
+                          {reviewDate.toLocaleDateString('en-PH', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </time>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm font-medium" aria-label={`${review.rating} out of 5 stars`}>
+                      <span aria-hidden="true" className="text-[#d28b00]">
+                        {'?'.repeat(review.rating)}{'?'.repeat(5 - review.rating)}
+                      </span>
+                      <span className="sr-only"> {review.rating} out of 5 stars</span>
+                    </p>
+                    {review.body ? <p className="mt-3 leading-6 text-brand-muted">{review.body}</p> : null}
+                  </article>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="page-empty mt-5">This product has no reviews yet.</div>
+          )}
         </section>
         <section className="mt-12">
           <h2 className="page-section-title text-2xl text-brand-900">Similar products</h2>

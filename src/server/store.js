@@ -1,12 +1,13 @@
 import { homeForRoles, normalizeUserRoles, publicRoles } from './roles'
 
-export const STORE_VERSION = 7
+export const STORE_VERSION = 8
 
 function createStore() {
   return {
     categories: [],
     sellers: [],
     products: [],
+    productReviews: [],
     users: new Map(),
     sessions: new Map(),
     carts: new Map(),
