@@ -57,16 +57,6 @@ function optionalRowsOf(result) {
 }
 
 async function replaceTable(client, table, rows, key = 'id') {
-  const existing = rowsOf(await client.from(table).select(key), table)
-  const nextIds = new Set(rows.map((row) => row[key]))
-  const stale = existing.map((row) => row[key]).filter((id) => !nextIds.has(id))
-  // A partially loaded in-memory store must never erase database records.
-  // Legitimate deletions are still handled by explicit product/order actions.
-  if (!rows.length && existing.length) return
-  if (stale.length) {
-    const removed = await client.from(table).delete().in(key, stale)
-    if (removed.error) throw new Error(`${table}: ${removed.error.message}`)
-  }
   if (!rows.length) return
   let payload = rows
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -514,7 +504,16 @@ export async function save() {
   if (!client) return
   globalThis.__agriconnectSave = (globalThis.__agriconnectSave || Promise.resolve()).catch(() => undefined)
     .then(async () => {
-      await pushAll(client)
+      try {
+        await pushAll(client)
+      } catch (firstError) {
+        await new Promise((resolve) => setTimeout(resolve, 250))
+        try {
+          await pushAll(client)
+        } catch {
+          throw firstError
+        }
+      }
       globalThis.__agriconnectStatus = { mode: 'supabase', reason: '' }
     })
     .catch((error) => {
