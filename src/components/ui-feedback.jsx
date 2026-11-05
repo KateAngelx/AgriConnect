@@ -56,6 +56,21 @@ export function RouteFeedbackToast() {
   const [feedback, setFeedback] = useState(null)
 
   useEffect(() => {
+    let timeout
+    const showFeedback = (event) => {
+      if (!event.detail?.text) return
+      setFeedback({ tone: event.detail.tone || 'success', text: event.detail.text })
+      window.clearTimeout(timeout)
+      timeout = window.setTimeout(() => setFeedback(null), 4500)
+    }
+    window.addEventListener('agriconnect:feedback', showFeedback)
+    return () => {
+      window.clearTimeout(timeout)
+      window.removeEventListener('agriconnect:feedback', showFeedback)
+    }
+  }, [])
+
+  useEffect(() => {
     const success = searchParams.get('success')
     const error = searchParams.get('error')
     if (!success && !error) {

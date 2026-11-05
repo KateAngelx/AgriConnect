@@ -7,13 +7,15 @@ import { markAllNotificationsRead, markNotificationRead } from '@/server/notific
 export async function readNotificationAction(formData) {
   const user = await currentUser()
   if (!user) redirect('/login')
-  await markNotificationRead(String(formData.get('id') ?? ''), user.id)
-  redirect('/notifications')
+  const result = await markNotificationRead(String(formData.get('id') ?? ''), user.id)
+  if (result.error) redirect(`/notifications?error=${encodeURIComponent(result.error)}`)
+  redirect('/notifications?success=Notification%20marked%20as%20read.')
 }
 
 export async function readAllNotificationsAction() {
   const user = await currentUser()
   if (!user) redirect('/login')
-  await markAllNotificationsRead(user.id)
-  redirect('/notifications')
+  const result = await markAllNotificationsRead(user.id)
+  if (result.error) redirect(`/notifications?error=${encodeURIComponent(result.error)}`)
+  redirect('/notifications?success=Notifications%20marked%20as%20read.')
 }

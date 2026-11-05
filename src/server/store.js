@@ -12,6 +12,7 @@ function createStore() {
     sessions: new Map(),
     carts: new Map(),
     wishlists: new Map(),
+    wishlistRevisions: new Map(),
     orders: new Map(),
     deliveries: [],
     payments: [],
@@ -30,6 +31,8 @@ export function getStore() {
     globalThis.__agriconnectHydrate = null
     globalThis.__agriconnectStatus = null
   }
+  globalThis.__agriconnectStore.wishlists ??= new Map()
+  globalThis.__agriconnectStore.wishlistRevisions ??= new Map()
   globalThis.__agriconnectStore.feedback ??= []
   globalThis.__agriconnectStore.reports ??= []
   return globalThis.__agriconnectStore

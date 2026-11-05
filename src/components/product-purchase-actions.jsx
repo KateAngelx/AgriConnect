@@ -1,11 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { addToCartAction, buyNowAction } from '@/app/(frontend)/cart/actions'
+import { useRouter } from 'next/navigation'
+import { useMarketplaceState } from './marketplace-state'
 
 export function ProductPurchaseActions({ product }) {
+  const router = useRouter()
+  const { addToCart, cartBusy } = useMarketplaceState()
   const [quantity, setQuantity] = useState('1')
   const unavailable = product.stock < 1
+  const validQuantity = Number.isInteger(Number(quantity)) && Number(quantity) > 0
+
+  async function addItem(replace = false) {
+    const result = await addToCart(product, quantity, replace)
+    if (result.ok && replace) router.push('/checkout')
+  }
 
   return (
     <div className="ui-card mt-8 p-5">
@@ -31,30 +40,22 @@ export function ProductPurchaseActions({ product }) {
         />
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <form action={addToCartAction}>
-          <input type="hidden" name="productID" value={product.id} />
-          <input type="hidden" name="returnTo" value={`/products/${product.id}`} />
-          <input type="hidden" name="quantity" value={quantity} />
-          <button
-            type="submit"
-            disabled={unavailable}
-            className="btn btn-secondary btn-block"
-          >
-            Add to cart
-          </button>
-        </form>
-        <form action={buyNowAction}>
-          <input type="hidden" name="productID" value={product.id} />
-          <input type="hidden" name="returnTo" value={`/products/${product.id}`} />
-          <input type="hidden" name="quantity" value={quantity} />
-          <button
-            type="submit"
-            disabled={unavailable}
-            className="btn btn-primary btn-block"
-          >
-            Buy now
-          </button>
-        </form>
+        <button
+          type="button"
+          disabled={unavailable || !validQuantity || cartBusy}
+          onClick={() => addItem()}
+          className="btn btn-secondary btn-block"
+        >
+          {cartBusy ? 'Adding…' : 'Add to cart'}
+        </button>
+        <button
+          type="button"
+          disabled={unavailable || !validQuantity || cartBusy}
+          onClick={() => addItem(true)}
+          className="btn btn-primary btn-block"
+        >
+          {cartBusy ? 'Processing…' : 'Buy now'}
+        </button>
       </div>
     </div>
   )

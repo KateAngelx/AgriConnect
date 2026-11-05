@@ -1,7 +1,7 @@
 import { currentUser } from './auth'
 import { getProduct } from './catalog'
 import { isApprovedBuyer } from './roles'
-import { saveCart } from './sync'
+import { mutateBuyerCart, readBuyerCart, saveCart } from './sync'
 import { readyStore } from './store'
 
 async function requireBuyer(nextPath = '/cart') {
@@ -39,6 +39,11 @@ export async function getCart(userId) {
   const store = await readyStore()
   const buyerId = userId ?? (await currentUser())?.id
   if (!buyerId) return null
+  const persistedCart = await readBuyerCart(buyerId)
+  if (persistedCart !== undefined) {
+    if (persistedCart) store.carts.set(buyerId, persistedCart)
+    else store.carts.delete(buyerId)
+  }
   return presentCart(store, store.carts.get(buyerId) ?? null)
 }
 
@@ -46,12 +51,23 @@ export async function addToCart(input) {
   const productID = String(input.productID ?? '')
   const buyer = await requireBuyer(productID ? `/products/${encodeURIComponent(productID)}` : '/products')
   if (buyer.error) return buyer
-  const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1))
+  const quantity = Number(input.quantity ?? 1)
   if (!productID) return { error: 'Choose a product.' }
+  if (!Number.isInteger(quantity) || quantity < 1) return { error: 'Enter a valid quantity.' }
+  const store = await readyStore()
+  const persistedCart = await mutateBuyerCart({
+    buyerId: buyer.user.id,
+    operation: 'add',
+    productId: productID,
+    quantity,
+  })
+  if (persistedCart) {
+    store.carts.set(buyer.user.id, persistedCart)
+    return { cart: presentCart(store, persistedCart) }
+  }
   const product = await getProduct(productID)
   if (!product || product.status !== 'active') return { error: 'That product is not available.' }
   if (product.stock < quantity) return { error: 'The requested quantity is not available.' }
-  const store = await readyStore()
   const cart = store.carts.get(buyer.user.id) ?? {
     id: crypto.randomUUID(),
     buyer: buyer.user.id,
@@ -71,10 +87,22 @@ export async function updateCart(input) {
   const buyer = await requireBuyer()
   if (buyer.error) return buyer
   const store = await readyStore()
-  const cart = store.carts.get(buyer.user.id)
+  const cart = (await getCart(buyer.user.id)) || store.carts.get(buyer.user.id)
   const item = cart?.items.find((entry) => entry.id === String(input.itemID ?? ''))
   if (!cart || cart.id !== String(input.cartID ?? '') || !item) return { error: 'Cart item not found.' }
-  const quantity = Math.max(0, Math.floor(Number(input.quantity) || 0))
+  const quantity = Number(input.quantity)
+  if (!Number.isInteger(quantity) || quantity < 0) return { error: 'Enter a valid quantity.' }
+  const persistedCart = await mutateBuyerCart({
+    buyerId: buyer.user.id,
+    operation: 'set',
+    cartId: cart.id,
+    itemId: item.id,
+    quantity,
+  })
+  if (persistedCart) {
+    store.carts.set(buyer.user.id, persistedCart)
+    return { cart: presentCart(store, persistedCart) }
+  }
   if (quantity === 0) {
     cart.items = cart.items.filter((entry) => entry.id !== item.id)
     await saveCart(cart)
@@ -92,12 +120,23 @@ export async function buyNow(input) {
   const productID = String(input.productID ?? '')
   const buyer = await requireBuyer(productID ? `/products/${encodeURIComponent(productID)}` : '/products')
   if (buyer.error) return buyer
-  const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1))
+  const quantity = Number(input.quantity ?? 1)
   if (!productID) return { error: 'Choose a product.' }
+  if (!Number.isInteger(quantity) || quantity < 1) return { error: 'Enter a valid quantity.' }
+  const store = await readyStore()
+  const persistedCart = await mutateBuyerCart({
+    buyerId: buyer.user.id,
+    operation: 'replace',
+    productId: productID,
+    quantity,
+  })
+  if (persistedCart) {
+    store.carts.set(buyer.user.id, persistedCart)
+    return { cart: presentCart(store, persistedCart) }
+  }
   const product = await getProduct(productID)
   if (!product || product.status !== 'active') return { error: 'That product is not available.' }
   if (quantity > product.stock) return { error: 'The requested quantity exceeds available stock.' }
-  const store = await readyStore()
   const existingCart = store.carts.get(buyer.user.id)
   const cart = {
     id: existingCart?.id ?? crypto.randomUUID(),

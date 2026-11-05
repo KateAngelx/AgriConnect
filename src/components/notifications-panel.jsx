@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatTimeAgo } from '@/lib/dashboard-format'
 
@@ -9,6 +9,9 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [markingIds, setMarkingIds] = useState(() => new Set())
+  const [markingAll, setMarkingAll] = useState(false)
+  const operationBusy = useRef(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -42,29 +45,59 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
   }, [open, onClose])
 
   async function markRead(id) {
-    const response = await fetch('/api/notifications', {
-      method: 'PATCH',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    })
-    if (!response.ok) return
-    setItems((prev) => prev.map((note) => (note.id === id ? { ...note, read: true } : note)))
-    onUnreadChange?.(Math.max(0, unread - 1))
-    router.refresh()
+    const note = items.find((item) => item.id === id)
+    if (!note || note.read || operationBusy.current) return
+    operationBusy.current = true
+    setMarkingIds((previous) => new Set(previous).add(id))
+    setError('')
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Could not update notification.')
+      setItems((prev) => prev.map((note) => (note.id === id ? { ...note, read: true } : note)))
+      onUnreadChange?.(Math.max(0, unread - 1))
+      router.refresh()
+    } catch (err) {
+      setError(err.message || 'Could not update notification.')
+    } finally {
+      operationBusy.current = false
+      setMarkingIds((previous) => {
+        const next = new Set(previous)
+        next.delete(id)
+        return next
+      })
+    }
   }
 
   async function markAllRead() {
-    const response = await fetch('/api/notifications', {
-      method: 'PATCH',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ all: true }),
-    })
-    if (!response.ok) return
-    setItems((prev) => prev.map((note) => ({ ...note, read: true })))
-    onUnreadChange?.(0)
-    router.refresh()
+    if (operationBusy.current) return
+    operationBusy.current = true
+    setMarkingAll(true)
+    setError('')
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Could not update notifications.')
+      setItems((prev) => prev.map((note) => ({ ...note, read: true })))
+      onUnreadChange?.(0)
+      router.refresh()
+    } catch (err) {
+      setError(err.message || 'Could not update notifications.')
+    } finally {
+      operationBusy.current = false
+      setMarkingAll(false)
+    }
   }
 
   if (!open) return null
@@ -85,16 +118,20 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
             Notifications
           </h2>
           {unread > 0 ? (
-            <button type="button" onClick={markAllRead} className="text-xs font-bold text-[#4b9f30]">
-              Mark all read
+            <button
+              type="button"
+              onClick={markAllRead}
+              disabled={markingAll || markingIds.size > 0}
+              className="text-xs font-bold text-[#4b9f30] disabled:cursor-wait disabled:opacity-60"
+            >
+              {markingAll ? 'Marking…' : 'Mark all read'}
             </button>
           ) : null}
         </header>
         <div className="max-h-[min(24rem,70vh)] overflow-y-auto">
+          {error ? <p role="alert" className="m-3 rounded-xl bg-[#fff1ed] px-3 py-2 text-sm text-[#963b2d]">{error}</p> : null}
           {loading ? (
             <p className="px-4 py-6 text-sm text-[#647066]">Loading…</p>
-          ) : error ? (
-            <p className="m-3 rounded-xl bg-[#fff1ed] px-3 py-2 text-sm text-[#963b2d]">{error}</p>
           ) : items.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-[#647066]">No notifications yet.</p>
           ) : (
@@ -105,7 +142,7 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
                     href={note.href || '/notifications'}
                     className={`block px-4 py-3 hover:bg-[#f7faf6] ${note.read ? 'opacity-75' : 'bg-[#f4faf0]/60'}`}
                     onClick={() => {
-                      if (!note.read) markRead(note.id)
+                      markRead(note.id)
                       onClose()
                     }}
                   >

@@ -1,23 +1,48 @@
-import { save } from './sync'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import { readyStore } from './store'
 
-export async function listWishlist(userId) {
+function databaseEnabled() {
+  return globalThis.__agriconnectStatus?.mode === 'supabase'
+}
+
+function wishlistItems(store, records) {
+  return records.map((item) => ({
+    ...item,
+    product: store.products.find((product) => product.id === item.productId) || null,
+  }))
+}
+
+export async function listWishlistState(userId) {
   const store = await readyStore()
-  const items = store.wishlists.get(userId) ?? []
-  return items
-    .map((item) => ({
-      ...item,
-      product: store.products.find((product) => product.id === item.productId) || null,
-    }))
+  if (databaseEnabled()) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const { data, error } = await client.rpc('read_buyer_wishlist', { p_buyer_id: userId })
+    if (error) throw new Error(`wishlist_items: ${error.message}`)
+    const records = Array.isArray(data?.items) ? data.items : []
+    store.wishlists.set(userId, records)
+    const revision = Number(data?.revision || 0)
+    store.wishlistRevisions.set(userId, revision)
+    return { items: wishlistItems(store, records), revision }
+  }
+  const records = store.wishlists.get(userId) ?? []
+  return {
+    items: wishlistItems(store, records),
+    revision: Number(store.wishlistRevisions.get(userId) || 0),
+  }
+}
+
+export async function listWishlist(userId) {
+  return (await listWishlistState(userId)).items
 }
 
 export async function wished(userId, productId) {
   if (!userId) return false
-  const store = await readyStore()
-  return (store.wishlists.get(userId) ?? []).some((item) => item.productId === productId)
+  const wishlist = await listWishlistState(userId)
+  return wishlist.items.some((item) => item.productId === productId)
 }
 
-export async function toggleWishlist(user, productId) {
+export async function setWishlistItem(user, productId, saved) {
   const { isApprovedBuyer } = await import('./roles')
   if (!user || !isApprovedBuyer(user)) {
     const { authHref } = await import('@/lib/auth-links')
@@ -27,23 +52,46 @@ export async function toggleWishlist(user, productId) {
       redirectTo: authHref('login', destination),
     }
   }
+  const normalizedProductId = String(productId || '').trim()
+  if (!normalizedProductId) return { error: 'Choose a product.' }
+  if (typeof saved !== 'boolean') return { error: 'Choose whether to save or remove this product.' }
+
   const store = await readyStore()
-  const items = store.wishlists.get(user.id) ?? []
-  const existing = items.find((item) => item.productId === productId)
-  if (existing) {
-    store.wishlists.set(user.id, items.filter((item) => item.id !== existing.id))
-    await save()
-    return { saved: false }
+  const client = databaseEnabled() ? getSupabaseAdmin() : null
+  if (databaseEnabled() && !client)
+    throw new Error('Supabase is configured but its server client is unavailable.')
+
+  if (saved && !client) {
+    const product = store.products.find((item) => item.id === normalizedProductId)
+    if (!product || product.status !== 'active' || product.seller?.status !== 'approved')
+      return { error: 'That product is not available.' }
   }
-  const product = store.products.find(
-    (item) =>
-      item.id === productId &&
-      item.status === 'active' &&
-      item.seller?.status === 'approved',
-  )
-  if (!product) return { error: 'That product is not available.' }
-  const next = [...items, { id: crypto.randomUUID(), productId }]
-  store.wishlists.set(user.id, next)
-  await save()
-  return { saved: true }
+
+  let records = store.wishlists.get(user.id) ?? []
+  let revision = Number(store.wishlistRevisions.get(user.id) || 0)
+  if (client) {
+    const { data, error } = await client.rpc('set_buyer_wishlist_item', {
+      p_buyer_id: user.id,
+      p_product_id: normalizedProductId,
+      p_saved: saved,
+    })
+    if (error) throw new Error(`wishlist_items: ${error.message}`)
+    records = Array.isArray(data?.items) ? data.items : []
+    revision = Number(data?.revision || 0)
+  } else {
+    records = saved
+      ? records.some((item) => item.productId === normalizedProductId)
+        ? records
+        : [...records, { id: crypto.randomUUID(), productId: normalizedProductId }]
+      : records.filter((item) => item.productId !== normalizedProductId)
+    revision += 1
+  }
+  store.wishlists.set(user.id, records)
+  store.wishlistRevisions.set(user.id, revision)
+  return { saved, items: wishlistItems(store, records), revision }
+}
+
+export async function toggleWishlist(user, productId) {
+  const existing = await wished(user?.id, productId)
+  return setWishlistItem(user, productId, !existing)
 }

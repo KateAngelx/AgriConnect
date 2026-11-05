@@ -6,9 +6,8 @@ import { SiteShell } from '@/components/site-shell'
 import { currentUser } from '@/server/auth'
 import { isApprovedBuyer, isApprovedSeller } from '@/server/roles'
 import { getProduct, listProductReviews, listRelatedProducts } from '@/server/catalog'
-import { wished } from '@/server/wishlist'
 import { ProductPurchaseActions } from '@/components/product-purchase-actions'
-import { toggleWishlistAction } from '@/app/(frontend)/wishlist/actions'
+import { WishlistButton } from '@/components/wishlist-button'
 import { peso } from '@/lib/dashboard-format'
 import { authHref } from '@/lib/auth-links'
 import { buyerReviewForProduct } from '@/server/reviews'
@@ -21,7 +20,6 @@ export default async function ProductDetailsPage({ params, searchParams }) {
   const user = await currentUser()
   const product = await getProduct(productId)
   if (!product || product.status !== 'active') notFound()
-  const saved = user ? await wished(user.id, product.id) : false
   const seller = typeof product.seller === 'object' ? product.seller : null
   const category = typeof product.category === 'object' ? product.category : null
   const [related, reviews] = await Promise.all([
@@ -147,12 +145,9 @@ export default async function ProductDetailsPage({ params, searchParams }) {
             {user && isApprovedBuyer(user) ? (
               <>
               <ProductPurchaseActions product={product} />
-              <form action={toggleWishlistAction} className="mt-3">
-                <input type="hidden" name="productId" value={product.id} />
-                <button className="btn btn-secondary">
-                  {saved ? 'Remove from wishlist' : 'Save to wishlist'}
-                </button>
-              </form>
+              <div className="mt-3">
+                <WishlistButton product={product} />
+              </div>
               </>
             ) : (
               <div className="ui-card mt-6 p-5">

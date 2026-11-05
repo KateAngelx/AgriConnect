@@ -67,10 +67,10 @@ function optionalRowsOf(result) {
   throw new Error(result.error.message)
 }
 
-async function replaceTable(client, table, rows, key = 'id') {
+async function replaceTable(client, table, rows, conflictTarget = 'id') {
   if (!rows.length) return
   let payload = rows
-  const options = key === 'buyer_id' ? { onConflict: key } : undefined
+  const options = conflictTarget ? { onConflict: conflictTarget } : undefined
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const saved = options
       ? await client.from(table).upsert(payload, options)
@@ -257,6 +257,7 @@ function snapshot(store) {
       id: cart.id,
       buyer_id: cart.buyer,
       items: cart.items,
+      revision: Number(cart.revision || 0),
     })),
     wishlist: [...store.wishlists.entries()].flatMap(([buyerId, items]) =>
       items.map((item) => ({ id: item.id, buyer_id: buyerId, product_id: item.productId })),
@@ -282,28 +283,45 @@ function snapshot(store) {
   }
 }
 
-async function pushAll(client) {
-  const data = snapshot(getStore())
-  await replaceTable(client, 'profiles', data.profiles)
-  await replaceTable(client, 'categories', data.categories)
-  await replaceTable(client, 'sellers', data.sellers)
-  await replaceTable(client, 'products', data.products)
-  await replaceTable(client, 'product_reviews', data.productReviews)
-  await replaceTable(client, 'product_review_moderation', data.productReviewModeration, 'review_id')
-  await replaceTable(client, 'product_review_owners', data.productReviewOwners)
-  await replaceTable(client, 'buyer_feedback', data.feedback)
-  await replaceTable(client, 'buyer_reports', data.buyerReports)
-  await replaceTable(client, 'orders', data.orders)
-  await replaceTable(client, 'deliveries', data.deliveries)
-  await replaceTable(client, 'payments', data.payments)
-  await replaceTable(client, 'notifications', data.notifications)
-  await replaceTable(client, 'carts', data.carts, 'buyer_id')
-  await replaceTable(client, 'wishlist_items', data.wishlist)
-  await replaceTable(client, 'sessions', data.sessions, 'token')
-  await replaceTable(client, 'role_applications', data.applications)
-  const settingsTable = await client.from('platform_settings').select('key').limit(1)
-  if (!settingsTable.error) {
-    await replaceTable(client, 'platform_settings', data.settings, 'key')
+function rowKey(row, key) {
+  return key.split(',').map((field) => row[field] ?? '').join('\u0000')
+}
+
+function rowsChanged(previousRows, nextRows, key) {
+  const previous = new Map((previousRows || []).map((row) => [rowKey(row, key), row]))
+  return nextRows.filter((row) => JSON.stringify(previous.get(rowKey(row, key))) !== JSON.stringify(row))
+}
+
+async function pushChanges(client, data) {
+  const previous = globalThis.__agriconnectPersistedSnapshot || {}
+  const tables = [
+    ['profiles', 'profiles', 'id'],
+    ['categories', 'categories', 'id'],
+    ['sellers', 'sellers', 'id'],
+    ['products', 'products', 'id'],
+    ['product_reviews', 'productReviews', 'id'],
+    ['product_review_moderation', 'productReviewModeration', 'review_id'],
+    ['product_review_owners', 'productReviewOwners', 'review_id'],
+    ['buyer_feedback', 'feedback', 'id'],
+    ['buyer_reports', 'buyerReports', 'id'],
+    ['orders', 'orders', 'id'],
+    ['deliveries', 'deliveries', 'id'],
+    ['payments', 'payments', 'id'],
+    ['notifications', 'notifications', 'id'],
+    ['carts', 'carts', 'buyer_id'],
+    ['sessions', 'sessions', 'token'],
+    ['role_applications', 'applications', 'id'],
+    ['platform_settings', 'settings', 'key'],
+  ]
+  for (const [table, property, key] of tables) {
+    const changed = rowsChanged(previous[property], data[property], key)
+    if (table === 'carts') {
+      for (const row of changed) {
+        const old = (previous.carts || []).find((entry) => entry.buyer_id === row.buyer_id)
+        row.revision = Math.max(Number(row.revision || 0), Number(old?.revision || 0)) + 1
+      }
+    }
+    if (changed.length) await replaceTable(client, table, changed, key)
   }
 }
 
@@ -535,10 +553,16 @@ async function pullAll(client) {
   store.carts = new Map(
     rowsOf(carts, 'carts').map((row) => [
       row.buyer_id,
-      { id: row.id, buyer: row.buyer_id, items: row.items || [] },
+      {
+        id: row.id,
+        buyer: row.buyer_id,
+        items: row.items || [],
+        revision: Number(row.revision || 0),
+      },
     ]),
   )
   store.wishlists = new Map()
+  store.wishlistRevisions = new Map()
   for (const row of rowsOf(wishlist, 'wishlist_items')) {
     const items = store.wishlists.get(row.buyer_id) ?? []
     items.push({ id: row.id, productId: row.product_id })
@@ -615,49 +639,92 @@ async function hydrate() {
   try {
     const probe = await client.from('profiles').select('id').limit(1)
     if (probe.error) throw new Error(probe.error.message)
-    if (!probe.data?.length) {
-      globalThis.__agriconnectLoadedFromDb = false
-      globalThis.__agriconnectStatus = {
-        mode: 'supabase',
-        reason:
-          'Database is empty. Run supabase/seed.sql in the Supabase SQL editor (after schema.sql).',
-      }
-      return globalThis.__agriconnectStatus
-    }
     await pullAll(client)
     globalThis.__agriconnectLoadedFromDb = true
-    globalThis.__agriconnectStatus = { mode: 'supabase', reason: '' }
+    globalThis.__agriconnectPersistedSnapshot = snapshot(getStore())
+    globalThis.__agriconnectStatus = {
+      mode: 'supabase',
+      reason: probe.data?.length ? '' : 'Database has no profiles yet; new records can be persisted.',
+    }
   } catch (error) {
     globalThis.__agriconnectLoadedFromDb = false
-    globalThis.__agriconnectStatus = { mode: 'memory', reason: error.message }
+    globalThis.__agriconnectStatus = { mode: 'supabase', reason: error.message }
+    throw new Error(`Supabase synchronization failed: ${error.message}`, { cause: error })
   }
   return globalThis.__agriconnectStatus
 }
 
 export function ready() {
   getStore()
-  if (!globalThis.__agriconnectHydrate) globalThis.__agriconnectHydrate = hydrate()
+  if (!globalThis.__agriconnectHydrate) {
+    globalThis.__agriconnectHydrate = hydrate().catch((error) => {
+      globalThis.__agriconnectHydrate = null
+      throw error
+    })
+  }
   return globalThis.__agriconnectHydrate
+}
+
+export async function mutateBuyerCart(input) {
+  await ready()
+  if (globalThis.__agriconnectStatus?.mode !== 'supabase') return null
+  const client = getSupabaseAdmin()
+  if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+  const { data, error } = await client.rpc('mutate_buyer_cart', {
+    p_buyer_id: input.buyerId,
+    p_operation: input.operation,
+    p_product_id: input.productId || null,
+    p_item_id: input.itemId || null,
+    p_quantity: input.quantity ?? null,
+    p_cart_id: input.cartId || null,
+  })
+  if (error) throw new Error(`carts: ${error.message}`)
+  if (!data || !Array.isArray(data.items)) throw new Error('carts: The database returned an invalid cart.')
+  const cart = {
+    id: data.id,
+    buyer: input.buyerId,
+    items: data.items,
+    revision: Number(data.revision || 0),
+  }
+  const persisted = globalThis.__agriconnectPersistedSnapshot
+  if (persisted) {
+    persisted.carts = (persisted.carts || []).filter((entry) => entry.buyer_id !== input.buyerId)
+    persisted.carts.push({
+      id: cart.id,
+      buyer_id: cart.buyer,
+      items: cart.items,
+      revision: cart.revision,
+    })
+  }
+  return cart
+}
+
+export async function readBuyerCart(buyerId) {
+  await ready()
+  if (globalThis.__agriconnectStatus?.mode !== 'supabase') return undefined
+  const client = getSupabaseAdmin()
+  if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+  const { data, error } = await client
+    .from('carts')
+    .select('id,buyer_id,items,revision')
+    .eq('buyer_id', buyerId)
+    .maybeSingle()
+  if (error) throw new Error(`carts: ${error.message}`)
+  return data
+    ? {
+        id: data.id,
+        buyer: data.buyer_id,
+        items: data.items || [],
+        revision: Number(data.revision || 0),
+      }
+    : null
 }
 
 export async function saveCart(cart) {
   await ready()
-  const client = getSupabaseAdmin()
-  if (!client || globalThis.__agriconnectStatus?.mode !== 'supabase') return
-
-  const existing = await client.from('carts').select('id').eq('buyer_id', cart.buyer).maybeSingle()
-  if (existing.error) throw new Error(`carts: ${existing.error.message}`)
-  if (existing.data?.id) cart.id = existing.data.id
-
-  const saved = await client.from('carts').upsert(
-    {
-      id: existing.data?.id || cart.id,
-      buyer_id: cart.buyer,
-      items: cart.items,
-    },
-    { onConflict: 'buyer_id' },
-  )
-  if (saved.error) throw new Error(`carts: ${saved.error.message}`)
+  const store = getStore()
+  store.carts.set(cart.buyer, cart)
+  await save()
 }
 
 export async function deleteProductReview(reviewId) {
@@ -672,22 +739,18 @@ export async function deleteProductReview(reviewId) {
 export async function save() {
   await ready()
   if (globalThis.__agriconnectStatus?.mode !== 'supabase') return
-  if (!globalThis.__agriconnectLoadedFromDb) return
+  if (!globalThis.__agriconnectLoadedFromDb) {
+    throw new Error('Supabase is configured but its initial data has not been loaded.')
+  }
   const client = getSupabaseAdmin()
-  if (!client) return
-  globalThis.__agriconnectSave = (globalThis.__agriconnectSave || Promise.resolve())
+  if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+  const data = JSON.parse(JSON.stringify(snapshot(getStore())))
+  const previousSave = globalThis.__agriconnectSave || Promise.resolve()
+  globalThis.__agriconnectSave = previousSave
     .catch(() => undefined)
     .then(async () => {
-      try {
-        await pushAll(client)
-      } catch (firstError) {
-        await new Promise((resolve) => setTimeout(resolve, 250))
-        try {
-          await pushAll(client)
-        } catch {
-          throw firstError
-        }
-      }
+      await pushChanges(client, data)
+      globalThis.__agriconnectPersistedSnapshot = data
       globalThis.__agriconnectStatus = { mode: 'supabase', reason: '' }
     })
     .catch((error) => {

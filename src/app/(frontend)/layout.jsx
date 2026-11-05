@@ -3,8 +3,12 @@ import { FloatingAiAssistant } from '@/components/floating-ai-assistant'
 import { InstallAppToast } from '@/components/install-app-toast'
 import { RouteFeedbackToast } from '@/components/ui-feedback'
 import { BrowserNotifications } from '@/components/browser-notifications'
-import { ActionLoadingOverlay } from '@/components/action-loading-overlay'
+import { RefreshOnFocus } from '@/components/refresh-on-focus'
+import { MarketplaceStateProvider } from '@/components/marketplace-state'
 import { currentUser } from '@/server/auth'
+import { isApprovedBuyer } from '@/server/roles'
+import { getCart } from '@/server/cart'
+import { listWishlistState } from '@/server/wishlist'
 import { ready } from '@/server/sync'
 import './styles.css'
 
@@ -40,6 +44,10 @@ export const metadata = {
 export default async function RootLayout({ children }) {
   await ready()
   const user = await currentUser()
+  const buyerEnabled = isApprovedBuyer(user)
+  const [initialCart, initialWishlist] = buyerEnabled
+    ? await Promise.all([getCart(user.id), listWishlistState(user.id)])
+    : [null, { items: [], revision: 0 }]
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
@@ -50,11 +58,18 @@ export default async function RootLayout({ children }) {
           Skip to content
         </a>
         <div id="root" tabIndex={-1}>
-          {children}
+          <MarketplaceStateProvider
+            userId={buyerEnabled ? user.id : null}
+            initialCart={initialCart}
+            initialWishlist={initialWishlist.items}
+            initialWishlistRevision={initialWishlist.revision}
+          >
+            {children}
+          </MarketplaceStateProvider>
+          <RefreshOnFocus />
           <Suspense fallback={null}><RouteFeedbackToast /></Suspense>
           <InstallAppToast />
           <BrowserNotifications enabled={Boolean(user)} />
-          <ActionLoadingOverlay />
           <FloatingAiAssistant user={user} />
         </div>
       </body>

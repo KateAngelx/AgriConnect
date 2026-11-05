@@ -1,36 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardIcon } from './dashboard-icons'
 import { peso } from '@/lib/dashboard-format'
+import { useMarketplaceState } from './marketplace-state'
 
 export function CartDrawer({ open, onClose }) {
   const router = useRouter()
-  const [cart, setCart] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const { cart, cartBusy, updateCart } = useMarketplaceState()
+  const [drafts, setDrafts] = useState({})
   const [error, setError] = useState('')
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const response = await fetch('/api/cart', { cache: 'no-store', credentials: 'same-origin' })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Could not load cart.')
-      setCart(data.cart)
-    } catch (err) {
-      setError(err.message || 'Could not load cart.')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    load()
-  }, [open, load])
 
   useEffect(() => {
     if (!open) return
@@ -47,25 +27,17 @@ export function CartDrawer({ open, onClose }) {
   }, [open, onClose])
 
   async function updateQuantity(item, quantity) {
-    if (!cart) return
-    setBusy(true)
     setError('')
-    try {
-      const response = await fetch('/api/cart', {
-        method: 'PATCH',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cartID: cart.id, itemID: item.id, quantity }),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Update failed.')
-      setCart(data.cart)
-      router.refresh()
-    } catch (err) {
-      setError(err.message || 'Update failed.')
-    } finally {
-      setBusy(false)
+    const result = await updateCart(item.id, quantity)
+    if (result.error) {
+      setError(result.error)
+      return
     }
+    setDrafts((previous) => {
+      const next = { ...previous }
+      delete next[item.id]
+      return next
+    })
   }
 
   if (!open) return null
@@ -100,9 +72,7 @@ export function CartDrawer({ open, onClose }) {
         </header>
 
         <div className="min-h-0 max-h-[min(28rem,55vh)] flex-1 overflow-y-auto overscroll-contain px-4 py-4">
-          {loading ? (
-            <p className="text-sm text-[#647066]">Loading cart…</p>
-          ) : error ? (
+          {error ? (
             <p className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">{error}</p>
           ) : items.length === 0 ? (
             <div className="py-12 text-center">
@@ -149,19 +119,24 @@ export function CartDrawer({ open, onClose }) {
                         <input
                           id={`qty-${entry.id}`}
                           type="number"
-                          min={0}
+                          min={1}
                           max={product.stock}
-                          disabled={busy}
-                          value={entry.quantity}
+                          disabled={cartBusy}
+                          value={drafts[entry.id] ?? entry.quantity}
                           onChange={(event) => {
-                            if (event.target.value === '') return
-                            updateQuantity(entry, Number(event.target.value))
+                            setDrafts((previous) => ({ ...previous, [entry.id]: event.target.value }))
+                          }}
+                          onBlur={(event) => {
+                            const quantity = Number(event.currentTarget.value)
+                            if (Number.isInteger(quantity) && quantity > 0 && quantity !== entry.quantity) {
+                              updateQuantity(entry, quantity)
+                            }
                           }}
                           className="w-16 rounded-lg border border-[#173c2c]/12 px-2 py-1 text-sm"
                         />
                         <button
                           type="button"
-                          disabled={busy}
+                          disabled={cartBusy}
                           onClick={() => updateQuantity(entry, 0)}
                           className="grid size-8 place-items-center rounded-lg border border-red-200 text-[#963b2d] hover:bg-red-50"
                           aria-label={`Remove ${entry.product?.name || 'product'} from cart`}
@@ -187,7 +162,7 @@ export function CartDrawer({ open, onClose }) {
             </div>
             <p className="mt-1 text-xs text-[#647066]">Delivery fees are calculated at checkout.</p>
             <div className="mt-4 grid gap-2">
-              <a
+                <a
                 href="/checkout"
                 onClick={onClose}
                 className="btn btn-primary btn-block"

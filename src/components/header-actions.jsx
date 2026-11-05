@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
 import { logoutAction } from '@/app/(frontend)/account/actions'
 import { activeNavHref, homeForNav } from '@/components/dashboard-nav'
 import { DashboardIcon } from './dashboard-icons'
 import { CartDrawer } from './cart-drawer'
 import { NotificationsPanel } from './notifications-panel'
 import { SignOutButton } from './sign-out-button'
+import { useMarketplaceState } from './marketplace-state'
 
 function iconButtonClass(active) {
   return `relative grid size-9 place-items-center rounded-lg text-[#1d1d1f] hover:bg-[#e8e8ed] ${active ? 'bg-[#e8e8ed]' : ''}`
@@ -201,16 +201,14 @@ export function UserProfileMenu({ user, pathname = '' }) {
 export function AuthenticatedHeaderActions({
   user,
   unread = 0,
-  cartCount = 0,
-  wishlistCount = 0,
   pathname = '',
   mobileAccountInMenu = false,
 }) {
-  const router = useRouter()
+  const { cartCount, wishlistCount } = useMarketplaceState()
   const [cartOpen, setCartOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(unread)
-  useEffect(() => setUnreadCount(unread), [unread])
+  useEffect(() => setUnreadCount(unread), [unread, user?.id])
   const isBuyer = canUseBuyerTools(user) && !pathname.startsWith('/admin/') && !pathname.startsWith('/seller/') && !pathname.startsWith('/delivery/')
   const inWorkspace =
     pathname.startsWith('/admin') ||
@@ -273,11 +271,11 @@ export function AuthenticatedHeaderActions({
           open={cartOpen}
           onClose={() => {
             setCartOpen(false)
-            router.refresh()
           }}
         />
       ) : null}
       <NotificationsPanel
+        key={user.id}
         open={notifOpen}
         onClose={() => setNotifOpen(false)}
         onUnreadChange={setUnreadCount}
