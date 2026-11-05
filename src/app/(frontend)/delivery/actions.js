@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { currentUser } from '@/server/auth'
 import { hasRole, isApprovedDelivery } from '@/server/roles'
 import { courierCollect, saveServiceArea, updateAssignment } from '@/server/delivery'
+import { readyStore } from '@/server/store'
 
 async function courier() {
   const user = await currentUser()
@@ -15,16 +16,31 @@ async function courier() {
 
 export async function trackAction(formData) {
   const user = await courier()
-  const result = await updateAssignment(user, formData.get('deliveryId'), formData.get('note'))
-  if (result.error) redirect(`/delivery/dashboard?error=${encodeURIComponent(result.error)}`)
-  redirect('/delivery/dashboard?success=Assignment%20updated')
+  const deliveryId = String(formData.get('deliveryId') || '')
+  const storeBeforeUpdate = await readyStore()
+  const previousStatus = storeBeforeUpdate.deliveries.find((delivery) => delivery.id === deliveryId)?.status
+  const result = await updateAssignment(user, deliveryId, formData.get('note'))
+  if (result.error) redirect(`/delivery/deliveries?job=${encodeURIComponent(deliveryId)}&error=${encodeURIComponent(result.error)}`)
+  const labels = {
+    accepted: 'Delivery accepted',
+    'picked-up': 'Marked as picked up',
+    'in-transit': 'Marked in transit',
+    delivered: 'Delivery completed',
+  }
+  const nextStatuses = {
+    open: 'accepted',
+    accepted: 'picked-up',
+    'picked-up': 'in-transit',
+    'in-transit': 'delivered',
+  }
+  redirect(`/delivery/deliveries?job=${encodeURIComponent(deliveryId)}&success=${encodeURIComponent(labels[nextStatuses[previousStatus]] || 'Assignment updated')}`)
 }
 
 export async function collectDeliveryAction(formData) {
   const user = await courier()
   const result = await courierCollect(user, formData.get('orderId'))
-  if (result.error) redirect(`/delivery/dashboard?error=${encodeURIComponent(result.error)}`)
-  redirect('/delivery/dashboard?success=Cash%20collection%20recorded')
+  if (result.error) redirect(`/delivery/deliveries?error=${encodeURIComponent(result.error)}`)
+  redirect('/delivery/deliveries?success=Cash%20collection%20recorded')
 }
 
 export async function serviceAreaAction(_state, formData) {

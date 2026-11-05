@@ -40,21 +40,23 @@ export function NotificationsPanel({ open, onClose }) {
   }, [open, onClose])
 
   async function markRead(id) {
-    await fetch('/api/notifications', {
+    const response = await fetch('/api/notifications', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     })
+    if (!response.ok) return
     setItems((prev) => prev.map((note) => (note.id === id ? { ...note, read: true } : note)))
     router.refresh()
   }
 
   async function markAllRead() {
-    await fetch('/api/notifications', {
+    const response = await fetch('/api/notifications', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ all: true }),
     })
+    if (!response.ok) return
     setItems((prev) => prev.map((note) => ({ ...note, read: true })))
     router.refresh()
   }

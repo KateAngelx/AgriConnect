@@ -39,7 +39,11 @@ export async function updateBuyerProfile(user, input) {
   if (client) {
     const { error } = await client
       .from('profiles')
-      .update({ delivery_addresses: record.savedAddresses })
+      .update({
+        name: record.name,
+        phone: record.phone,
+        delivery_addresses: record.savedAddresses,
+      })
       .eq('id', user.id)
     if (error) {
       const message = String(error.message || '')

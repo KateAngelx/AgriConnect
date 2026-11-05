@@ -281,7 +281,11 @@ export async function advanceOrder(user, orderId) {
   await notify(
     order.buyer,
     `${order.reference} is ${next.replaceAll('-', ' ')}`,
-    'Your seller updated the order.',
+    next === 'awaiting-delivery'
+      ? 'Seller confirmed the order and it is ready for courier assignment.'
+      : next === 'ready-for-dispatch'
+        ? 'Seller confirmed the order is packed and ready for dispatch.'
+        : `Your seller updated the order to ${next.replaceAll('-', ' ')}.`,
     `/buyer/orders/${order.id}`,
   )
   if (next === 'awaiting-delivery' && order.fulfillment === 'delivery') {

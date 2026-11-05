@@ -7,6 +7,7 @@ import { DashboardIcon } from '@/components/dashboard-icons'
 import { ConfirmButton } from '@/components/confirm-button'
 import { formatEstimatedArrival } from '@/lib/delivery-eta'
 import { PagedRows } from '@/components/paged-rows'
+import { CourierLocationSharing } from '@/components/courier-location-sharing'
 
 const nextLabel = {
   open: 'Accept assignment',
@@ -14,6 +15,13 @@ const nextLabel = {
   'picked-up': 'Mark in transit',
   'in-transit': 'Mark delivered',
 }
+
+const progressSteps = [
+  { status: 'accepted', label: 'Accepted delivery' },
+  { status: 'picked-up', label: 'Picked up' },
+  { status: 'in-transit', label: 'Out for delivery' },
+  { status: 'delivered', label: 'Marked delivered' },
+]
 
 export function DeliveryWorkPanel({ work, detailsHref = '/delivery/deliveries', bare = false, emptyMessage = 'Open jobs in your service area will appear here.' }) {
   const body = work.length ? (
@@ -24,9 +32,14 @@ export function DeliveryWorkPanel({ work, detailsHref = '/delivery/deliveries', 
             <p className="font-semibold text-[#142016]">{assignment.reference || 'Assignment'}</p>
             <p className="text-[13px] text-[#5c6f62]">
               {assignment.privacy === 'preview'
-                ? `${assignment.pickupArea} → ${assignment.deliveryAreaGeneral} · ${peso(assignment.commission)}`
+                ? `Pickup: ${assignment.pickupArea}`
                 : `${assignment.buyerName || 'Buyer'} · ${peso(assignment.commission)}`}
             </p>
+            {assignment.privacy === 'preview' ? (
+              <p className="mt-0.5 text-[13px] text-[#5c6f62]">
+                Deliver: {assignment.deliveryAreaGeneral} · {peso(assignment.commission)}
+              </p>
+            ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <StatusBadge status={pretty(assignment.status)} />
@@ -69,6 +82,11 @@ export function DeliveryAssignmentDetail({ assignment }) {
         </div>
         <StatusBadge status={pretty(assignment.status)} />
       </div>
+      <DeliveryProgress status={assignment.status} updates={assignment.updates} />
+      <CourierLocationSharing
+        deliveryId={assignment.id}
+        active={assignment.isMine && ['accepted', 'picked-up', 'in-transit'].includes(assignment.status)}
+      />
       {(assignment.privacy === 'full' || (assignment.pickupLat && assignment.deliveryLat)) ? (
         <div className="mt-4">
           <LocationRouteMap
@@ -98,6 +116,38 @@ export function DeliveryAssignmentDetail({ assignment }) {
           <DarkButton type="submit">Record cash collected</DarkButton>
         </form>
       ) : null}
+    </div>
+  )
+}
+
+function DeliveryProgress({ status, updates = [] }) {
+  const currentIndex = progressSteps.findIndex((step) => step.status === status)
+  const completedStatuses = new Set(updates.map((update) => update.status))
+
+  return (
+    <div className="mt-5 rounded-xl border border-[#d5e4d4] bg-[#fbfdf9] p-4">
+      <p className="text-sm font-bold text-[#142016]">Delivery progress</p>
+      <ol className="mt-3 space-y-3">
+        {progressSteps.map((step, index) => {
+          const complete = completedStatuses.has(step.status) || index < currentIndex
+          const active = step.status === status || (status === 'open' && index === 0)
+          return (
+            <li key={step.status} className="flex items-start gap-3">
+              <span className={`grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold ${
+                complete ? 'bg-[#2e7d32] text-white' : active ? 'border-2 border-[#2e7d32] bg-white text-[#2e7d32]' : 'bg-[#e7ebe6] text-[#718076]'
+              }`}>
+                {complete ? '✓' : index + 1}
+              </span>
+              <div>
+                <p className={`text-sm font-semibold ${complete || active ? 'text-[#142016]' : 'text-[#718076]'}`}>{step.label}</p>
+                {complete && updates.find((update) => update.status === step.status)?.note ? (
+                  <p className="mt-0.5 text-xs text-[#65766d]">{updates.find((update) => update.status === step.status).note}</p>
+                ) : null}
+              </div>
+            </li>
+          )
+        })}
+      </ol>
     </div>
   )
 }

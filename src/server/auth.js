@@ -201,6 +201,10 @@ export async function logoutAccount() {
   const token = (await cookieStore()).get(SESSION_COOKIE)?.value
   if (token) store.sessions.delete(token)
   ;(await cookieStore()).delete(SESSION_COOKIE)
+  const client = getSupabaseAdmin()
+  if (client && token) {
+    await client.from('sessions').delete().eq('token', token)
+  }
   await save()
   return { ok: true }
 }

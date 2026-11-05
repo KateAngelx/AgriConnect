@@ -147,7 +147,12 @@ export async function markPlatformCommissionPaid(actor, orderId) {
     return { error: 'Record platform commission collection after fulfillment.' }
   }
   order.platformFeeStatus = 'paid'
-  await notify(order.buyer, 'Commission settled', `${order.reference} marketplace commission has been settled.`, '/notifications')
+  await notify(
+    order.buyer,
+    'Delivery fee settled',
+    `${order.reference} delivery fee was confirmed by the administrator.`,
+    `/buyer/orders/${order.id}`,
+  )
   await save()
   return { ok: true }
 }

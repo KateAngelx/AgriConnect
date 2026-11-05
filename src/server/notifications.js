@@ -19,7 +19,7 @@ export async function notify(userId, title, body, href) {
   const subscriptions = store.pushSubscriptions
     .filter((item) => item.userId === userId)
     .map((item) => item.subscription)
-  void sendPushNotifications(subscriptions, note)
+  await sendPushNotifications(subscriptions, note)
   return note
 }
 

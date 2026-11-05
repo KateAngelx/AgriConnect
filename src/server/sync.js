@@ -472,13 +472,14 @@ export async function save() {
   if (!globalThis.__agriconnectLoadedFromDb) return
   const client = getSupabaseAdmin()
   if (!client) return
-  globalThis.__agriconnectSave = (globalThis.__agriconnectSave || Promise.resolve())
+  globalThis.__agriconnectSave = (globalThis.__agriconnectSave || Promise.resolve()).catch(() => undefined)
     .then(async () => {
       await pushAll(client)
       globalThis.__agriconnectStatus = { mode: 'supabase', reason: '' }
     })
     .catch((error) => {
       globalThis.__agriconnectStatus = { mode: 'supabase', reason: error.message }
+      throw error
     })
   return globalThis.__agriconnectSave
 }

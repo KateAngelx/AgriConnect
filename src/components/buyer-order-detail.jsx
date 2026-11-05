@@ -1,5 +1,5 @@
 import { LocationMap } from '@/components/location-map'
-import { LocationRouteMap } from '@/components/location-route-map'
+import { LiveLocationRouteMap } from '@/components/live-location-route-map'
 import { etaMinutesFromNow, formatEstimatedArrival } from '@/lib/delivery-eta'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
 import { peso } from '@/lib/dashboard-format'
@@ -87,11 +87,14 @@ export function BuyerOrderDetail({ order, delivery, payment, error = '', success
         ) : null}
         <div className="mt-3">
           {order.fulfillment === 'delivery' ? (
-            <LocationRouteMap
+            <LiveLocationRouteMap
+              deliveryId={delivery?.id}
               pickupLat={pickup?.pickupLat}
               pickupLng={pickup?.pickupLng}
               deliveryLat={order.deliveryLat}
               deliveryLng={order.deliveryLng}
+              initialCourierLat={delivery?.courierLat}
+              initialCourierLng={delivery?.courierLng}
               height={220}
             />
           ) : (

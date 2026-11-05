@@ -13,6 +13,8 @@ export function LocationRouteMap({
   deliveryLat,
   deliveryLng,
   height = 260,
+  courierLat,
+  courierLng,
 }) {
   const mapRef = useRef(null)
   const instanceRef = useRef(null)
@@ -22,6 +24,9 @@ export function LocationRouteMap({
   const dlng = parseCoord(deliveryLng)
   const hasPickup = isValidPin(plat, plng)
   const hasDelivery = isValidPin(dlat, dlng)
+  const clat = parseCoord(courierLat)
+  const clng = parseCoord(courierLng)
+  const hasCourier = isValidPin(clat, clng)
 
   useEffect(() => {
     if (!mapRef.current || (!hasPickup && !hasDelivery)) return
@@ -48,6 +53,9 @@ export function LocationRouteMap({
       if (hasDelivery) {
         L.marker([dlat, dlng], { icon: mapPinIcon(L, 'dropoff') }).addTo(map).bindPopup('Buyer drop-off')
         bounds.push([dlat, dlng])
+      }
+      if (hasCourier) {
+        L.marker([clat, clng], { icon: mapPinIcon(L, 'delivery') }).addTo(map).bindPopup('Courier location')
       }
       if (hasPickup && hasDelivery) {
         const routeLine = L.polyline([[plat, plng], [dlat, dlng]], {
@@ -77,7 +85,7 @@ export function LocationRouteMap({
         instanceRef.current = null
       }
     }
-  }, [plat, plng, dlat, dlng, hasPickup, hasDelivery])
+  }, [plat, plng, dlat, dlng, clat, clng, hasPickup, hasDelivery, hasCourier])
 
   if (!hasPickup && !hasDelivery) {
     return (

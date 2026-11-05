@@ -60,6 +60,11 @@ export function deliveryAssignmentForViewer(store, delivery, order, viewerUserId
     subtotal: order?.subtotal || 0,
     canAccept: delivery.status === 'open' && !delivery.courierId,
     isMine: delivery.courierId === viewerUserId,
+    updates: (delivery.updates || []).map((update) => ({
+      status: update.status,
+      note: update.note || '',
+      at: update.at || '',
+    })),
   }
 
   if (accepted) {

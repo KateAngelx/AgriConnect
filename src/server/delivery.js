@@ -1,5 +1,6 @@
 import { refreshDeliveryEtaIso } from '@/lib/delivery-eta'
 import { isValidPin } from '@/lib/geo'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import { deliveryAssignmentForViewer, listDeliveryWorkForUser } from './delivery-assignments'
 import { notify } from './notifications'
 import { collectCash, DELIVERY_FEE } from './payments'
@@ -158,6 +159,14 @@ export async function saveServiceArea(user, serviceArea, serviceAreaLat, service
   record.serviceAreaLat = latitude
   record.serviceAreaLng = longitude
   record.savedAddresses = locations
+  const client = getSupabaseAdmin()
+  if (client) {
+    const { error } = await client.from('profiles').update({
+      service_area: area,
+      delivery_addresses: locations,
+    }).eq('id', user.id)
+    if (error) return { error: `Service area could not be saved to Supabase: ${error.message}` }
+  }
   await save()
   return { ok: true }
 }
