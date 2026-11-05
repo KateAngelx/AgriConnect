@@ -1,6 +1,7 @@
 import { save } from './sync'
 import { readyStore } from './store'
 import { sendPushNotifications } from './push-notifications'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function notify(userId, title, body, href) {
   if (!userId) return null
@@ -40,6 +41,15 @@ export async function markNotificationRead(id, userId) {
   const note = store.notifications.find((item) => item.id === id && item.userId === userId)
   if (!note) return { error: 'Notification not found.' }
   note.read = true
+  const client = getSupabaseAdmin()
+  if (client) {
+    const { error } = await client
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', id)
+      .eq('user_id', userId)
+    if (error) return { error: `Could not save notification state: ${error.message}` }
+  }
   await save()
   return { ok: true }
 }
@@ -48,6 +58,14 @@ export async function markAllNotificationsRead(userId) {
   const store = await readyStore()
   for (const note of store.notifications) {
     if (note.userId === userId) note.read = true
+  }
+  const client = getSupabaseAdmin()
+  if (client) {
+    const { error } = await client
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', userId)
+    if (error) return { error: `Could not save notification state: ${error.message}` }
   }
   await save()
   return { ok: true }

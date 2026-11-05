@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatTimeAgo } from '@/lib/dashboard-format'
 
-export function NotificationsPanel({ open, onClose }) {
+export function NotificationsPanel({ open, onClose, onUnreadChange }) {
   const router = useRouter()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
@@ -18,12 +18,14 @@ export function NotificationsPanel({ open, onClose }) {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Could not load notifications.')
       setItems(data.notifications ?? [])
+      const nextUnread = Number(data.unread ?? (data.notifications ?? []).filter((note) => !note.read).length)
+      onUnreadChange?.(nextUnread)
     } catch (err) {
       setError(err.message || 'Could not load notifications.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [onUnreadChange])
 
   useEffect(() => {
     if (!open) return
@@ -47,6 +49,7 @@ export function NotificationsPanel({ open, onClose }) {
     })
     if (!response.ok) return
     setItems((prev) => prev.map((note) => (note.id === id ? { ...note, read: true } : note)))
+    onUnreadChange?.(Math.max(0, unread - 1))
     router.refresh()
   }
 
@@ -58,6 +61,7 @@ export function NotificationsPanel({ open, onClose }) {
     })
     if (!response.ok) return
     setItems((prev) => prev.map((note) => ({ ...note, read: true })))
+    onUnreadChange?.(0)
     router.refresh()
   }
 

@@ -209,6 +209,8 @@ export function AuthenticatedHeaderActions({
   const router = useRouter()
   const [cartOpen, setCartOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(unread)
+  useEffect(() => setUnreadCount(unread), [unread])
   const isBuyer = canUseBuyerTools(user) && !pathname.startsWith('/admin/') && !pathname.startsWith('/seller/') && !pathname.startsWith('/delivery/')
   const inWorkspace =
     pathname.startsWith('/admin') ||
@@ -248,7 +250,7 @@ export function AuthenticatedHeaderActions({
             <HeaderIconButton
               label="Notifications"
               icon="bell"
-              badge={unread}
+            badge={unreadCount}
               active={pathname.startsWith('/notifications')}
               onClick={() => setNotifOpen(true)}
             />
@@ -257,7 +259,7 @@ export function AuthenticatedHeaderActions({
           <HeaderIconButton
             label="Notifications"
             icon="bell"
-            badge={unread}
+            badge={unreadCount}
             active={pathname.startsWith('/notifications')}
             onClick={() => setNotifOpen(true)}
           />
@@ -275,7 +277,11 @@ export function AuthenticatedHeaderActions({
           }}
         />
       ) : null}
-      <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+      <NotificationsPanel
+        open={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        onUnreadChange={setUnreadCount}
+      />
     </>
   )
 }
