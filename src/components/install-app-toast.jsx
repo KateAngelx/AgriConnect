@@ -53,14 +53,22 @@ export function InstallAppToast() {
       window.__agriconnectInstall = event
       setHasPrompt(true)
     }
+    const onInstalled = () => {
+      window.__agriconnectInstall = null
+      localStorage.setItem(DISMISS_KEY, '1')
+      setReady(false)
+      setHasPrompt(false)
+    }
     const showDelay = window.setTimeout(() => {
       syncPrompt()
       setReady(true)
     }, 1200)
     window.addEventListener('beforeinstallprompt', onPrompt)
+    window.addEventListener('appinstalled', onInstalled)
     return () => {
       window.clearTimeout(showDelay)
       window.removeEventListener('beforeinstallprompt', onPrompt)
+      window.removeEventListener('appinstalled', onInstalled)
     }
   }, [])
 

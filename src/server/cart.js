@@ -83,8 +83,9 @@ export async function buyNow(input) {
   if (!product || product.status !== 'active') return { error: 'That product is not available.' }
   if (quantity > product.stock) return { error: 'The requested quantity exceeds available stock.' }
   const store = await readyStore()
+  const existingCart = store.carts.get(buyer.user.id)
   const cart = {
-    id: crypto.randomUUID(),
+    id: existingCart?.id ?? crypto.randomUUID(),
     buyer: buyer.user.id,
     items: [{ id: crypto.randomUUID(), productId: product.id, quantity }],
   }

@@ -6,8 +6,14 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })
 
-self.addEventListener('fetch', () => {
-  // A fetch listener is required for Android install. Leave each request on the network.
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      if (!('caches' in self)) return new Response('Offline', { status: 503 })
+      return caches.match(event.request).then((cached) => cached || new Response('Offline', { status: 503 }))
+    }),
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {

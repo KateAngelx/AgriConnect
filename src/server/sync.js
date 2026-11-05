@@ -59,8 +59,11 @@ function optionalRowsOf(result) {
 async function replaceTable(client, table, rows, key = 'id') {
   if (!rows.length) return
   let payload = rows
+  const options = key === 'buyer_id' ? { onConflict: key } : undefined
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const saved = await client.from(table).upsert(payload)
+    const saved = options
+      ? await client.from(table).upsert(payload, options)
+      : await client.from(table).upsert(payload)
     if (!saved.error) return
     const message = String(saved.error.message || '')
     const missing = message.match(/Could not find the '([^']+)' column/i)?.[1]
@@ -221,7 +224,7 @@ async function pushAll(client) {
   await replaceTable(client, 'deliveries', data.deliveries)
   await replaceTable(client, 'payments', data.payments)
   await replaceTable(client, 'notifications', data.notifications)
-  await replaceTable(client, 'carts', data.carts)
+  await replaceTable(client, 'carts', data.carts, 'buyer_id')
   await replaceTable(client, 'wishlist_items', data.wishlist)
   await replaceTable(client, 'sessions', data.sessions, 'token')
   await replaceTable(client, 'role_applications', data.applications)
