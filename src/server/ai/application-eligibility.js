@@ -68,3 +68,19 @@ export function formatEligibilityAnswer(assessment, application) {
   lines.push('', 'You must still approve or reject manually in the dashboard.')
   return lines.join('\n')
 }
+
+export function sanitizeApplicationForAi(payload) {
+  const copy = { ...(payload || {}) }
+  for (const key of [
+    'password',
+    'passwordHash',
+    'contactNumber',
+    'phone',
+    'email',
+    'applicantName',
+    'fullName',
+  ]) {
+    delete copy[key]
+  }
+  return copy
+}

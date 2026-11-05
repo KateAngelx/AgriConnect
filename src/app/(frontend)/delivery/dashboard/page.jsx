@@ -17,13 +17,14 @@ export default async function DeliveryDashboardPage({ searchParams }) {
     listNotifications(user.id),
   ])
   const available = work.filter((item) => item.status === 'open' && item.canAccept)
-  const active = work.filter((item) => item.isMine && !['delivered', 'cancelled'].includes(item.status))
+  const active = work.filter((item) => item.isMine && ['picked-up', 'in-transit'].includes(item.status))
+  const assigned = work.filter((item) => item.isMine && item.status === 'accepted')
 
   return (
     <DashboardShell
       user={user}
       title="Overview"
-      subtitle="Jobs you can accept, deliveries in progress, and unpaid commission."
+      subtitle="Available assignments, delivery progress, and your earnings."
       variant="overview"
     >
       {error ? <div className="mb-6"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
@@ -33,7 +34,10 @@ export default async function DeliveryDashboardPage({ searchParams }) {
         <div className="min-w-0 space-y-4">
           <MetricBoard>
             <MetricTile section="Deliveries" label="Available to accept" value={available.length} icon="truck" tone="amber" />
+            <MetricTile section="Deliveries" label="Assigned" value={summary.assigned} icon="clipboard" tone="blue" />
             <MetricTile section="Deliveries" label="Active deliveries" value={summary.active} icon="clipboard" tone="blue" />
+            <MetricTile section="Deliveries" label="Completed deliveries" value={summary.completed} icon="clipboard" tone="green" />
+            <MetricTile section="Payments" label="Total earnings" value={peso(summary.earnings)} icon="coin" tone="green" />
             <MetricTile section="Payments" label="Unpaid commission" value={peso(summary.commission)} hint="Delivered, not yet paid" icon="coin" tone="green" />
           </MetricBoard>
 
@@ -47,6 +51,17 @@ export default async function DeliveryDashboardPage({ searchParams }) {
             empty={<p className="text-sm text-[#5c6f62]">No open jobs right now.</p>}
           >
             <DeliveryWorkPanel bare work={available} emptyMessage="No open jobs right now." />
+          </WorkSection>
+
+          <WorkSection
+            title="Assigned"
+            description="Assignments accepted and waiting for pickup."
+            count={assigned.length}
+            href="/delivery/deliveries"
+            linkLabel="Open assignments"
+            empty={<p className="text-sm text-[#5c6f62]">No assignments are waiting for pickup.</p>}
+          >
+            <DeliveryWorkPanel bare work={assigned} emptyMessage="No assignments are waiting for pickup." />
           </WorkSection>
 
           <WorkSection
@@ -69,7 +84,7 @@ export default async function DeliveryDashboardPage({ searchParams }) {
             columns={1}
             actions={[
               { section: 'Deliveries', label: 'Active deliveries', href: '/delivery/deliveries', icon: 'truck' },
-              { section: 'Deliveries', label: 'Delivered', href: '/delivery/history', icon: 'clipboard' },
+              { section: 'Deliveries', label: 'Delivery history', href: '/delivery/history', icon: 'clipboard' },
               { section: 'Payments', label: 'Commissions', href: '/delivery/commissions', icon: 'coin' },
               { section: 'Account', label: 'Settings', href: '/delivery/settings', icon: 'user' },
             ]}

@@ -18,5 +18,7 @@ export async function registerAction(_state, formData) {
   if (result.needsPhoneVerification && result.phone) {
     redirect(`/register/verify-phone?${await phoneVerifyRedirectQuery(result.phone)}`)
   }
-  redirect('/account?registered=1')
+  const next = String(formData.get('next') ?? '')
+  const destination = next.startsWith('/') && !next.startsWith('//') ? next : '/account?registered=1'
+  redirect(destination)
 }

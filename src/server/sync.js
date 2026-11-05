@@ -3,27 +3,35 @@ import { normalizeUserRoles, rolesFromLegacy } from './roles'
 import { getStore } from './store'
 
 function isRemovedBenguetSeller(item) {
-  return item?.id === 'benguet-growers'
-    || /benguet/i.test(item?.farmName || item?.farm_name || item?.location || '')
+  return (
+    item?.id === 'benguet-growers' ||
+    /benguet/i.test(item?.farmName || item?.farm_name || item?.location || '')
+  )
 }
 
 function isRemovedBenguetProduct(item) {
-  return item?.seller === 'benguet-growers'
-    || item?.seller_id === 'benguet-growers'
-    || item?.seller?.id === 'benguet-growers'
-    || /highland\s+(strawberries|potatoes)/i.test(item?.name || '')
+  return (
+    item?.seller === 'benguet-growers' ||
+    item?.seller_id === 'benguet-growers' ||
+    item?.seller?.id === 'benguet-growers' ||
+    /highland\s+(strawberries|potatoes)/i.test(item?.name || '')
+  )
 }
 
 function isRemovedNuevaEcijaSeller(item) {
-  return item?.id === 'nueva-ecija-rice'
-    || /nueva ecija/i.test(item?.farmName || item?.farm_name || item?.location || '')
+  return (
+    item?.id === 'nueva-ecija-rice' ||
+    /nueva ecija/i.test(item?.farmName || item?.farm_name || item?.location || '')
+  )
 }
 
 function isRemovedNuevaEcijaProduct(item) {
-  return item?.seller === 'nueva-ecija-rice'
-    || item?.seller_id === 'nueva-ecija-rice'
-    || item?.seller?.id === 'nueva-ecija-rice'
-    || (/nueva ecija/i.test(item?.location || '') && /rice/i.test(item?.name || ''))
+  return (
+    item?.seller === 'nueva-ecija-rice' ||
+    item?.seller_id === 'nueva-ecija-rice' ||
+    item?.seller?.id === 'nueva-ecija-rice' ||
+    (/nueva ecija/i.test(item?.location || '') && /rice/i.test(item?.name || ''))
+  )
 }
 
 const coreDemoEmails = new Set([
@@ -37,7 +45,9 @@ const removedSeedProfileIds = new Set(['user-jun', 'user-carlo'])
 
 function shouldKeepProfile(item) {
   if (removedSeedProfileIds.has(item?.id)) return false
-  const email = String(item?.email || '').trim().toLowerCase()
+  const email = String(item?.email || '')
+    .trim()
+    .toLowerCase()
   if (email) return coreDemoEmails.has(email) || !/@agriconnect\.ph$/i.test(email)
   return item?.status !== 'suspended'
 }
@@ -50,9 +60,10 @@ function rowsOf(result, label) {
 function optionalRowsOf(result) {
   if (!result.error) return result.data ?? []
   if (
-    result.error.code === 'PGRST205'
-    || /Could not find the table|relation .* does not exist/i.test(result.error.message || '')
-  ) return []
+    result.error.code === 'PGRST205' ||
+    /Could not find the table|relation .* does not exist/i.test(result.error.message || '')
+  )
+    return []
   throw new Error(result.error.message)
 }
 
@@ -102,41 +113,90 @@ function snapshot(store) {
       description: item.description || '',
       image: item.image || {},
     })),
-    sellers: store.sellers.filter((item) => !isRemovedBenguetSeller(item) && !isRemovedNuevaEcijaSeller(item)).map((item) => ({
-      id: item.id,
-      farm_name: item.farmName,
-      location: item.location || '',
-      landmark: item.landmark || '',
-      pickup_lat: item.pickupLat ?? null,
-      pickup_lng: item.pickupLng ?? null,
-      status: item.status,
-      description: item.description || '',
-      owner_id: item.ownerId || null,
-      image: item.image || {},
-    })),
-    products: store.products.filter((item) => !isRemovedBenguetProduct(item) && !isRemovedNuevaEcijaProduct(item)).map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description || '',
-      price: item.price,
-      unit: item.unit,
-      stock: item.stock,
-      location: item.location || '',
-      status: item.status,
-      pickup: Boolean(item.pickup),
-      delivery: Boolean(item.delivery),
-      category_id: item.category?.id || null,
-      seller_id: item.seller?.id || null,
-      created_at: item.createdAt,
-      images: item.images || [],
-    })),
+    sellers: store.sellers
+      .filter((item) => !isRemovedBenguetSeller(item) && !isRemovedNuevaEcijaSeller(item))
+      .map((item) => ({
+        id: item.id,
+        farm_name: item.farmName,
+        location: item.location || '',
+        landmark: item.landmark || '',
+        pickup_lat: item.pickupLat ?? null,
+        pickup_lng: item.pickupLng ?? null,
+        status: item.status,
+        description: item.description || '',
+        owner_id: item.ownerId || null,
+        image: item.image || {},
+      })),
+    products: store.products
+      .filter((item) => !isRemovedBenguetProduct(item) && !isRemovedNuevaEcijaProduct(item))
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description || '',
+        price: item.price,
+        unit: item.unit,
+        stock: item.stock,
+        location: item.location || '',
+        status: item.status,
+        pickup: Boolean(item.pickup),
+        delivery: Boolean(item.delivery),
+        category_id: item.category?.id || null,
+        seller_id: item.seller?.id || null,
+        created_at: item.createdAt,
+        images: item.images || [],
+      })),
     productReviews: store.productReviews.map((review) => ({
       id: review.id,
       product_id: review.productId,
       reviewer_name: review.reviewerName || '',
       rating: review.rating,
       body: review.body || '',
+      moderation_status: review.moderationStatus || 'published',
       created_at: review.createdAt,
+      updated_at: review.updatedAt || review.createdAt,
+    })),
+    productReviewModeration: store.productReviews
+      .filter((review) => Array.isArray(review.moderationHistory) && review.moderationHistory.length)
+      .map((review) => ({
+        review_id: review.id,
+        moderation_history: review.moderationHistory,
+      })),
+    productReviewOwners: store.productReviews
+      .filter((review) => review.reviewerId)
+      .map((review) => ({
+        review_id: review.id,
+        product_id: review.productId,
+        reviewer_id: review.reviewerId,
+      })),
+    feedback: (store.feedback || []).map((entry) => ({
+      id: entry.id,
+      user_id: entry.userId,
+      submitter_role: entry.submitterRole || 'buyer',
+      subject: entry.subject,
+      category: entry.category,
+      message: entry.message,
+      status: entry.status,
+      admin_response: entry.adminResponse || '',
+      response_history: entry.responseHistory || [],
+      created_at: entry.createdAt,
+      updated_at: entry.updatedAt || entry.createdAt,
+      responded_at: entry.respondedAt || null,
+    })),
+    buyerReports: (store.reports || []).map((entry) => ({
+      id: entry.id,
+      user_id: entry.userId,
+      reporter_role: entry.reporterRole || 'buyer',
+      report_type: entry.reportType,
+      target_id: entry.targetId || '',
+      target_label: entry.targetLabel || '',
+      reason: entry.reason,
+      description: entry.description || '',
+      status: entry.status,
+      admin_response: entry.adminResponse || '',
+      administrative_actions: entry.administrativeActions || [],
+      created_at: entry.createdAt,
+      updated_at: entry.updatedAt || entry.createdAt,
+      responded_at: entry.respondedAt || null,
     })),
     orders: [...store.orders.values()].map((order) => ({
       id: order.id,
@@ -229,6 +289,10 @@ async function pushAll(client) {
   await replaceTable(client, 'sellers', data.sellers)
   await replaceTable(client, 'products', data.products)
   await replaceTable(client, 'product_reviews', data.productReviews)
+  await replaceTable(client, 'product_review_moderation', data.productReviewModeration, 'review_id')
+  await replaceTable(client, 'product_review_owners', data.productReviewOwners)
+  await replaceTable(client, 'buyer_feedback', data.feedback)
+  await replaceTable(client, 'buyer_reports', data.buyerReports)
   await replaceTable(client, 'orders', data.orders)
   await replaceTable(client, 'deliveries', data.deliveries)
   await replaceTable(client, 'payments', data.payments)
@@ -250,6 +314,10 @@ async function pullAll(client) {
     sellers,
     products,
     productReviews,
+    productReviewModeration,
+    productReviewOwners,
+    feedback,
+    buyerReports,
     orders,
     deliveries,
     payments,
@@ -265,6 +333,10 @@ async function pullAll(client) {
     client.from('sellers').select('*'),
     client.from('products').select('*'),
     client.from('product_reviews').select('*'),
+    client.from('product_review_moderation').select('*'),
+    client.from('product_review_owners').select('*'),
+    client.from('buyer_feedback').select('*'),
+    client.from('buyer_reports').select('*'),
     client.from('orders').select('*'),
     client.from('deliveries').select('*'),
     client.from('payments').select('*'),
@@ -276,28 +348,28 @@ async function pullAll(client) {
     client.from('platform_settings').select('*'),
   ])
   const store = getStore()
-  store.settings = Object.fromEntries(
-    optionalRowsOf(settings).map((row) => [row.key, row.value]),
-  )
+  store.settings = Object.fromEntries(optionalRowsOf(settings).map((row) => [row.key, row.value]))
   store.users = new Map(
-    rowsOf(profiles, 'profiles').filter(shouldKeepProfile).map((row) => [
-      row.id,
-      {
-        id: row.id,
-        name: row.name,
-        email: row.email || null,
-        phone: row.phone || null,
-        phoneVerified: Boolean(row.phone_verified),
-        passwordHash: row.password_hash,
-        role: row.role,
-        status: row.status,
-        sellerId: row.seller_id || undefined,
-        serviceArea: row.service_area || '',
-        roles: row.roles || undefined,
-        savedAddresses: Array.isArray(row.delivery_addresses) ? row.delivery_addresses : [],
-        createdAt: row.created_at,
-      },
-    ]),
+    rowsOf(profiles, 'profiles')
+      .filter(shouldKeepProfile)
+      .map((row) => [
+        row.id,
+        {
+          id: row.id,
+          name: row.name,
+          email: row.email || null,
+          phone: row.phone || null,
+          phoneVerified: Boolean(row.phone_verified),
+          passwordHash: row.password_hash,
+          role: row.role,
+          status: row.status,
+          sellerId: row.seller_id || undefined,
+          serviceArea: row.service_area || '',
+          roles: row.roles || undefined,
+          savedAddresses: Array.isArray(row.delivery_addresses) ? row.delivery_addresses : [],
+          createdAt: row.created_at,
+        },
+      ]),
   )
   for (const user of store.users.values()) {
     normalizeUserRoles(user)
@@ -315,41 +387,90 @@ async function pullAll(client) {
     description: row.description || '',
     image: row.image || {},
   }))
-  store.sellers = rowsOf(sellers, 'sellers').filter((row) => !isRemovedBenguetSeller(row) && !isRemovedNuevaEcijaSeller(row)).map((row) => ({
+  store.sellers = rowsOf(sellers, 'sellers')
+    .filter((row) => !isRemovedBenguetSeller(row) && !isRemovedNuevaEcijaSeller(row))
+    .map((row) => ({
+      id: row.id,
+      farmName: row.farm_name,
+      location: row.location || '',
+      landmark: row.landmark || '',
+      pickupLat: row.pickup_lat ?? null,
+      pickupLng: row.pickup_lng ?? null,
+      status: row.status,
+      description: row.description || '',
+      ownerId: row.owner_id || '',
+      image: row.image || {},
+    }))
+  store.products = rowsOf(products, 'products')
+    .filter((row) => !isRemovedBenguetProduct(row) && !isRemovedNuevaEcijaProduct(row))
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description || '',
+      price: Number(row.price),
+      unit: row.unit,
+      stock: row.stock,
+      location: row.location || '',
+      status: row.status,
+      pickup: row.pickup,
+      delivery: row.delivery,
+      createdAt: row.created_at,
+      images: row.images || [],
+      category: store.categories.find((item) => item.id === row.category_id) || null,
+      seller: store.sellers.find((item) => item.id === row.seller_id) || null,
+    }))
+  const reviewOwners = new Map(
+    optionalRowsOf(productReviewOwners).map((row) => [row.review_id, row.reviewer_id]),
+  )
+  const reviewModeration = new Map(
+    optionalRowsOf(productReviewModeration).map((row) => [row.review_id, row.moderation_history]),
+  )
+  store.productReviews = optionalRowsOf(productReviews).map((row) => {
+    const moderationHistory = reviewModeration.get(row.id)
+    return {
+      id: row.id,
+      productId: row.product_id,
+      reviewerId: reviewOwners.get(row.id) || '',
+      reviewerName: row.reviewer_name || '',
+      rating: Number(row.rating),
+      body: row.body || '',
+      moderationStatus: row.moderation_status || 'published',
+      moderationHistory: Array.isArray(moderationHistory) ? moderationHistory : [],
+      createdAt: row.created_at || '',
+      updatedAt: row.updated_at || row.created_at || '',
+    }
+  })
+  store.feedback = optionalRowsOf(feedback).map((row) => ({
     id: row.id,
-    farmName: row.farm_name,
-    location: row.location || '',
-    landmark: row.landmark || '',
-    pickupLat: row.pickup_lat ?? null,
-    pickupLng: row.pickup_lng ?? null,
+    userId: row.user_id,
+    submitterRole: row.submitter_role || 'buyer',
+    subject: row.subject,
+    category: row.category,
+    message: row.message,
     status: row.status,
-    description: row.description || '',
-    ownerId: row.owner_id || '',
-    image: row.image || {},
-  }))
-  store.products = rowsOf(products, 'products').filter((row) => !isRemovedBenguetProduct(row) && !isRemovedNuevaEcijaProduct(row)).map((row) => ({
-    id: row.id,
-    name: row.name,
-    description: row.description || '',
-    price: Number(row.price),
-    unit: row.unit,
-    stock: row.stock,
-    location: row.location || '',
-    status: row.status,
-    pickup: row.pickup,
-    delivery: row.delivery,
-    createdAt: row.created_at,
-    images: row.images || [],
-    category: store.categories.find((item) => item.id === row.category_id) || null,
-    seller: store.sellers.find((item) => item.id === row.seller_id) || null,
-  }))
-  store.productReviews = optionalRowsOf(productReviews).map((row) => ({
-    id: row.id,
-    productId: row.product_id,
-    reviewerName: row.reviewer_name || '',
-    rating: Number(row.rating),
-    body: row.body || '',
+    adminResponse: row.admin_response || '',
+    responseHistory: Array.isArray(row.response_history) ? row.response_history : [],
     createdAt: row.created_at || '',
+    updatedAt: row.updated_at || row.created_at || '',
+    respondedAt: row.responded_at || '',
+  }))
+  store.reports = optionalRowsOf(buyerReports).map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    reporterRole: row.reporter_role || 'buyer',
+    reportType: row.report_type,
+    targetId: row.target_id || '',
+    targetLabel: row.target_label || '',
+    reason: row.reason,
+    description: row.description || '',
+    status: row.status,
+    adminResponse: row.admin_response || '',
+    administrativeActions: Array.isArray(row.administrative_actions)
+      ? row.administrative_actions
+      : [],
+    createdAt: row.created_at || '',
+    updatedAt: row.updated_at || row.created_at || '',
+    respondedAt: row.responded_at || '',
   }))
   store.orders = new Map(
     rowsOf(orders, 'orders').map((row) => [
@@ -439,10 +560,10 @@ async function pullAll(client) {
 
 function relinkStoreGraph(store) {
   for (const product of store.products) {
-    const categoryId =
-      product.category?.id || product.categoryId || product.category_id || null
+    const categoryId = product.category?.id || product.categoryId || product.category_id || null
     const sellerId = product.seller?.id || product.sellerId || product.seller_id || null
-    if (categoryId) product.category = store.categories.find((item) => item.id === categoryId) || null
+    if (categoryId)
+      product.category = store.categories.find((item) => item.id === categoryId) || null
     if (sellerId) product.seller = store.sellers.find((item) => item.id === sellerId) || null
   }
   for (const order of store.orders.values()) {
@@ -498,7 +619,8 @@ async function hydrate() {
       globalThis.__agriconnectLoadedFromDb = false
       globalThis.__agriconnectStatus = {
         mode: 'supabase',
-        reason: 'Database is empty. Run supabase/seed.sql in the Supabase SQL editor (after schema.sql).',
+        reason:
+          'Database is empty. Run supabase/seed.sql in the Supabase SQL editor (after schema.sql).',
       }
       return globalThis.__agriconnectStatus
     }
@@ -523,20 +645,28 @@ export async function saveCart(cart) {
   const client = getSupabaseAdmin()
   if (!client || globalThis.__agriconnectStatus?.mode !== 'supabase') return
 
-  const existing = await client
-    .from('carts')
-    .select('id')
-    .eq('buyer_id', cart.buyer)
-    .maybeSingle()
+  const existing = await client.from('carts').select('id').eq('buyer_id', cart.buyer).maybeSingle()
   if (existing.error) throw new Error(`carts: ${existing.error.message}`)
   if (existing.data?.id) cart.id = existing.data.id
 
-  const saved = await client.from('carts').upsert({
-    id: existing.data?.id || cart.id,
-    buyer_id: cart.buyer,
-    items: cart.items,
-  }, { onConflict: 'buyer_id' })
+  const saved = await client.from('carts').upsert(
+    {
+      id: existing.data?.id || cart.id,
+      buyer_id: cart.buyer,
+      items: cart.items,
+    },
+    { onConflict: 'buyer_id' },
+  )
   if (saved.error) throw new Error(`carts: ${saved.error.message}`)
+}
+
+export async function deleteProductReview(reviewId) {
+  await ready()
+  if (globalThis.__agriconnectStatus?.mode !== 'supabase') return
+  const client = getSupabaseAdmin()
+  if (!client) return
+  const deleted = await client.from('product_reviews').delete().eq('id', reviewId)
+  if (deleted.error) throw new Error(`product_reviews: ${deleted.error.message}`)
 }
 
 export async function save() {
@@ -545,7 +675,8 @@ export async function save() {
   if (!globalThis.__agriconnectLoadedFromDb) return
   const client = getSupabaseAdmin()
   if (!client) return
-  globalThis.__agriconnectSave = (globalThis.__agriconnectSave || Promise.resolve()).catch(() => undefined)
+  globalThis.__agriconnectSave = (globalThis.__agriconnectSave || Promise.resolve())
+    .catch(() => undefined)
     .then(async () => {
       try {
         await pushAll(client)

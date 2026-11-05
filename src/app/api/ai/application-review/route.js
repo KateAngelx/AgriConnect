@@ -2,22 +2,16 @@ import { currentUser } from '@/server/auth'
 import {
   assessApplicationEligibility,
   formatEligibilityAnswer,
+  sanitizeApplicationForAi,
 } from '@/server/ai/application-eligibility'
 import { aiConfigured, aiRateLimit, chatCompletion } from '@/server/ai/client'
-import { hasRole } from '@/server/roles'
+import { isApprovedAdmin } from '@/server/roles'
 import { readyStore } from '@/server/store'
-
-function sanitizePayload(payload) {
-  const copy = { ...(payload || {}) }
-  delete copy.password
-  delete copy.passwordHash
-  return copy
-}
 
 export async function POST(request) {
   const user = await currentUser()
-  if (!user || !hasRole(user, 'admin')) {
-    return Response.json({ error: 'Administrator access required.' }, { status: 403 })
+  if (!isApprovedAdmin(user)) {
+    return Response.json({ error: 'Approved administrator access required.' }, { status: 403 })
   }
   if (!aiRateLimit(`admin-app:${user.id}`, 15)) {
     return Response.json({ error: 'Too many requests.' }, { status: 429 })
@@ -36,7 +30,7 @@ export async function POST(request) {
   const facts = {
     type: application.applicationType,
     status: application.status,
-    fields: sanitizePayload(application.payload),
+    fields: sanitizeApplicationForAi(application.payload),
     screening,
   }
   if (!aiConfigured()) {

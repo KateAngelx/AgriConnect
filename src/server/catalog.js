@@ -28,7 +28,10 @@ export function summarizeRatings(reviews = []) {
 }
 
 function reviewsFor(store, productId) {
-  return store.productReviews.filter((review) => review.productId === productId)
+  return store.productReviews.filter(
+    (review) =>
+      review.productId === productId && (review.moderationStatus || 'published') === 'published',
+  )
 }
 
 function withRating(store, product) {
@@ -42,7 +45,8 @@ function matchesProduct(product, filters) {
   if (filters.fulfillment === 'delivery' && !product.delivery) return false
   if (filters.available && product.stock <= 0) return false
   if (filters.search) {
-    const haystack = `${product.name} ${product.description ?? ''} ${product.location ?? ''}`.toLowerCase()
+    const haystack =
+      `${product.name} ${product.description ?? ''} ${product.location ?? ''}`.toLowerCase()
     if (!haystack.includes(filters.search.toLowerCase())) return false
   }
   return true
@@ -78,7 +82,12 @@ export async function listProductReviews(productId) {
   const product = store.products.find((item) => item.id === productId && isPublicProduct(item))
   if (!product) return pageResult([], 1, 50)
   const docs = reviewsFor(store, productId)
-    .filter((review) => Number.isInteger(Number(review.rating)) && Number(review.rating) >= 1 && Number(review.rating) <= 5)
+    .filter(
+      (review) =>
+        Number.isInteger(Number(review.rating)) &&
+        Number(review.rating) >= 1 &&
+        Number(review.rating) <= 5,
+    )
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .map((review) => ({
       id: review.id,
@@ -92,7 +101,8 @@ export async function listProductReviews(productId) {
 
 export async function listRelatedProducts(product) {
   const store = await readyStore()
-  const docs = store.products.filter(
+  const docs = store.products
+    .filter(
       (item) =>
         isPublicProduct(item) &&
         item.id !== product?.id &&

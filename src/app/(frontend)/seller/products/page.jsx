@@ -12,7 +12,7 @@ import { listOwnedProducts } from '@/server/seller'
 import { commissionRateFrom } from '@/server/payments'
 import { readyStore } from '@/server/store'
 
-const statusOrder = ['active', 'draft', 'archived']
+const statusOrder = ['active', 'unavailable', 'draft', 'archived']
 
 export default async function SellerProductsPage({ searchParams }) {
   const user = await requireApprovedSeller()
@@ -71,7 +71,7 @@ export default async function SellerProductsPage({ searchParams }) {
           <WorkSection
             key={group.status}
             title={group.title}
-            description={group.status === 'active' ? 'Buyers can order these listings.' : 'Listings in this status.'}
+            description={group.status === 'active' ? 'Buyers can order these listings.' : group.status === 'unavailable' ? 'Temporarily hidden from buyers; you can reactivate them when ready.' : 'Listings in this status.'}
             count={group.rows.length}
             href={group.status === 'active' && !creating ? '/seller/products?new=1' : ''}
             linkLabel="Add product"

@@ -4,9 +4,10 @@ import { currentUser, homeForRole } from '@/server/auth'
 import { LoginForm } from './login-form'
 
 export default async function LoginPage({ searchParams }) {
-  const user = await currentUser()
-  if (user) redirect(homeForRole(user))
   const query = await searchParams
+  const next = typeof query.next === 'string' ? query.next : ''
+  const user = await currentUser()
+  if (user) redirect(next.startsWith('/') && !next.startsWith('//') ? next : homeForRole(user))
   const registered = query.registered === '1'
 
   return (

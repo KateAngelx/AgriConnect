@@ -4,9 +4,12 @@ import { isApprovedBuyer } from './roles'
 import { saveCart } from './sync'
 import { readyStore } from './store'
 
-async function requireBuyer() {
+async function requireBuyer(nextPath = '/cart') {
   const user = await currentUser()
-  if (!user) return { error: 'Sign in to use your cart.', redirectTo: '/login' }
+  if (!user) {
+    const { authHref } = await import('@/lib/auth-links')
+    return { error: 'Sign in to use your cart.', redirectTo: authHref('login', nextPath) }
+  }
   if (!isApprovedBuyer(user)) {
     return { error: 'Sign in with an approved account to use your cart.' }
   }
@@ -19,7 +22,15 @@ function presentCart(store, cart) {
     ...cart,
     items: cart.items.map((item) => ({
       ...item,
-      product: store.products.find((product) => product.id === item.productId) ?? item.productId,
+      product: store.products.find((product) => product.id === item.productId) ?? {
+        id: item.productId,
+        name: 'Unavailable product',
+        status: 'unavailable',
+        stock: 0,
+        price: 0,
+        unit: 'item',
+        seller: null,
+      },
     })),
   }
 }
@@ -32,9 +43,9 @@ export async function getCart(userId) {
 }
 
 export async function addToCart(input) {
-  const buyer = await requireBuyer()
-  if (buyer.error) return buyer
   const productID = String(input.productID ?? '')
+  const buyer = await requireBuyer(productID ? `/products/${encodeURIComponent(productID)}` : '/products')
+  if (buyer.error) return buyer
   const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1))
   if (!productID) return { error: 'Choose a product.' }
   const product = await getProduct(productID)
@@ -64,19 +75,23 @@ export async function updateCart(input) {
   const item = cart?.items.find((entry) => entry.id === String(input.itemID ?? ''))
   if (!cart || cart.id !== String(input.cartID ?? '') || !item) return { error: 'Cart item not found.' }
   const quantity = Math.max(0, Math.floor(Number(input.quantity) || 0))
+  if (quantity === 0) {
+    cart.items = cart.items.filter((entry) => entry.id !== item.id)
+    await saveCart(cart)
+    return { cart: presentCart(store, cart) }
+  }
   const product = await getProduct(item.productId)
   if (!product) return { error: 'Cart item not found.' }
   if (quantity > product.stock) return { error: 'The requested quantity exceeds available stock.' }
-  if (quantity === 0) cart.items = cart.items.filter((entry) => entry.id !== item.id)
-  else item.quantity = quantity
+  item.quantity = quantity
   await saveCart(cart)
   return { cart: presentCart(store, cart) }
 }
 
 export async function buyNow(input) {
-  const buyer = await requireBuyer()
-  if (buyer.error) return buyer
   const productID = String(input.productID ?? '')
+  const buyer = await requireBuyer(productID ? `/products/${encodeURIComponent(productID)}` : '/products')
+  if (buyer.error) return buyer
   const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1))
   if (!productID) return { error: 'Choose a product.' }
   const product = await getProduct(productID)

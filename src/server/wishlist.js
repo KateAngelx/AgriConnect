@@ -9,7 +9,6 @@ export async function listWishlist(userId) {
       ...item,
       product: store.products.find((product) => product.id === item.productId) || null,
     }))
-    .filter((item) => item.product)
 }
 
 export async function wished(userId, productId) {
@@ -21,15 +20,30 @@ export async function wished(userId, productId) {
 export async function toggleWishlist(user, productId) {
   const { isApprovedBuyer } = await import('./roles')
   if (!user || !isApprovedBuyer(user)) {
-    return { error: 'Sign in with an approved buyer account to save products.', redirectTo: '/login' }
+    const { authHref } = await import('@/lib/auth-links')
+    const destination = productId ? `/products/${encodeURIComponent(productId)}` : '/products'
+    return {
+      error: 'Sign in with an approved buyer account to save products.',
+      redirectTo: authHref('login', destination),
+    }
   }
   const store = await readyStore()
-  const product = store.products.find((item) => item.id === productId && item.status === 'active')
-  if (!product) return { error: 'That product is not available.' }
   const items = store.wishlists.get(user.id) ?? []
   const existing = items.find((item) => item.productId === productId)
-  const next = existing ? items.filter((item) => item.id !== existing.id) : [...items, { id: crypto.randomUUID(), productId }]
+  if (existing) {
+    store.wishlists.set(user.id, items.filter((item) => item.id !== existing.id))
+    await save()
+    return { saved: false }
+  }
+  const product = store.products.find(
+    (item) =>
+      item.id === productId &&
+      item.status === 'active' &&
+      item.seller?.status === 'approved',
+  )
+  if (!product) return { error: 'That product is not available.' }
+  const next = [...items, { id: crypto.randomUUID(), productId }]
   store.wishlists.set(user.id, next)
   await save()
-  return { saved: !existing }
+  return { saved: true }
 }

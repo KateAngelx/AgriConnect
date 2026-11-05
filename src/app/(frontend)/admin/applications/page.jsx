@@ -58,7 +58,7 @@ export default async function AdminApplicationsPage({ searchParams }) {
     <DashboardShell
       user={user}
       title="Approvals"
-      subtitle="Seller and delivery applications waiting for a decision."
+      subtitle="Review seller and delivery applications in a list, inspect submitted details, and record decisions."
     >
       {error ? <div className="mb-4"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
       {success ? <div className="mb-4"><AlertBanner tone="success">{success}</AlertBanner></div> : null}

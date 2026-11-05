@@ -12,13 +12,14 @@ export default async function DeliveryAssignmentsPage({ searchParams }) {
   const jobId = typeof query.job === 'string' ? query.job : ''
   const selected = work.find((item) => item.id === jobId) || null
   const available = work.filter((item) => item.status === 'open' && item.canAccept)
-  const active = work.filter((item) => item.isMine && !['delivered', 'cancelled'].includes(item.status))
+  const assigned = work.filter((item) => item.isMine && item.status === 'accepted')
+  const active = work.filter((item) => item.isMine && ['picked-up', 'in-transit'].includes(item.status))
 
   return (
     <DashboardShell
       user={user}
-      title="Active deliveries"
-      subtitle="Jobs you can accept, and deliveries you are already carrying."
+      title="Delivery assignments"
+      subtitle="Review available jobs, accepted assignments, and deliveries in progress."
     >
       <div className={workGridClass}>
         <WorkSection
@@ -30,8 +31,16 @@ export default async function DeliveryAssignmentsPage({ searchParams }) {
           <DeliveryWorkPanel bare work={available} userId={user.id} emptyMessage="No open delivery jobs right now." />
         </WorkSection>
         <WorkSection
+          title="Assigned"
+          description="Assignments accepted and waiting for pickup."
+          count={assigned.length}
+          empty={<p className="text-sm text-[#5c6f62]">No assignments are waiting for pickup.</p>}
+        >
+          <DeliveryWorkPanel bare work={assigned} userId={user.id} emptyMessage="No assignments are waiting for pickup." />
+        </WorkSection>
+        <WorkSection
           title="Active deliveries"
-          description="Update pickup, transit, and delivery from here."
+          description="Update pickup, transit, and delivery progress."
           count={active.length}
           href="/delivery/history"
           linkLabel="View delivered"

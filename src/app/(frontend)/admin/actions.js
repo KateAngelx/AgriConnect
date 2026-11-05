@@ -5,7 +5,13 @@ import { revalidatePath } from 'next/cache'
 import { currentUser } from '@/server/auth'
 import { isApprovedAdmin } from '@/server/roles'
 import { reviewRoleApplication } from '@/server/applications'
-import { markCommissionPaid, markPlatformCommissionPaid, setUserStatus } from '@/server/admin'
+import {
+  deactivateProduct,
+  markCommissionPaid,
+  markPlatformCommissionPaid,
+  setUserStatus,
+} from '@/server/admin'
+import { moderateProductReview } from '@/server/reviews'
 import { readyStore } from '@/server/store'
 import { save } from '@/server/sync'
 import { notify } from '@/server/notifications'
@@ -21,8 +27,38 @@ async function admin() {
 export async function setStatusAction(formData) {
   const user = await admin()
   const result = await setUserStatus(user, formData.get('userId'), formData.get('status'))
-  const error = result.error ? `?error=${encodeURIComponent(result.error)}` : ''
-  redirect(`/admin/users${error}`)
+  if (result.error) redirect(`/admin/users?error=${encodeURIComponent(result.error)}`)
+  revalidatePath('/admin/users')
+  redirect(`/admin/users?success=${encodeURIComponent('Account status updated.')}`)
+}
+
+export async function deactivateProductAction(formData) {
+  const user = await admin()
+  const productId = String(formData.get('productId') || '')
+  const result = await deactivateProduct(user, productId)
+  if (result.error) redirect(`/admin/products?error=${encodeURIComponent(result.error)}`)
+  revalidatePath('/admin/products')
+  revalidatePath('/products')
+  revalidatePath(`/products/${encodeURIComponent(productId)}`)
+  revalidatePath('/seller/products')
+  redirect(
+    `/admin/products?success=${encodeURIComponent('Listing deactivated and hidden from buyers.')}`,
+  )
+}
+
+export async function moderateProductReviewAction(formData) {
+  const user = await admin()
+  const result = await moderateProductReview(user, {
+    reviewId: formData.get('reviewId'),
+    action: formData.get('action'),
+    reason: formData.get('reason'),
+  })
+  if (result.error) redirect(`/admin/reviews?error=${encodeURIComponent(result.error)}`)
+  revalidatePath('/admin/reviews')
+  revalidatePath('/products')
+  revalidatePath(`/products/${encodeURIComponent(result.productId)}`)
+  revalidatePath('/seller/reviews')
+  redirect('/admin/reviews?success=Review moderation action recorded.')
 }
 
 export async function reviewApplicationAction(formData) {
@@ -37,7 +73,9 @@ export async function reviewApplicationAction(formData) {
   revalidatePath('/admin/applications')
   revalidatePath('/admin/dashboard')
   revalidatePath('/account')
-  redirect(`/admin/applications?success=${encodeURIComponent(`Application marked ${String(formData.get('decision')).replaceAll('-', ' ')}`)}&filter=pending`)
+  redirect(
+    `/admin/applications?success=${encodeURIComponent(`Application marked ${String(formData.get('decision')).replaceAll('-', ' ')}`)}&filter=pending`,
+  )
 }
 
 export async function payCommissionAction(formData) {
@@ -75,7 +113,12 @@ export async function remitPlatformFeeAction(formData) {
   const delivery = store.deliveries.find((item) => item.id === deliveryId)
   if (!delivery) redirect(`/admin/payments?error=Delivery not found.`)
   delivery.commissionStatus = 'paid'
-  await notify(delivery.courierId, 'Commission remitted', 'The platform commission has been remitted.', '/admin/payments')
+  await notify(
+    delivery.courierId,
+    'Commission remitted',
+    'The platform commission has been remitted.',
+    '/admin/payments',
+  )
   await save()
   redirect('/admin/payments?success=Commission remitted.')
 }

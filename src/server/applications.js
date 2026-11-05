@@ -260,6 +260,9 @@ export async function reviewRoleApplication(actor, applicationId, decision, admi
   if (!applicant) return { error: 'Applicant account not found.' }
 
   const note = cleanText(adminNote, 500)
+  if (normalized === 'rejected' && !note) {
+    return { error: 'Provide a rejection reason for the applicant.' }
+  }
   application.updatedAt = new Date().toISOString()
   application.adminNote = note
 

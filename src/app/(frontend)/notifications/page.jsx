@@ -15,7 +15,7 @@ export default async function NotificationsPage() {
   const unread = notes.filter((note) => !note.read).length
 
   return (
-    <DashboardShell user={user} title="Notifications" subtitle="Orders, approvals, payments, and deliveries.">
+    <DashboardShell user={user} title="Notifications" subtitle="Order, payment, delivery, feedback, report, and account updates.">
       <div className={workStackClass}>
         <WorkSection
           title="Updates"

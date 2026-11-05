@@ -7,6 +7,7 @@ import {
   advanceOrder,
   cancelOrder,
   removeProduct,
+  rejectOrder,
   saveProduct,
   saveSellerProfile,
   sellerCollect,
@@ -81,6 +82,13 @@ export async function cancelOrderAction(formData) {
   const result = await cancelOrder(user, formData.get('orderId'))
   if (result.error) redirect(`/seller/orders?error=${encodeURIComponent(result.error)}`)
   redirect('/seller/orders?success=Order%20cancelled%20and%20stock%20restored')
+}
+
+export async function rejectOrderAction(formData) {
+  const user = await seller()
+  const result = await rejectOrder(user, formData.get('orderId'))
+  if (result.error) redirect(`/seller/orders?error=${encodeURIComponent(result.error)}`)
+  redirect('/seller/orders?success=Order%20rejected%20and%20stock%20restored')
 }
 
 export async function collectOrderAction(formData) {

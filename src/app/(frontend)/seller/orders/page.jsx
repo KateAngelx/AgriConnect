@@ -16,7 +16,7 @@ import { LocationRouteMap } from '@/components/location-route-map'
 import { listOwnedOrders, nextSellerAction } from '@/server/seller'
 import { orderStatusLabel } from '@/lib/order-status'
 import { groupBySection, sellerOrderSection } from '@/lib/work-sections'
-import { advanceOrderAction, cancelOrderAction, collectOrderAction } from '@/app/(frontend)/seller/actions'
+import { advanceOrderAction, cancelOrderAction, collectOrderAction, rejectOrderAction } from '@/app/(frontend)/seller/actions'
 
 const sections = [
   ['needs-you', 'Needs your action', 'Confirm, prepare, hand off, or finish these orders.'],
@@ -57,7 +57,7 @@ export default async function SellerOrdersPage({ searchParams }) {
                     <div className="min-w-0">
                       <p className="font-semibold text-[#142016]">{order.reference}</p>
                       <p className="text-[13px] text-[#5c6f62]">
-                        {order.buyerName} · {order.fulfillment} · {peso(order.subtotal + order.deliveryFee)}
+                        {order.buyerName} · {order.fulfillment} · {peso(order.subtotal)} product sales
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
@@ -114,13 +114,16 @@ function OrderRoute({ order }) {
 
 function SellerOrderDetail({ order }) {
   const nextAction = nextSellerAction(order.fulfillment, order.status)
+  const commission = Number(order.platformFee || 0)
+  const earnings = Math.max(0, order.subtotal - commission)
   return (
     <div>
       <div className="mb-4 flex items-start justify-between gap-3">
         <p className="text-sm text-[#5c6f62]">{pretty(order.paymentStatus)} payment</p>
         <div className="text-right">
           <StatusBadge status={pretty(order.status)} />
-          <p className="mt-2 text-xl font-bold">{peso(order.subtotal + order.deliveryFee)}</p>
+          <p className="mt-2 text-xl font-bold">{peso(order.subtotal)} product sales</p>
+          <p className="text-xs text-[#5c6f62]">{peso(commission)} commission · {peso(earnings)} net earnings</p>
         </div>
       </div>
       <ul className="space-y-1 text-sm text-[#647066]">
@@ -153,7 +156,21 @@ function SellerOrderDetail({ order }) {
               <DarkButton type="submit">Record cash payment</DarkButton>
             </form>
           )}
-        {!['completed', 'delivered', 'picked-up', 'out-for-delivery', 'cancelled'].includes(order.status) && (
+        {order.status === 'placed' ? (
+          <form action={rejectOrderAction}>
+            <input type="hidden" name="orderId" value={order.id} />
+            <ConfirmButton
+              type="submit"
+              danger
+              confirmLabel="Reject order"
+              message="Reject this new order? Reserved stock will be returned and the buyer will be notified."
+              className="btn btn-danger"
+            >
+              Reject order
+            </ConfirmButton>
+          </form>
+        ) : null}
+        {!['placed', 'completed', 'delivered', 'picked-up', 'out-for-delivery', 'cancelled'].includes(order.status) && (
           <form action={cancelOrderAction}>
             <input type="hidden" name="orderId" value={order.id} />
             <ConfirmButton
@@ -167,6 +184,9 @@ function SellerOrderDetail({ order }) {
             </ConfirmButton>
           </form>
         )}
+        <a href={`/seller/orders/${encodeURIComponent(order.id)}/receipt`} className="btn btn-secondary">
+          View transaction receipt
+        </a>
       </div>
     </div>
   )

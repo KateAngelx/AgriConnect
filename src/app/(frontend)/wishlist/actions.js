@@ -8,8 +8,8 @@ export async function toggleWishlistAction(formData) {
   const user = await currentUser()
   const productId = String(formData.get('productId') ?? '')
   const result = await toggleWishlist(user, productId)
-  if (result.redirectTo) redirect(result.redirectTo)
   const destination = formData.get('returnTo') === 'wishlist' ? '/wishlist' : `/products/${productId}`
+  if (result.redirectTo) redirect(result.redirectTo)
   if (result.error) redirect(`${destination}?error=${encodeURIComponent(result.error)}`)
   const message = result.saved ? 'Saved to your wishlist.' : 'Removed from your wishlist.'
   redirect(`${destination}?success=${encodeURIComponent(message)}`)

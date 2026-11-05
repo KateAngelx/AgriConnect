@@ -6,6 +6,7 @@ import { peso } from '@/lib/dashboard-format'
 import { orderStatusLabel, stageIndex, stagesForFulfillment } from '@/lib/order-status'
 import { cancelBuyerOrderAction } from '@/app/(frontend)/buyer/actions'
 import { ConfirmButton } from '@/components/confirm-button'
+import Link from 'next/link'
 
 function paymentLabel(method) {
   const key = String(method || '').toLowerCase()
@@ -40,6 +41,12 @@ export function BuyerOrderDetail({ order, delivery, payment, error = '', success
       </div>
       {error ? <AlertBanner tone="error">{error}</AlertBanner> : null}
       {success ? <AlertBanner tone="success">{success}</AlertBanner> : null}
+      <Link
+        href={`/buyer/orders/${encodeURIComponent(order.id)}/receipt`}
+        className="btn btn-secondary w-fit"
+      >
+        View receipt and transaction
+      </Link>
       {order.status === 'placed' ? (
         <form action={cancelBuyerOrderAction}>
           <input type="hidden" name="orderId" value={order.id} />

@@ -19,6 +19,8 @@ function createStore() {
     pushSubscriptions: [],
     applications: [],
     settings: {},
+    feedback: [],
+    reports: [],
   }
 }
 
@@ -28,6 +30,8 @@ export function getStore() {
     globalThis.__agriconnectHydrate = null
     globalThis.__agriconnectStatus = null
   }
+  globalThis.__agriconnectStore.feedback ??= []
+  globalThis.__agriconnectStore.reports ??= []
   return globalThis.__agriconnectStore
 }
 

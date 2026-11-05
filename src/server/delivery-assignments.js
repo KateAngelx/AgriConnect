@@ -57,7 +57,6 @@ export function deliveryAssignmentForViewer(store, delivery, order, viewerUserId
     pickupArea,
     deliveryAreaGeneral: generalArea(order?.deliveryAddress),
     itemCount: order?.items?.length || 0,
-    subtotal: order?.subtotal || 0,
     canAccept: delivery.status === 'open' && !delivery.courierId,
     isMine: delivery.courierId === viewerUserId,
     updates: (delivery.updates || []).map((update) => ({
@@ -88,10 +87,10 @@ export function deliveryAssignmentForViewer(store, delivery, order, viewerUserId
   return {
     ...base,
     deliveryAddress: null,
-    deliveryLat: order?.deliveryLat ?? null,
-    deliveryLng: order?.deliveryLng ?? null,
-    pickupLat: pickupDetails.pickupLat ?? null,
-    pickupLng: pickupDetails.pickupLng ?? null,
+    deliveryLat: null,
+    deliveryLng: null,
+    pickupLat: null,
+    pickupLng: null,
     contactNumber: null,
     buyerName: null,
     instructions: null,
@@ -114,9 +113,11 @@ export async function listDeliveryWorkForUser(user) {
           ? {
               id: order.id,
               reference: order.reference,
-              paymentMethod: order.paymentMethod,
-              paymentStatus: order.paymentStatus,
-              status: order.status,
+              canCollectCash:
+                item.courierId === user.id &&
+                item.status === 'delivered' &&
+                order.paymentMethod === 'cash-on-delivery' &&
+                order.paymentStatus !== 'paid',
             }
           : null,
         deliveryId: item.id,

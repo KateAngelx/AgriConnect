@@ -47,12 +47,19 @@ const steps = {
 }
 
 export async function deliverySnapshot(user) {
+  if (!isApprovedDelivery(user)) {
+    return { open: 0, assigned: 0, active: 0, completed: 0, earnings: 0, commission: 0 }
+  }
   const store = await readyStore()
   const mine = store.deliveries.filter((item) => item.courierId === user.id)
-  const pending = mine.filter((item) => item.commissionStatus !== 'paid' && ['delivered', 'completed'].includes(item.status))
+  const completed = mine.filter((item) => ['delivered', 'completed'].includes(item.status))
+  const pending = completed.filter((item) => item.commissionStatus !== 'paid')
   return {
-    open: store.deliveries.filter((item) => item.status === 'open').length,
-    active: mine.filter((item) => !['delivered', 'cancelled', 'completed'].includes(item.status)).length,
+    open: store.deliveries.filter((item) => item.status === 'open' && !item.courierId).length,
+    assigned: mine.filter((item) => item.status === 'accepted').length,
+    active: mine.filter((item) => ['picked-up', 'in-transit'].includes(item.status)).length,
+    completed: completed.length,
+    earnings: completed.length * DELIVERY_FEE,
     commission: pending.length * DELIVERY_FEE,
   }
 }
@@ -62,25 +69,70 @@ export async function listCourierWork(user) {
 }
 
 export async function listCommissions(user) {
-  if (!hasRole(user, 'delivery') || user.status !== 'approved') return []
+  if (!isApprovedDelivery(user)) return []
   const store = await readyStore()
   return store.deliveries
     .filter((item) => item.courierId === user.id && ['delivered', 'completed'].includes(item.status))
-    .map((item) => deliveryAssignmentForViewer(store, item, store.orders.get(item.orderId) || null, user.id))
-    .map((item) => {
-      const delivery = store.deliveries.find((entry) => entry.id === item.id)
+    .map((delivery) => {
+      const order = store.orders.get(delivery.orderId)
       return {
-        ...item,
+        id: delivery.id,
+        status: delivery.status,
         commission: DELIVERY_FEE,
-        commissionStatus: delivery?.commissionStatus || 'pending',
-        updatedAt: delivery?.updatedAt || '',
-        order: store.orders.get(delivery?.orderId) ? {
-          id: delivery.orderId,
-          reference: store.orders.get(delivery.orderId).reference,
+        commissionStatus: delivery.commissionStatus || 'pending',
+        updatedAt: delivery.updatedAt || '',
+        order: order ? {
+          id: order.id,
+          reference: order.reference,
         } : null,
       }
     })
     .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
+}
+
+export async function listDeliveryHistory(user) {
+  if (!isApprovedDelivery(user)) return []
+  const store = await readyStore()
+  return store.deliveries
+    .filter((delivery) => (
+      delivery.courierId === user.id &&
+      ['delivered', 'completed', 'cancelled', 'delivery-failed'].includes(delivery.status)
+    ))
+    .map((delivery) => {
+      const order = store.orders.get(delivery.orderId) || null
+      const assignment = deliveryAssignmentForViewer(store, delivery, order, user.id)
+      const deliveryDate = delivery.updatedAt
+        || delivery.updates?.at(-1)?.at
+        || order?.updatedAt
+        || order?.createdAt
+        || ''
+      return {
+        id: assignment.id,
+        orderId: assignment.orderId,
+        status: assignment.status,
+        reference: assignment.reference,
+        pickupArea: assignment.pickupArea,
+        deliveryAreaGeneral: assignment.deliveryAreaGeneral,
+        itemCount: assignment.itemCount,
+        pickupLocations: assignment.pickupLocations,
+        updates: assignment.updates.map(({ status, at }) => ({ status, at })),
+        deliveryDate,
+        earnedCommission: ['delivered', 'completed'].includes(delivery.status) ? DELIVERY_FEE : 0,
+        order: order
+          ? {
+              id: order.id,
+              reference: order.reference,
+              status: order.status,
+              createdAt: order.createdAt || '',
+              items: (order.items || []).map((item) => ({
+                name: item.product?.name || item.name || 'Product',
+                quantity: Number(item.quantity) || 0,
+              })),
+            }
+          : null,
+      }
+    })
+    .sort((a, b) => String(b.deliveryDate).localeCompare(String(a.deliveryDate)))
 }
 
 export async function assignmentForOrder(orderId) {
@@ -117,6 +169,14 @@ export async function updateAssignment(user, deliveryId, note) {
   }
   if (order.fulfillment === 'delivery') {
     order.estimatedArrivalAt = refreshDeliveryEtaIso(order, next)
+  }
+  if (next === 'accepted') {
+    await notify(
+      user.id,
+      'Delivery assignment accepted',
+      `You accepted order ${order.reference}. The destination and delivery instructions are now available in your assignment details.`,
+      `/delivery/deliveries?job=${delivery.id}`,
+    )
   }
   await notify(
     order.buyer,

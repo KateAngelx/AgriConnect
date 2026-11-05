@@ -66,11 +66,68 @@ create table if not exists product_reviews (
   reviewer_name text not null,
   rating integer not null check (rating between 1 and 5),
   body text not null default '',
+  moderation_status text not null default 'published' check (moderation_status in ('published', 'hidden', 'removed')),
   created_at timestamptz not null default now()
 );
 
 create index if not exists product_reviews_product_created_idx
   on product_reviews (product_id, created_at desc);
+
+alter table product_reviews add column if not exists updated_at timestamptz not null default now();
+
+create table if not exists product_review_moderation (
+  review_id text primary key,
+  moderation_history jsonb not null default '[]'::jsonb
+);
+
+create table if not exists product_review_owners (
+  review_id text primary key references product_reviews(id) on delete cascade,
+  product_id text not null references products(id) on delete cascade,
+  reviewer_id text not null references profiles(id) on delete cascade,
+  unique (product_id, reviewer_id)
+);
+
+create table if not exists buyer_feedback (
+  id text primary key,
+  user_id text not null references profiles(id) on delete cascade,
+  submitter_role text not null default 'buyer' check (submitter_role in ('buyer', 'seller')),
+  subject text not null,
+  category text not null check (category in ('general-feedback', 'suggestion', 'bug-report', 'user-experience', 'other-concern')),
+  message text not null,
+  status text not null default 'pending' check (status in ('pending', 'under-review', 'responded', 'resolved')),
+  admin_response text not null default '',
+  response_history jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  responded_at timestamptz
+);
+
+create index if not exists buyer_feedback_user_created_idx
+  on buyer_feedback (user_id, created_at desc);
+create index if not exists buyer_feedback_status_created_idx
+  on buyer_feedback (status, created_at desc);
+
+create table if not exists buyer_reports (
+  id text primary key,
+  user_id text not null references profiles(id) on delete cascade,
+  reporter_role text not null default 'buyer' check (reporter_role in ('buyer', 'seller')),
+  report_type text not null check (report_type in ('product', 'seller', 'order', 'buyer', 'delivery-personnel', 'suspicious-activity')),
+  target_id text not null default '',
+  target_label text not null default '',
+  reason text not null,
+  description text not null default '',
+  status text not null default 'pending' check (status in ('pending', 'under-review', 'resolved', 'rejected')),
+  admin_response text not null default '',
+  administrative_actions jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  responded_at timestamptz
+);
+
+create index if not exists buyer_reports_user_created_idx
+  on buyer_reports (user_id, created_at desc);
+create index if not exists buyer_reports_status_created_idx
+  on buyer_reports (status, created_at desc);
 
 create table if not exists orders (
   id text primary key,
@@ -169,6 +226,10 @@ alter table categories enable row level security;
 alter table sellers enable row level security;
 alter table products enable row level security;
 alter table product_reviews enable row level security;
+alter table product_review_moderation enable row level security;
+alter table product_review_owners enable row level security;
+alter table buyer_feedback enable row level security;
+alter table buyer_reports enable row level security;
 alter table orders enable row level security;
 alter table deliveries enable row level security;
 alter table payments enable row level security;
@@ -202,6 +263,7 @@ create policy "public read reviews for active products" on product_reviews for s
     from products
     join sellers on sellers.id = products.seller_id
     where products.id = product_reviews.product_id
+      and product_reviews.moderation_status = 'published'
       and products.status = 'active'
       and sellers.status = 'approved'
   )
@@ -210,4 +272,6 @@ create policy "public read reviews for active products" on product_reviews for s
 -- Server sync uses SUPABASE_SERVICE_ROLE_KEY (bypasses RLS, still needs table GRANTs).
 grant usage on schema public to service_role;
 grant select, insert, update, delete on all tables in schema public to service_role;
+revoke all on product_review_moderation from public, anon, authenticated;
+grant select, insert, update, delete on product_review_moderation to service_role;
 alter default privileges in schema public grant select, insert, update, delete on tables to service_role;

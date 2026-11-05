@@ -1,11 +1,24 @@
 import { listOrders, placeOrder } from '@/server/orders'
+import { currentUser } from '@/server/auth'
+import { authHref } from '@/lib/auth-links'
+import { isApprovedBuyer } from '@/server/roles'
 
 export async function GET() {
-  return Response.json(await listOrders())
+  const user = await currentUser()
+  if (!user) {
+    return Response.json(
+      { error: 'Sign in required.', redirectTo: authHref('login', '/buyer/orders') },
+      { status: 401 },
+    )
+  }
+  if (!isApprovedBuyer(user)) {
+    return Response.json({ error: 'An approved buyer account is required.' }, { status: 403 })
+  }
+  return Response.json(await listOrders(user.id))
 }
 
 export async function POST(request) {
   const body = await request.json().catch(() => ({}))
   const result = await placeOrder(body)
-  return Response.json(result, { status: result.error ? 400 : 201 })
+  return Response.json(result, { status: result.redirectTo ? 401 : result.error ? 400 : 201 })
 }

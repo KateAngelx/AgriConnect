@@ -218,6 +218,32 @@ a {
   object-fit: cover;
 }
 
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .receipt-page,
+  .receipt-page * {
+    visibility: visible !important;
+  }
+
+  .receipt-page {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .receipt-actions {
+    display: none !important;
+  }
+}
+
 .ui-field {
   width: 100%;
   border: 1px solid var(--color-brand-line);

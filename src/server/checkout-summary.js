@@ -5,14 +5,25 @@ import { commissionForItems, commissionRateFrom } from './payments'
 export async function checkoutSummaryForBuyer(userId) {
   const store = await readyStore()
   const cart = store.carts.get(userId)
-  if (!cart?.items?.length) return { items: [], sellerGroups: [], subtotal: 0, deliveryFee: DELIVERY_FEE }
+  if (!cart?.items?.length) {
+    return { items: [], sellerGroups: [], subtotal: 0, deliveryFee: DELIVERY_FEE, unavailableItems: [] }
+  }
 
   const lines = []
+  const unavailableItems = []
   const bySeller = new Map()
 
   for (const item of cart.items) {
     const product = store.products.find((entry) => entry.id === item.productId)
-    if (!product || typeof product !== 'object') continue
+    if (
+      !product ||
+      product.status !== 'active' ||
+      product.seller?.status !== 'approved' ||
+      product.stock < item.quantity
+    ) {
+      unavailableItems.push({ productId: item.productId, name: product?.name || 'Unavailable product' })
+      continue
+    }
     const seller = product.seller || store.sellers.find((entry) => entry.id === product.seller?.id)
     const line = {
       cartItemId: item.id,
@@ -44,5 +55,13 @@ export async function checkoutSummaryForBuyer(userId) {
   const rate = commissionRateFrom(store)
   const commission = commissionForItems(cart.items, rate)
   const totalQuantity = cart.items.reduce((sum, item) => sum + item.quantity, 0)
-  return { items: lines, sellerGroups, subtotal, deliveryFee: DELIVERY_FEE, totalQuantity, commission }
+  return {
+    items: lines,
+    sellerGroups,
+    subtotal,
+    deliveryFee: DELIVERY_FEE,
+    totalQuantity,
+    commission,
+    unavailableItems,
+  }
 }

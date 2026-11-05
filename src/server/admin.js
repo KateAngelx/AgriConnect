@@ -3,6 +3,7 @@ import { inPeriod } from '@/lib/report-period'
 import { listRoleApplications } from './applications'
 import { notify } from './notifications'
 import { DELIVERY_FEE, kiloPlatformFee } from './payments'
+import { isApprovedAdmin, rolesFromLegacy } from './roles'
 import { save } from './sync'
 import { readyStore } from './store'
 
@@ -13,27 +14,78 @@ export async function adminSnapshot() {
   const users = [...store.users.values()]
   const orders = [...store.orders.values()]
   const closed = new Set(['completed', 'cancelled', 'delivered', 'picked-up'])
+  const pendingApplicationStatuses = new Set(['pending', 'under-review', 'needs-info'])
+  const roles = users.map((user) => ({ user, roles: rolesFromLegacy(user) }))
   return {
     users: users.length,
-    pending: store.applications.filter(
-      (item) => item.status === 'pending' || item.status === 'under-review',
+    buyers: users.filter((user) => user.role === 'buyer').length,
+    sellers: roles.filter(({ roles }) => roles.includes('seller')).length,
+    deliveryPersonnel: roles.filter(({ roles }) => roles.includes('delivery')).length,
+    pending: store.applications.filter((item) => pendingApplicationStatuses.has(item.status))
+      .length,
+    approvedSellers: users.filter(
+      (user) => rolesFromLegacy(user).includes('seller') && user.status === 'approved',
     ).length,
-    approvedSellers: users.filter((user) => user.role === 'seller' && user.status === 'approved').length,
-    approvedDelivery: users.filter((user) => user.role === 'delivery' && user.status === 'approved').length,
+    approvedDelivery: users.filter(
+      (user) => rolesFromLegacy(user).includes('delivery') && user.status === 'approved',
+    ).length,
+    products: store.products.length,
     activeProducts: store.products.filter((product) => product.status === 'active').length,
     orders: orders.length,
     ordersAttention: orders.filter((order) => !closed.has(order.status)).length,
+    transactions: store.payments.length,
     payments: store.payments.filter((payment) => payment.status === 'pending').length,
     paidTransactions: store.payments.filter((payment) => payment.status === 'paid').length,
+    pendingReports: (store.reports || []).filter((report) =>
+      ['submitted', 'pending', 'in-review', 'under-review'].includes(report.status),
+    ).length,
+    unresolvedFeedback: (store.feedback || []).filter((entry) => entry.status !== 'resolved')
+      .length,
     platformFee: orders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0),
     platformCommission: orders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0),
+  }
+}
+
+export async function adminTransactionReceipt(user, paymentId) {
+  if (!isApprovedAdmin(user)) return null
+  const store = await readyStore()
+  const payment = store.payments.find((entry) => entry.id === String(paymentId || ''))
+  if (!payment) return null
+  const order = store.orders.get(payment.orderId)
+  if (!order) return null
+  const buyer = store.users.get(order.buyer)
+  return {
+    transaction: {
+      id: payment.id,
+      method: payment.method || order.paymentMethod || '',
+      provider: payment.provider || '',
+      amount: Number(payment.amount) || 0,
+      status: payment.status || 'unknown',
+      providerReference: payment.providerReference || '',
+      createdAt: payment.createdAt || '',
+    },
+    order: {
+      id: order.id,
+      reference: order.reference || order.id,
+      fulfillment: order.fulfillment || 'pickup',
+      status: order.status || 'unknown',
+      paymentStatus: order.paymentStatus || 'unknown',
+      subtotal: Number(order.subtotal) || 0,
+      deliveryFee: Number(order.deliveryFee) || 0,
+      items: (order.items || []).map((item) => ({
+        name: item.product?.name || 'Product',
+        quantity: Number(item.quantity) || 0,
+        unitPrice: Number(item.unitPrice) || 0,
+      })),
+    },
+    buyer: { name: buyer?.name || order.buyerName || 'Buyer' },
   }
 }
 
 export async function listRecentApplications(limit = 5) {
   const applications = await listRoleApplications()
   return applications
-    .filter((item) => item.status === 'pending' || item.status === 'under-review')
+    .filter((item) => ['pending', 'under-review', 'needs-info'].includes(item.status))
     .slice(0, limit)
 }
 
@@ -70,6 +122,96 @@ export async function listRecentOrdersForAdmin(limit = 5) {
     })
 }
 
+export async function listProductsForAdmin() {
+  const store = await readyStore()
+  const reports = store.reports || []
+  return store.products
+    .map((product) => {
+      const sellerId = typeof product.seller === 'object' ? product.seller?.id : product.seller
+      const seller = store.sellers.find((entry) => entry.id === sellerId) || null
+      return {
+        id: product.id,
+        name: product.name || 'Product',
+        description: product.description || '',
+        price: Number(product.price) || 0,
+        unit: product.unit || '',
+        stock: Number(product.stock) || 0,
+        status: product.status || 'unavailable',
+        createdAt: product.createdAt || '',
+        images: Array.isArray(product.images) ? product.images : [],
+        category: product.category?.name || '',
+        seller: seller?.farmName || product.seller?.farmName || 'Seller unavailable',
+        sellerId: sellerId || '',
+        reportedCount: reports.filter(
+          (report) => report.reportType === 'product' && report.targetId === product.id,
+        ).length,
+      }
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+}
+
+export async function listOrdersForAdmin() {
+  const store = await readyStore()
+  const reports = store.reports || []
+  return [...store.orders.values()]
+    .map((order) => {
+      const buyer = store.users.get(order.buyer)
+      const items = (order.items || []).map((item) => {
+        const sellerId = item.sellerId || item.product?.seller?.id
+        const seller = store.sellers.find((entry) => entry.id === sellerId)
+        return {
+          name: item.product?.name || 'Product',
+          quantity: Number(item.quantity) || 0,
+          unitPrice: Number(item.unitPrice) || 0,
+          seller: seller?.farmName || item.product?.seller?.farmName || 'Seller unavailable',
+        }
+      })
+      const sellers = [...new Set(items.map((item) => item.seller))]
+      return {
+        id: order.id,
+        reference: order.reference || order.id,
+        buyer: buyer?.name || order.buyerName || 'Buyer',
+        seller: sellers.length ? sellers.join(', ') : 'Seller unavailable',
+        createdAt: order.createdAt || '',
+        fulfillment: order.fulfillment || 'pickup',
+        subtotal: Number(order.subtotal) || 0,
+        deliveryFee: Number(order.deliveryFee) || 0,
+        total: (Number(order.subtotal) || 0) + (Number(order.deliveryFee) || 0),
+        status: order.status || 'unknown',
+        paymentStatus: order.paymentStatus || 'unknown',
+        items,
+        transactions: store.payments
+          .filter((payment) => payment.orderId === order.id)
+          .map((payment) => ({
+            id: payment.id,
+            method: payment.method || order.paymentMethod || '',
+            provider: payment.provider || '',
+            amount: Number(payment.amount) || 0,
+            status: payment.status || 'unknown',
+            reference: payment.providerReference || '',
+            createdAt: payment.createdAt || '',
+          })),
+        reportedCount: reports.filter(
+          (report) => report.reportType === 'order' && report.targetId === order.id,
+        ).length,
+      }
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+}
+
+export async function deactivateProduct(actor, productId) {
+  if (actor.role !== 'admin' || actor.status !== 'approved') {
+    return { error: 'Only an approved administrator can deactivate listings.' }
+  }
+  const store = await readyStore()
+  const product = store.products.find((entry) => entry.id === String(productId || ''))
+  if (!product) return { error: 'Product not found.' }
+  if (product.status !== 'active') return { error: 'Only active listings can be deactivated.' }
+  product.status = 'unavailable'
+  await save()
+  return { ok: true }
+}
+
 export async function adminOrderActivity() {
   const store = await readyStore()
   const orders = [...store.orders.values()]
@@ -88,10 +230,28 @@ export async function adminVolumeActivity() {
 export async function listUsers() {
   const store = await readyStore()
   return [...store.users.values()]
-    .map((user) => ({
-      ...user,
-      seller: store.sellers.find((seller) => seller.id === user.sellerId) || null,
-    }))
+    .map((user) => {
+      const userRoles = rolesFromLegacy(user)
+      const seller = store.sellers.find((entry) => entry.id === user.sellerId) || null
+      return {
+        id: user.id,
+        name: user.name || 'Account',
+        email: user.email || '',
+        role: user.role || 'buyer',
+        roles: userRoles,
+        status: user.status || 'pending',
+        createdAt: user.createdAt || '',
+        seller: seller ? { farmName: seller.farmName || '' } : null,
+        serviceArea: user.serviceArea || '',
+        activity: {
+          orders: [...store.orders.values()].filter((order) => order.buyer === user.id).length,
+          products: seller
+            ? store.products.filter((product) => product.seller?.id === seller.id).length
+            : 0,
+          deliveries: store.deliveries.filter((delivery) => delivery.courierId === user.id).length,
+        },
+      }
+    })
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
@@ -116,7 +276,11 @@ export async function setUserStatus(actor, userId, status) {
     status === 'approved'
       ? 'Your AgriConnect account is approved.'
       : `An administrator marked your account ${status}.`,
-    user.role === 'seller' ? '/seller/dashboard' : user.role === 'delivery' ? '/delivery/dashboard' : '/account',
+    user.role === 'seller'
+      ? '/seller/dashboard'
+      : user.role === 'delivery'
+        ? '/delivery/dashboard'
+        : '/account',
   )
   await save()
   return { ok: true }
@@ -132,17 +296,24 @@ export async function markCommissionPaid(actor, deliveryId) {
   }
   delivery.commission = DELIVERY_FEE
   delivery.commissionStatus = 'paid'
-  await notify(delivery.courierId, 'Commission paid', `₱${DELIVERY_FEE} was marked paid.`, '/delivery/commissions')
+  await notify(
+    delivery.courierId,
+    'Commission paid',
+    `₱${DELIVERY_FEE} was marked paid.`,
+    '/delivery/commissions',
+  )
   await save()
   return { ok: true }
 }
 
 export async function markPlatformCommissionPaid(actor, orderId) {
-  if (actor.role !== 'admin') return { error: 'Only administrators can collect platform commission.' }
+  if (actor.role !== 'admin')
+    return { error: 'Only administrators can collect platform commission.' }
   const store = await readyStore()
   const order = [...store.orders.values()].find((item) => item.id === orderId)
   if (!order) return { error: 'Order not found.' }
-  if (Number(order.platformFee || 0) <= 0) return { error: 'This order has no platform commission.' }
+  if (Number(order.platformFee || 0) <= 0)
+    return { error: 'This order has no platform commission.' }
   if (!['delivered', 'completed', 'picked-up'].includes(order.status)) {
     return { error: 'Record platform commission collection after fulfillment.' }
   }
@@ -186,16 +357,23 @@ export async function platformReport(period = 'all') {
   return {
     users: users.length,
     buyers: users.filter((user) => user.role === 'buyer').length,
-    approvedSellers: users.filter((user) => user.role === 'seller' && user.status === 'approved').length,
-    approvedDelivery: users.filter((user) => user.role === 'delivery' && user.status === 'approved').length,
-    pending: applications.filter((item) => item.status === 'pending' || item.status === 'under-review').length,
+    approvedSellers: users.filter((user) => user.role === 'seller' && user.status === 'approved')
+      .length,
+    approvedDelivery: users.filter((user) => user.role === 'delivery' && user.status === 'approved')
+      .length,
+    pending: applications.filter(
+      (item) => item.status === 'pending' || item.status === 'under-review',
+    ).length,
     applicationsTotal: applications.length,
     applicationsApproved: applications.filter((item) => item.status === 'approved').length,
     applicationsRejected: applications.filter((item) => item.status === 'rejected').length,
     activeProducts: store.products.filter((product) => product.status === 'active').length,
     orders: orders.length,
     ordersAttention: orders.filter((order) => !closed.has(order.status)).length,
-    orderVolume: orders.reduce((sum, order) => sum + (Number(order.subtotal) || 0) + (Number(order.deliveryFee) || 0), 0),
+    orderVolume: orders.reduce(
+      (sum, order) => sum + (Number(order.subtotal) || 0) + (Number(order.deliveryFee) || 0),
+      0,
+    ),
     payments: payments.filter((payment) => payment.status === 'pending').length,
     paidTransactions: payments.filter((payment) => payment.status === 'paid').length,
     paidVolume: payments

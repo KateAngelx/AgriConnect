@@ -9,6 +9,20 @@ export function pretty(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
+export function deliveryStatusLabel(status) {
+  const labels = {
+    open: 'Available',
+    accepted: 'Assigned',
+    'picked-up': 'Courier picked up',
+    'in-transit': 'Out for delivery',
+    delivered: 'Delivered',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+    'delivery-failed': 'Delivery failed',
+  }
+  return labels[status] || pretty(status)
+}
+
 export function formatTimeAgo(iso) {
   if (!iso) return ''
   const then = new Date(iso).getTime()

@@ -13,12 +13,12 @@ function withNotice(path, key, message) {
 }
 
 export async function addToCartAction(formData) {
+  const back = safePath(formData.get('returnTo'), '/cart')
   const result = await addToCart({
     productID: formData.get('productID'),
     quantity: formData.get('quantity'),
   })
   if (result.redirectTo) redirect(result.redirectTo)
-  const back = safePath(formData.get('returnTo'), '/cart')
   if (result.error) redirect(withNotice(back, 'error', result.error))
   redirect(withNotice(back, 'success', 'Added to your cart.'))
 }
@@ -35,11 +35,12 @@ export async function updateCartAction(formData) {
 }
 
 export async function buyNowAction(formData) {
+  const back = safePath(formData.get('returnTo'), '/cart')
   const result = await buyNow({
     productID: formData.get('productID'),
     quantity: formData.get('quantity'),
   })
   if (result.redirectTo) redirect(result.redirectTo)
-  if (result.error) redirect(withNotice(safePath(formData.get('returnTo'), '/cart'), 'error', result.error))
+  if (result.error) redirect(withNotice(back, 'error', result.error))
   redirect('/checkout')
 }

@@ -4,14 +4,20 @@ import { LocationMap } from '@/components/location-map'
 import { ProductCard } from '@/components/product-card'
 import { SiteShell } from '@/components/site-shell'
 import { currentUser } from '@/server/auth'
-import { isApprovedBuyer } from '@/server/roles'
+import { isApprovedBuyer, isApprovedSeller } from '@/server/roles'
 import { getProduct, listProductReviews, listRelatedProducts } from '@/server/catalog'
 import { wished } from '@/server/wishlist'
 import { ProductPurchaseActions } from '@/components/product-purchase-actions'
 import { toggleWishlistAction } from '@/app/(frontend)/wishlist/actions'
 import { peso } from '@/lib/dashboard-format'
-export default async function ProductDetailsPage({ params }) {
+import { authHref } from '@/lib/auth-links'
+import { buyerReviewForProduct } from '@/server/reviews'
+import { AlertBanner } from '@/components/dashboard-ui'
+import { deleteProductReviewAction, saveProductReviewAction } from '@/app/(frontend)/products/actions'
+
+export default async function ProductDetailsPage({ params, searchParams }) {
   const { productId } = await params
+  const query = await searchParams
   const user = await currentUser()
   const product = await getProduct(productId)
   if (!product || product.status !== 'active') notFound()
@@ -22,6 +28,9 @@ export default async function ProductDetailsPage({ params }) {
     listRelatedProducts(product),
     listProductReviews(product.id),
   ])
+  const reviewAccess = user && isApprovedBuyer(user) && !isApprovedSeller(user)
+    ? await buyerReviewForProduct(user, product.id)
+    : { eligible: false, review: null }
   const images = product.images?.filter((image) => typeof image === 'object' && image.url) ?? []
   return (
     <SiteShell>
@@ -153,13 +162,19 @@ export default async function ProductDetailsPage({ params }) {
                   check out securely.
                 </p>
                 <div className="mt-5 flex gap-3">
-                  <a href="/login" className="btn btn-primary">
+                  <a href={authHref('login', `/products/${product.id}`)} className="btn btn-primary">
                     Sign in
                   </a>
-                  <a href="/register" className="btn btn-secondary">
+                  <a href={authHref('register', `/products/${product.id}`)} className="btn btn-secondary">
                     Create account
                   </a>
                 </div>
+                <a
+                  href={authHref('login', `/products/${product.id}`)}
+                  className="mt-4 inline-block text-sm font-semibold text-brand-700"
+                >
+                  Sign in to save this product to your wishlist
+                </a>
               </div>
             )}
           </section>
@@ -168,6 +183,12 @@ export default async function ProductDetailsPage({ params }) {
           <MarketplaceAssistant compact />
         </section>
         <section id="reviews" className="mt-12 scroll-mt-24" aria-labelledby="product-reviews-heading">
+          {typeof query.error === 'string' ? (
+            <div className="mb-4"><AlertBanner tone="error">{query.error}</AlertBanner></div>
+          ) : null}
+          {typeof query.success === 'string' ? (
+            <div className="mb-4"><AlertBanner tone="success">{query.success}</AlertBanner></div>
+          ) : null}
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="page-eyebrow">Customer feedback</p>
@@ -214,6 +235,63 @@ export default async function ProductDetailsPage({ params }) {
             </div>
           ) : (
             <div className="page-empty mt-5">This product has no reviews yet.</div>
+          )}
+          {reviewAccess.eligible ? (
+            <div className="ui-card mt-5 p-5">
+              <h3 className="text-lg font-semibold text-brand-900">
+                {reviewAccess.review ? 'Edit your review' : 'Review this product'}
+              </h3>
+              <p className="mt-1 text-sm text-brand-muted">
+                Reviews are available after a delivered or completed purchase.
+              </p>
+              <form action={saveProductReviewAction} className="mt-4 grid gap-4">
+                <input type="hidden" name="productId" value={product.id} />
+                <label className="grid gap-1 text-sm font-medium text-brand-900">
+                  Rating
+                  <select
+                    name="rating"
+                    required
+                    defaultValue={String(reviewAccess.review?.rating || 5)}
+                    className="min-h-11 rounded-xl border border-brand-line bg-white px-3"
+                  >
+                    {[5, 4, 3, 2, 1].map((rating) => (
+                      <option key={rating} value={rating}>{rating} {rating === 1 ? 'star' : 'stars'}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-medium text-brand-900">
+                  Comment <span className="font-normal text-brand-muted">(optional)</span>
+                  <textarea
+                    name="body"
+                    rows={4}
+                    maxLength={2000}
+                    defaultValue={reviewAccess.review?.body || ''}
+                    className="rounded-xl border border-brand-line bg-white px-3 py-2"
+                  />
+                </label>
+                <button type="submit" className="btn btn-primary w-fit">
+                  {reviewAccess.review ? 'Save changes' : 'Submit review'}
+                </button>
+              </form>
+              {reviewAccess.review ? (
+                <form action={deleteProductReviewAction} className="mt-3">
+                  <input type="hidden" name="productId" value={product.id} />
+                  <input type="hidden" name="reviewId" value={reviewAccess.review.id} />
+                  <button type="submit" className="btn btn-secondary">Delete review</button>
+                </form>
+              ) : null}
+            </div>
+          ) : user && isApprovedBuyer(user) && !isApprovedSeller(user) ? (
+            <p className="mt-5 text-sm text-brand-muted">
+              You can review this product after an order containing it has been delivered or completed.
+            </p>
+          ) : (
+            <p className="mt-5 text-sm text-brand-muted">
+              <a href={authHref('login', `/products/${product.id}`)} className="font-semibold text-brand-700">
+                Sign in as an approved buyer
+              </a>{' '}
+              to review this product after a completed purchase.
+            </p>
           )}
         </section>
         <section className="mt-12">

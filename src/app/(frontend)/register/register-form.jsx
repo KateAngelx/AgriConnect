@@ -3,12 +3,17 @@
 import { useActionState } from 'react'
 import { registerAction } from '@/app/(frontend)/register/actions'
 import { authInputClass, authLabelClass, authPrimaryButtonClass } from '@/components/auth-layout'
+import { authHref } from '@/lib/auth-links'
+import { useSearchParams } from 'next/navigation'
 
 export function RegisterForm() {
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next') || ''
   const [state, action, pending] = useActionState(registerAction, { error: '' })
 
   return (
     <form action={action} className="space-y-4">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <input type="hidden" name="authMethod" value="email" />
       <div>
         <label htmlFor="name" className={authLabelClass}>
@@ -92,6 +97,12 @@ export function RegisterForm() {
       <button type="submit" disabled={pending} className={authPrimaryButtonClass}>
         {pending ? 'Creating account…' : 'Create account →'}
       </button>
+      <p className="text-center text-sm text-[#647066]">
+        Already have an account?{' '}
+        <a href={authHref('login', next || '/')} className="font-bold text-[#4b9f30]">
+          Sign in
+        </a>
+      </p>
     </form>
   )
 }

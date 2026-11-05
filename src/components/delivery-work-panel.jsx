@@ -2,7 +2,7 @@ import { collectDeliveryAction, trackAction } from '@/app/(frontend)/delivery/ac
 import { OverviewPanel } from '@/components/dashboard-overview-ui'
 import { DarkButton, FieldInput, StatusBadge } from '@/components/dashboard-ui'
 import { LocationRouteMap } from '@/components/location-route-map'
-import { peso, pretty } from '@/lib/dashboard-format'
+import { deliveryStatusLabel, peso } from '@/lib/dashboard-format'
 import { DashboardIcon } from '@/components/dashboard-icons'
 import { ConfirmButton } from '@/components/confirm-button'
 import { formatEstimatedArrival } from '@/lib/delivery-eta'
@@ -11,16 +11,16 @@ import { CourierLocationSharing } from '@/components/courier-location-sharing'
 
 const nextLabel = {
   open: 'Accept assignment',
-  accepted: 'Mark picked up',
-  'picked-up': 'Mark in transit',
+  accepted: 'Mark courier picked up',
+  'picked-up': 'Mark out for delivery',
   'in-transit': 'Mark delivered',
 }
 
 const progressSteps = [
-  { status: 'accepted', label: 'Accepted delivery' },
-  { status: 'picked-up', label: 'Picked up' },
+  { status: 'accepted', label: 'Assigned' },
+  { status: 'picked-up', label: 'Courier picked up' },
   { status: 'in-transit', label: 'Out for delivery' },
-  { status: 'delivered', label: 'Marked delivered' },
+  { status: 'delivered', label: 'Delivered' },
 ]
 
 export function DeliveryWorkPanel({ work, detailsHref = '/delivery/deliveries', bare = false, emptyMessage = 'Open jobs in your service area will appear here.' }) {
@@ -42,7 +42,7 @@ export function DeliveryWorkPanel({ work, detailsHref = '/delivery/deliveries', 
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <StatusBadge status={pretty(assignment.status)} />
+            <StatusBadge status={deliveryStatusLabel(assignment.status)} />
             <a href={`${detailsHref}?job=${encodeURIComponent(assignment.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${assignment.reference || 'assignment'}`} title="View details">
               <DashboardIcon name="eye" className="size-4" />
             </a>
@@ -79,8 +79,11 @@ export function DeliveryAssignmentDetail({ assignment }) {
               {assignment.estimatedArrivalAt ? <> · ETA {formatEstimatedArrival(assignment.estimatedArrivalAt)}</> : null}
             </p>
           )}
+          {assignment.privacy === 'full' && assignment.instructions ? (
+            <p className="mt-2 text-sm text-[#65766d]"><strong>Delivery instructions:</strong> {assignment.instructions}</p>
+          ) : null}
         </div>
-        <StatusBadge status={pretty(assignment.status)} />
+        <StatusBadge status={deliveryStatusLabel(assignment.status)} />
       </div>
       <DeliveryProgress status={assignment.status} updates={assignment.updates} />
       <CourierLocationSharing
@@ -108,9 +111,7 @@ export function DeliveryAssignmentDetail({ assignment }) {
         </form>
       ) : null}
       {assignment.isMine &&
-      assignment.order?.paymentMethod === 'cash-on-delivery' &&
-      assignment.order?.paymentStatus !== 'paid' &&
-      ['delivered', 'completed'].includes(assignment.order?.status) ? (
+      assignment.order?.canCollectCash ? (
         <form action={collectDeliveryAction} className="mt-3">
           <input type="hidden" name="orderId" value={assignment.orderId} />
           <DarkButton type="submit">Record cash collected</DarkButton>

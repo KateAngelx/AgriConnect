@@ -71,7 +71,10 @@ function snapshotProduct(product) {
 
 export async function placeOrder(input) {
   const user = await currentUser()
-  if (!user) return { error: 'Sign in to check out.', redirectTo: '/login' }
+  if (!user) {
+    const { authHref } = await import('@/lib/auth-links')
+    return { error: 'Sign in to check out.', redirectTo: authHref('login', '/checkout') }
+  }
   if (!isApprovedBuyer(user)) {
     return { error: 'Sign in with an approved account to check out.' }
   }

@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { loginAction } from '@/app/(frontend)/login/actions'
 import { authInputClass, authLabelClass, authPrimaryButtonClass } from '@/components/auth-layout'
+import { authHref } from '@/lib/auth-links'
 
 const initialState = { error: '' }
 
@@ -67,7 +68,7 @@ export function LoginForm() {
       </button>
       <p className="text-center text-sm text-[#647066]">
         New to AgriConnect?{' '}
-        <a href="/register" className="font-bold text-[#4b9f30]">
+        <a href={authHref('register', next || '/')} className="font-bold text-[#4b9f30]">
           Create an account
         </a>
       </p>

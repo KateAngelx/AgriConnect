@@ -164,6 +164,18 @@ export function itemSellerId(item) {
   return item.sellerId || item.product?.seller?.id || item.product?.seller || ''
 }
 
+async function notifyOrderSellers(order, title, body) {
+  if (!order) return
+  const store = await readyStore()
+  const sellerIds = new Set((order.items || []).map(itemSellerId).filter(Boolean))
+  for (const sellerId of sellerIds) {
+    const seller = [...store.users.values()].find(
+      (user) => user.sellerId === sellerId || store.sellers.find((entry) => entry.id === sellerId)?.ownerId === user.id,
+    )
+    if (seller) await notify(seller.id, title, body, '/seller/orders')
+  }
+}
+
 function paymongoHeader() {
   const secret = process.env.PAYMONGO_SECRET_KEY
   if (!secret) return ''
@@ -330,6 +342,7 @@ export async function markXenditInvoicePaid({ invoiceId = '', externalId = '', o
     if (orderChanged) order.paymentStatus = 'paid'
     changed = true
     await notify(order?.buyer, `Payment received for ${order?.reference || payment.orderId}`, 'Xendit confirmed your electronic payment.', order?.id ? `/buyer/orders/${order.id}` : '/buyer/orders')
+    await notifyOrderSellers(order, `Payment received for ${order?.reference || payment.orderId}`, 'Xendit confirmed payment for this order.')
   }
   if (changed) await save()
   return { ok: changed }
@@ -350,6 +363,7 @@ export async function confirmXenditPayments(userId) {
     order.paymentStatus = 'paid'
     changed = true
     await notify(userId, `Payment received for ${order.reference}`, 'Xendit confirmed this payment.', `/buyer/orders/${order.id}`)
+    await notifyOrderSellers(order, `Payment received for ${order.reference}`, 'Xendit confirmed payment for this order.')
   }
   if (changed) await save()
   return { ok: true }
@@ -371,6 +385,7 @@ export async function markPaymongoCheckoutPaid({ sessionId = '', orderIds = [] }
     if (orderChanged) order.paymentStatus = 'paid'
     changed = true
     await notify(order?.buyer, `Payment received for ${order?.reference || payment.orderId}`, 'PayMongo confirmed your electronic payment.', order?.id ? `/buyer/orders/${order.id}` : '/buyer/orders')
+    await notifyOrderSellers(order, `Payment received for ${order?.reference || payment.orderId}`, 'PayMongo confirmed payment for this order.')
   }
   if (changed) await save()
   return { ok: changed }
@@ -389,6 +404,7 @@ export async function confirmBuyerPayments(userId) {
     order.paymentStatus = 'paid'
     changed = true
     await notify(userId, `Payment received for ${order.reference}`, 'PayMongo confirmed this payment.', `/buyer/orders/${order.id}`)
+    await notifyOrderSellers(order, `Payment received for ${order.reference}`, 'PayMongo confirmed payment for this order.')
   }
   if (changed) await save()
   return { ok: true }
@@ -413,6 +429,7 @@ export async function collectCash(orderId, user) {
   const payment = store.payments.find((item) => item.orderId === orderId)
   if (payment) payment.status = 'paid'
   await notify(order.buyer, `Payment recorded for ${order.reference}`, `${user.name} recorded the cash payment.`, `/buyer/orders/${order.id}`)
+  await notifyOrderSellers(order, `Payment recorded for ${order.reference}`, `${user.name} recorded the cash payment.`)
   await save()
   return { ok: true }
 }

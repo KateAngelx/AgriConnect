@@ -7,11 +7,7 @@ import {
   QuickActions,
 } from '@/components/dashboard-overview-ui'
 import { StatusBadge, WorkSection, workStackClass } from '@/components/dashboard-ui'
-import {
-  adminOrderActivity,
-  adminSnapshot,
-  listRecentApplications,
-} from '@/server/admin'
+import { adminOrderActivity, adminSnapshot, listRecentApplications } from '@/server/admin'
 import { requireAdmin } from '@/server/guards'
 import { listNotifications } from '@/server/notifications'
 import { describeIntegrations } from '@/server/sync'
@@ -37,40 +33,120 @@ export default async function AdminDashboardPage() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4">
           <MetricBoard>
-            <MetricTile section="Queue" label="Applications waiting" value={summary.pending} hint={summary.pending ? 'Needs a decision' : 'Queue is clear'} icon="clipboard" tone="amber" />
-            <MetricTile section="Sellers" label="Approved sellers" value={summary.approvedSellers} icon="store" tone="teal" />
-            <MetricTile section="Delivery" label="Approved couriers" value={summary.approvedDelivery} icon="truck" tone="blue" />
-            <MetricTile section="Orders" label="Orders in progress" value={summary.ordersAttention} hint="Not delivered or completed" icon="boxes" tone="amber" />
-            <MetricTile section="Orders" label="Orders finished" value={summary.orders - summary.ordersAttention} hint="Delivered, completed, or cancelled" icon="package" tone="green" />
-            <MetricTile section="Checkout" label="Unpaid checkouts" value={summary.payments} icon="wallet" tone="amber" />
-            <MetricTile section="Checkout" label="Paid checkouts" value={summary.paidTransactions} icon="coin" tone="teal" />
-            <MetricTile section="Commission" label="Platform commission" value={peso(summary.platformCommission)} hint="Realized seller commission" icon="wallet" tone="green" />
+            <MetricTile
+              section="Accounts"
+              label="Total users"
+              value={summary.users}
+              icon="users"
+              tone="slate"
+            />
+            <MetricTile
+              section="Accounts"
+              label="Total buyers"
+              value={summary.buyers}
+              icon="user"
+              tone="blue"
+            />
+            <MetricTile
+              section="Accounts"
+              label="Total sellers"
+              value={summary.sellers}
+              icon="store"
+              tone="teal"
+            />
+            <MetricTile
+              section="Accounts"
+              label="Total delivery personnel"
+              value={summary.deliveryPersonnel}
+              icon="truck"
+              tone="blue"
+            />
+            <MetricTile
+              section="Marketplace"
+              label="Total products"
+              value={summary.products}
+              icon="package"
+              tone="green"
+            />
+            <MetricTile
+              section="Marketplace"
+              label="Total orders"
+              value={summary.orders}
+              icon="boxes"
+              tone="amber"
+            />
+            <MetricTile
+              section="Payments"
+              label="Total transactions"
+              value={summary.transactions}
+              icon="wallet"
+              tone="teal"
+            />
+            <MetricTile
+              section="Queue"
+              label="Pending applications"
+              value={summary.pending}
+              icon="clipboard"
+              tone="amber"
+            />
+            <MetricTile
+              section="Queue"
+              label="Pending reports"
+              value={summary.pendingReports}
+              icon="clipboard"
+              tone="amber"
+            />
+            <MetricTile
+              section="Queue"
+              label="Unresolved feedback"
+              value={summary.unresolvedFeedback}
+              icon="clipboard"
+              tone="amber"
+            />
           </MetricBoard>
+          <section className="ui-card grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-4">
+            <SystemStat label="Active products" value={summary.activeProducts} />
+            <SystemStat label="Orders needing attention" value={summary.ordersAttention} />
+            <SystemStat label="Pending transactions" value={summary.payments} />
+            <SystemStat label="Paid transactions" value={summary.paidTransactions} />
+          </section>
 
           <div className={workStackClass}>
-          <WorkSection
-            title="Waiting for approval"
-            description="Pending and under-review partner applications."
-            count={applications.length}
-            href="/admin/applications"
-            linkLabel="Open approvals"
-            empty={<p className="text-sm text-[#5c6f62]">No application is waiting.</p>}
-          >
-            <ul className="divide-y divide-[#d5e4d4]">
-              {applications.map((entry) => (
-                <li key={entry.id} className="flex w-full flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-[#142016]">{entry.user?.name || 'Applicant'}</p>
-                    <p className="text-[13px] text-[#5c6f62]">
-                      {entry.applicationType} · {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString('en-PH') : '—'}
-                    </p>
-                  </div>
-                  <StatusBadge status={entry.status} />
-                </li>
-              ))}
-            </ul>
-          </WorkSection>
-          <ActivityBars title="Orders placed" series={activity} caption="Orders placed on each of the last 7 days." />
+            <WorkSection
+              title="Waiting for approval"
+              description="Pending, under-review, and information-requested applications."
+              count={applications.length}
+              href="/admin/applications"
+              linkLabel="Open approvals"
+              empty={<p className="text-sm text-[#5c6f62]">No application is waiting.</p>}
+            >
+              <ul className="divide-y divide-[#d5e4d4]">
+                {applications.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="flex w-full flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[#142016]">
+                        {entry.user?.name || 'Applicant'}
+                      </p>
+                      <p className="text-[13px] text-[#5c6f62]">
+                        {entry.applicationType} ·{' '}
+                        {entry.createdAt
+                          ? new Date(entry.createdAt).toLocaleDateString('en-PH')
+                          : '—'}
+                      </p>
+                    </div>
+                    <StatusBadge status={entry.status} />
+                  </li>
+                ))}
+              </ul>
+            </WorkSection>
+            <ActivityBars
+              title="Orders placed"
+              series={activity}
+              caption="Orders placed on each of the last 7 days."
+            />
           </div>
 
           <p className="text-[13px] text-[#5c6f62]">
@@ -85,14 +161,64 @@ export default async function AdminDashboardPage() {
           <QuickActions
             columns={1}
             actions={[
-              { section: 'Approving', label: 'Approvals', href: '/admin/applications', icon: 'clipboard' },
+              {
+                section: 'Approving',
+                label: 'Approvals',
+                href: '/admin/applications',
+                icon: 'clipboard',
+              },
               { section: 'Approving', label: 'Accounts', href: '/admin/users', icon: 'users' },
-              { section: 'Payments', label: 'Commission payouts', href: '/admin/payments', icon: 'wallet' },
+              {
+                section: 'Monitoring',
+                label: 'Products',
+                href: '/admin/products',
+                icon: 'package',
+              },
+              { section: 'Monitoring', label: 'Orders', href: '/admin/orders', icon: 'clipboard' },
+              {
+                section: 'Monitoring',
+                label: 'Review moderation',
+                href: '/admin/reviews',
+                icon: 'clipboard',
+              },
+              {
+                section: 'Case management',
+                label: 'Feedback management',
+                href: '/admin/feedback',
+                icon: 'clipboard',
+              },
+              {
+                section: 'Case management',
+                label: 'Report management',
+                href: '/admin/buyer-reports',
+                icon: 'clipboard',
+              },
+              {
+                section: 'Approving',
+                label: 'Administrator announcements',
+                href: '/admin/announcements',
+                icon: 'bell',
+              },
+              {
+                section: 'Payments',
+                label: 'Transactions and payouts',
+                href: '/admin/payments',
+                icon: 'wallet',
+              },
               { section: 'Payments', label: 'Reports', href: '/admin/reports', icon: 'package' },
             ]}
           />
         </aside>
       </div>
     </DashboardShell>
+  )
+}
+
+function SystemStat({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-brand-muted">{label}</p>
+      <p className="mt-1 text-xl font-bold text-brand-900">{value}</p>
+    </div>
   )
 }

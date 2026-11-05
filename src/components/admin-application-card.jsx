@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/dashboard-ui'
 import { ConfirmDialog } from '@/components/ui-feedback'
 
 export function AdminApplicationCard({ entry, reviewAction }) {
+  const payloadFields = Object.entries(entry.payload || {})
   const decisionRef = useRef(null)
   const [aiHint, setAiHint] = useState('')
   const [aiError, setAiError] = useState('')
@@ -62,14 +63,28 @@ export function AdminApplicationCard({ entry, reviewAction }) {
         <div className="min-w-0">
           <p className="text-base font-bold text-[#142016]">{entry.user?.name || 'Applicant'}</p>
           <p className="mt-0.5 break-words text-sm text-[#65766d]">
-            {entry.user?.email} · {entry.applicationType} application
+            {entry.user?.email || 'No email'} · {entry.applicationType} application
           </p>
-          <p className="mt-2 line-clamp-2 text-sm text-[#5c6f62]">
-            {Object.entries(entry.payload || {})
-              .slice(0, 4)
-              .map(([key, value]) => `${key.replaceAll(/([A-Z])/g, ' $1')}: ${String(value)}`)
-              .join(' · ') || 'No extra details submitted.'}
+          <p className="mt-1 text-xs text-[#65766d]">
+            Submitted {entry.createdAt ? new Date(entry.createdAt).toLocaleString('en-PH') : 'date unavailable'}
           </p>
+          <details className="mt-3">
+            <summary className="w-fit cursor-pointer text-sm font-semibold text-[#2e7d32]">View application details</summary>
+            {payloadFields.length ? (
+              <dl className="mt-3 grid gap-3 rounded-xl bg-white p-4 sm:grid-cols-2">
+                {payloadFields.map(([key, value]) => (
+                <div key={key} className="min-w-0">
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-[#65766d]">
+                    {key.replaceAll(/([A-Z])/g, ' $1')}
+                  </dt>
+                  <dd className="mt-1 whitespace-pre-wrap break-words text-sm text-[#142016]">
+                    {Array.isArray(value) ? value.join(', ') : String(value ?? '—')}
+                  </dd>
+                </div>
+                ))}
+              </dl>
+            ) : <p className="mt-3 text-sm text-[#65766d]">No additional information was submitted.</p>}
+          </details>
         </div>
         <StatusBadge status={entry.status} />
       </div>
@@ -104,7 +119,7 @@ export function AdminApplicationCard({ entry, reviewAction }) {
           <textarea
             name="adminNote"
             rows={2}
-            placeholder="Note to the applicant (required when requesting additional information)"
+            placeholder="Note to the applicant (required for rejection or when requesting additional information)"
             className="w-full rounded-xl border border-[#173c2c]/12 px-3 py-2 text-sm"
           />
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">

@@ -79,6 +79,9 @@ export default async function BuyerOrdersPage({ searchParams }) {
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
                         <StatusBadge status={order.status} />
+                        <Link href={`/buyer/orders/${encodeURIComponent(order.id)}/receipt`} className="text-xs font-semibold text-[#2e7d32] hover:underline">
+                          Receipt
+                        </Link>
                         <Link href={`/buyer/orders?order=${encodeURIComponent(order.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${order.reference}`} title="View details">
                           <DashboardIcon name="eye" className="size-4" />
                         </Link>

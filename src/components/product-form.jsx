@@ -215,6 +215,7 @@ export function ProductForm({ categories, product, commissionRate = 1 }) {
           </label>
           <select id="status" name="status" defaultValue={product?.status || 'active'} className={field}>
             <option value="active">Active</option>
+            <option value="unavailable">Unavailable</option>
             <option value="draft">Draft</option>
             <option value="archived">Archived</option>
           </select>

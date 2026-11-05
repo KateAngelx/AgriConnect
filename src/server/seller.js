@@ -77,8 +77,20 @@ export async function sellerSnapshot(user) {
   const orders = [...store.orders.values()].filter((order) =>
     order.items.some((item) => itemSellerId(item) === sellerId),
   )
+  const completedOrders = orders.filter((order) =>
+    ['completed', 'delivered', 'picked-up'].includes(String(order.status || '').toLowerCase().replaceAll('_', '-')),
+  )
+  const totalSales = completedOrders.reduce((sum, order) => sum + sellerOrderTotal(order, sellerId), 0)
+  const commission = completedOrders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0)
   return {
     products: products.length,
+    activeProducts: products.filter((product) => product.status === 'active').length,
+    pendingOrders: orders.filter((order) =>
+      !['completed', 'delivered', 'picked-up', 'cancelled', 'delivery-failed'].includes(order.status),
+    ).length,
+    completedOrders: completedOrders.length,
+    totalSales,
+    earnings: Math.max(0, totalSales - commission),
     lowStock: products.filter((product) => product.status === 'active' && product.stock < 10).length,
     openOrders: orders.filter((order) => !['completed', 'cancelled'].includes(order.status)).length,
   }
@@ -136,17 +148,60 @@ export async function sellerFinancials(user, period = 'all') {
   }
 }
 
-export async function sellerSalesReport(user, period = 'all') {
-  const orders = (await listOwnedOrders(user)).filter((order) => inPeriod(order.createdAt, period))
-  const sellerId = sellerIdForUser(await readyStore(), user)
-  return orders.map((order) => ({
+export async function sellerSalesReport(user, period = 'all', status = 'all') {
+  const orders = (await listOwnedOrders(user))
+    .filter((order) => inPeriod(order.createdAt, period))
+    .filter((order) => status === 'all' || order.status === status)
+  const store = await readyStore()
+  const sellerId = sellerIdForUser(store, user)
+  return orders.map((order) => {
+    const payment = store.payments.find((entry) => entry.orderId === order.id) || null
+    const total = sellerOrderTotal(order, sellerId)
+    const commission = Number(order.platformFee || 0)
+    return {
+      id: order.id,
+      reference: order.reference,
+      total,
+      commission,
+      earnings: Math.max(0, total - commission),
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      paymentMethod: payment?.method || order.paymentMethod,
+      transactionId: payment?.id || '',
+      providerReference: payment?.providerReference || '',
+      fulfillment: order.fulfillment,
+      createdAt: order.createdAt,
+    }
+  })
+}
+
+export async function sellerOrderReceipt(user, orderId) {
+  if (!isApprovedSeller(user)) return null
+  const store = await readyStore()
+  const order = store.orders.get(orderId)
+  const sellerId = sellerIdForUser(store, user)
+  if (!order || !sellerId || !order.items?.some((item) => itemSellerId(item) === sellerId)) return null
+  const items = order.items.filter((item) => itemSellerId(item) === sellerId)
+  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+  const commission = Number(order.platformFee || 0)
+  const payment = store.payments.find((entry) => entry.orderId === order.id) || null
+  const seller = store.sellers.find((entry) => entry.id === sellerId)
+  return {
     id: order.id,
     reference: order.reference,
-    total: sellerOrderTotal(order, sellerId),
+    items,
+    subtotal,
+    commission,
+    earnings: Math.max(0, subtotal - commission),
     status: order.status,
+    fulfillment: order.fulfillment,
     paymentStatus: order.paymentStatus,
+    paymentMethod: payment?.method || order.paymentMethod,
+    transactionId: payment?.id || '',
+    providerReference: payment?.providerReference || '',
+    sellerName: seller?.farmName || 'AgriConnect seller',
     createdAt: order.createdAt,
-  }))
+  }
 }
 
 export async function saveSellerProfile(user, input) {
@@ -189,7 +244,7 @@ export async function saveProduct(user, input) {
   const category = store.categories.find((item) => item.id === String(input.category ?? ''))
   const pickup = input.pickup === 'yes' || input.pickup === true
   const delivery = input.delivery === 'yes' || input.delivery === true
-  const status = ['active', 'draft', 'archived'].includes(input.status) ? input.status : 'active'
+  const status = ['active', 'unavailable', 'draft', 'archived'].includes(input.status) ? input.status : 'active'
   const photo = imageUrl(input.imageUrl)
   if (name.length < 2) return { error: 'Enter a product name.' }
   if (!category) return { error: 'Choose a category.' }
@@ -292,8 +347,8 @@ export async function advanceOrder(user, orderId) {
     for (const courier of eligibleCouriersForOrder(store, order)) {
       await notify(
         courier.id,
-        'Delivery ready for pickup',
-        `Order ${order.reference} is prepared and waiting for courier assignment.`,
+        'New delivery assignment available',
+        `Order ${order.reference} is ready for pickup. Full delivery details and instructions are only shown after you accept the assignment.`,
         '/delivery/deliveries',
       )
     }
@@ -302,12 +357,15 @@ export async function advanceOrder(user, orderId) {
   return { ok: true }
 }
 
-export async function cancelOrder(user, orderId) {
+async function closeOrder(user, orderId, rejection = false) {
   if (!isApprovedSeller(user)) return { error: 'Order tools are locked.' }
   const store = await readyStore()
   const order = store.orders.get(orderId)
   const sellerId = sellerIdForUser(store, user)
   if (!order || !ownsOrder(order, sellerId)) return { error: 'Order not found.' }
+  if (rejection && order.status !== 'placed') {
+    return { error: 'Only newly placed orders can be rejected.' }
+  }
   if (['completed', 'delivered', 'picked-up', 'cancelled'].includes(order.status)) {
     return { error: 'This order can no longer be cancelled.' }
   }
@@ -319,14 +377,42 @@ export async function cancelOrder(user, orderId) {
   order.platformFee = 0
   order.platformFeeStatus = 'cancelled'
   const delivery = store.deliveries.find((item) => item.orderId === order.id)
-  if (delivery) delivery.status = 'cancelled'
+  if (delivery) {
+    delivery.status = 'cancelled'
+    delivery.updatedAt = new Date().toISOString()
+    delivery.updates ??= []
+    delivery.updates.push({ at: delivery.updatedAt, status: 'cancelled', note: 'Order cancelled by seller.' })
+    if (delivery.courierId) {
+      await notify(
+        delivery.courierId,
+        `${order.reference} was cancelled`,
+        'The seller cancelled this order. This assignment is now closed.',
+        '/delivery/history',
+      )
+    }
+  }
   if (['paid', 'captured', 'held-online'].includes(order.paymentStatus) ||
       ['paymongo', 'xendit'].includes(order.paymentMethod)) {
     order.paymentStatus = 'refund-pending'
   }
-  await notify(order.buyer, `${order.reference} was cancelled`, 'The seller cancelled this order and stock was restored.', `/buyer/orders/${order.id}`)
+  await notify(
+    order.buyer,
+    rejection ? `${order.reference} was rejected` : `${order.reference} was cancelled`,
+    rejection
+      ? 'The seller could not accept this order. Reserved stock was returned.'
+      : 'The seller cancelled this order and stock was restored.',
+    `/buyer/orders/${order.id}`,
+  )
   await save()
   return { ok: true }
+}
+
+export async function cancelOrder(user, orderId) {
+  return closeOrder(user, orderId)
+}
+
+export async function rejectOrder(user, orderId) {
+  return closeOrder(user, orderId, true)
 }
 
 export async function sellerCollect(user, orderId) {

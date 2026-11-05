@@ -44,10 +44,13 @@ export default async function SellerDashboardPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-4">
           <MetricBoard>
-            <MetricTile section="Orders" label="Needs your action" value={needsYou.length} icon="clipboard" tone="amber" />
-            <MetricTile section="Orders" label="Active orders" value={activeOrders.length} hint="Waiting on the courier" icon="truck" tone="blue" />
-            <MetricTile section="Orders" label="Completed" value={completed.length} icon="package" tone="green" />
-            <MetricTile section="Shop" label="Low stock" value={summary.lowStock} hint={`${activeProducts} active listings`} icon="boxes" tone="teal" />
+            <MetricTile section="Shop" label="Total products" value={summary.products} icon="package" tone="teal" />
+            <MetricTile section="Shop" label="Active products" value={summary.activeProducts} icon="store" tone="green" />
+            <MetricTile section="Orders" label="Pending orders" value={summary.pendingOrders} icon="clipboard" tone="amber" />
+            <MetricTile section="Orders" label="Completed orders" value={summary.completedOrders} icon="package" tone="blue" />
+            <MetricTile section="Sales" label="Total sales" value={peso(summary.totalSales)} hint="Completed product sales" icon="coin" tone="green" />
+            <MetricTile section="Sales" label="Earnings" value={peso(summary.earnings)} hint="After platform commission" icon="wallet" tone="teal" />
+            <MetricTile section="Inventory" label="Low stock" value={summary.lowStock} hint={`${activeProducts} active listings`} icon="boxes" tone="amber" />
           </MetricBoard>
 
           <div className={workGridClass}>
@@ -94,7 +97,10 @@ export default async function SellerDashboardPage() {
             actions={[
               { section: 'Shop', label: 'Add product', href: '/seller/products?new=1', icon: 'plus' },
               { section: 'Shop', label: 'Inventory', href: '/seller/inventory', icon: 'boxes' },
+              { section: 'Shop', label: 'Product reviews', href: '/seller/reviews', icon: 'clipboard' },
               { section: 'Orders', label: 'Orders', href: '/seller/orders', icon: 'clipboard' },
+              { section: 'Account', label: 'Feedback', href: '/seller/feedback', icon: 'clipboard' },
+              { section: 'Account', label: 'Report an issue', href: '/seller/issues', icon: 'clipboard' },
               { section: 'Account', label: 'My shop', href: '/seller/shop', icon: 'user' },
             ]}
           />
@@ -112,7 +118,7 @@ function OrderPreview({ rows }) {
           <div className="min-w-0">
             <p className="font-semibold text-[#142016]">{order.reference}</p>
             <p className="text-[13px] text-[#5c6f62]">
-              {order.buyerName} · {order.fulfillment} · {peso(order.subtotal + order.deliveryFee)}
+              {order.buyerName} · {order.fulfillment} · {peso(order.subtotal)} product sales
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
