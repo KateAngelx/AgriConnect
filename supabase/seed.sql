@@ -5,6 +5,10 @@
 -- scrypt hash for "password1" (salt:hash format used by the app)
 -- Regenerate with: node -e "import('./src/server/passwords.js').then(m => console.log(m.hashPassword('password1')))"
 
+-- Remove the unowned Benguet demo seller and its products.
+delete from products where seller_id = 'benguet-growers';
+delete from sellers where id = 'benguet-growers';
+
 insert into categories (id, name, description, image) values
   ('vegetables', 'Vegetables', 'Leafy greens, tomatoes, and everyday market vegetables.', '{"url":"https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?auto=format&fit=crop&w=900&q=80","alt":"Fresh vegetables"}'::jsonb),
   ('fruits', 'Fruits', 'Seasonal fruit from nearby farms.', '{"url":"https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=900&q=80","alt":"Fresh fruit"}'::jsonb),
@@ -17,7 +21,6 @@ on conflict (id) do update set
 
 insert into sellers (id, farm_name, location, status, description, owner_id, image) values
   ('laguna-greens', 'Laguna Greens Farm', 'Laguna', 'approved', 'A family farm growing vegetables and herbs for nearby households.', 'user-pedro', '{"url":"https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80","alt":"Laguna Greens Farm"}'::jsonb),
-  ('benguet-growers', 'Benguet Highland Growers', 'Benguet', 'approved', 'Highland growers known for cool-climate vegetables and strawberries.', null, '{"url":"https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=600&q=80","alt":"Benguet Highland Growers"}'::jsonb),
   ('nueva-ecija-rice', 'Nueva Ecija Rice Collective', 'Nueva Ecija', 'approved', 'A growers collective selling freshly milled rice by the sack.', null, '{"url":"https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=600&q=80","alt":"Rice harvest"}'::jsonb)
 on conflict (id) do update set
   farm_name = excluded.farm_name,
@@ -46,10 +49,8 @@ on conflict (id) do update set
 insert into products (id, name, description, price, unit, stock, location, status, pickup, delivery, category_id, seller_id, created_at, images) values
   ('tomatoes', 'Market tomatoes', 'Ripe tomatoes harvested this week, sold by the kilogram.', 80, 'kilogram', 38, 'Laguna', 'active', true, true, 'vegetables', 'laguna-greens', '2026-10-20T08:00:00.000Z', '[{"id":"tomatoes-1","url":"https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1200&q=80","alt":"Red tomatoes"}]'::jsonb),
   ('kangkong', 'Kangkong bundle', 'Fresh water spinach, tied in market bundles.', 25, 'bundle', 60, 'Laguna', 'active', true, false, 'vegetables', 'laguna-greens', '2026-10-22T08:00:00.000Z', '[{"id":"kangkong-1","url":"https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=1200&q=80","alt":"Leafy greens"}]'::jsonb),
-  ('strawberries', 'Highland strawberries', 'Sweet Benguet strawberries packed in trays.', 180, 'tray', 18, 'Benguet', 'active', true, true, 'fruits', 'benguet-growers', '2026-10-23T08:00:00.000Z', '[{"id":"strawberries-1","url":"https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=1200&q=80","alt":"Strawberries"}]'::jsonb),
   ('bananas', 'Lakatan bananas', 'Ripe lakatan bananas, sold by the kilogram.', 70, 'kilogram', 35, 'Laguna', 'active', false, true, 'fruits', 'laguna-greens', '2026-10-18T08:00:00.000Z', '[{"id":"bananas-1","url":"https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=1200&q=80","alt":"Bananas"}]'::jsonb),
-  ('rice', 'Milled white rice', 'Locally milled white rice, packed in a 5-kilo sack.', 280, 'sack', 24, 'Nueva Ecija', 'active', true, true, 'rice', 'nueva-ecija-rice', '2026-10-15T08:00:00.000Z', '[{"id":"rice-1","url":"https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=1200&q=80","alt":"White rice"}]'::jsonb),
-  ('potatoes', 'Highland potatoes', 'Firm potatoes for home cooking, sold by the kilogram.', 90, 'kilogram', 50, 'Benguet', 'active', true, true, 'roots', 'benguet-growers', '2026-10-21T08:00:00.000Z', '[{"id":"potatoes-1","url":"https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1200&q=80","alt":"Potatoes"}]'::jsonb)
+  ('rice', 'Milled white rice', 'Locally milled white rice, packed in a 5-kilo sack.', 280, 'sack', 24, 'Nueva Ecija', 'active', true, true, 'rice', 'nueva-ecija-rice', '2026-10-15T08:00:00.000Z', '[{"id":"rice-1","url":"https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=1200&q=80","alt":"White rice"}]'::jsonb)
 on conflict (id) do update set
   name = excluded.name,
   description = excluded.description,

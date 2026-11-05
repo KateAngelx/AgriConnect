@@ -129,7 +129,10 @@ export function ServiceAreaForm({ area, lat = '', lng = '', locations = [] }) {
         </div>
       ) : null}
       {error || state.error ? <p className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">{error || state.error}</p> : null}
-      <PrimaryButton type="submit" disabled={pending}>{pending ? 'Saving…' : 'Save areas'}</PrimaryButton>
+      {state.ok ? <p role="status" className="rounded-xl bg-[#eef8e8] px-4 py-3 text-sm font-semibold text-[#3f8d29]">Service areas saved.</p> : null}
+      <PrimaryButton type="submit" disabled={pending || !serviceLat || !serviceLng || !areaName.trim()} className="w-full min-h-11 sm:w-fit">
+        {pending ? 'Saving…' : 'Save changes'}
+      </PrimaryButton>
     </form>
   )
 }

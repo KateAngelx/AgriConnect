@@ -46,21 +46,12 @@ export async function installApp() {
     if (isIosInAppBrowser() || typeof navigator.share !== 'function') {
       return {
         ok: false,
-        message: 'Open this page in Safari, tap Share, then Add to Home Screen. Add Bookmark is in that same menu.',
+        message: 'Open this page in Safari. Tap Share, then choose Add to Home Screen to install, or Add Bookmark to save it.',
       }
     }
-    try {
-      await navigator.share({
-        title: 'AgriConnect',
-        url: `${window.location.origin}/`,
-      })
-      return {
-        ok: true,
-        message: 'In the share sheet, tap Add to Home Screen. Add Bookmark is in that same sheet.',
-      }
-    } catch (error) {
-      if (error?.name === 'AbortError') return { ok: false, message: '' }
-      return { ok: false, message: 'Tap the Share button in Safari, then Add to Home Screen.' }
+    return {
+      ok: false,
+      message: 'In Safari, tap Share. Choose Add to Home Screen to install AgriConnect, or Add Bookmark to save it.',
     }
   }
 
