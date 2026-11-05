@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { MarketplaceAssistant } from '@/components/marketplace-assistant'
 import { ProductCard } from '@/components/product-card'
 import { ProductSort } from '@/components/product-sort'
@@ -32,6 +33,7 @@ export default async function ProductsPage({ searchParams }) {
       category,
       sort: sort === 'price' || sort === '-price' ? sort : '-createdAt',
       page,
+      limit: 5,
       fulfillment: query.fulfillment,
       available: query.available === 'true',
     }),
@@ -139,16 +141,16 @@ export default async function ProductsPage({ searchParams }) {
               <div className="page-empty">
                 <h2 className="text-xl font-semibold text-brand-900">No products match these filters</h2>
                 <p className="mt-2 text-brand-muted">Try another category, or clear the search to see every active listing.</p>
-                <a href="/products" className="btn btn-secondary mt-5">Clear filters</a>
+                <Link href="/products" className="btn btn-secondary mt-5">Clear filters</Link>
               </div>
             )}
 
             {products.totalPages > 1 && (
               <nav className="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="Pagination">
                 {page > 1 ? (
-                  <a href={withParams({ page: page - 1 })} className="btn btn-secondary" rel="prev">
+                  <Link href={withParams({ page: page - 1 })} className="btn btn-secondary" rel="prev">
                     Previous
-                  </a>
+                  </Link>
                 ) : (
                   <span className="btn btn-secondary opacity-40">Previous</span>
                 )}
@@ -156,7 +158,7 @@ export default async function ProductsPage({ searchParams }) {
                   const number = index + 1
                   const current = page === number
                   return (
-                    <a
+                    <Link
                       key={number}
                       href={withParams({ page: number })}
                       aria-label={`Page ${number}`}
@@ -164,13 +166,13 @@ export default async function ProductsPage({ searchParams }) {
                       className={`grid size-9 place-items-center rounded-lg text-[13px] font-semibold ${current ? 'bg-[#1d1d1f] text-white' : 'bg-white text-[#1d1d1f] ring-1 ring-[#e5e5ea]'}`}
                     >
                       {number}
-                    </a>
+                    </Link>
                   )
                 })}
                 {page < products.totalPages ? (
-                  <a href={withParams({ page: page + 1 })} className="btn btn-secondary" rel="next">
+                  <Link href={withParams({ page: page + 1 })} className="btn btn-secondary" rel="next">
                     Next
-                  </a>
+                  </Link>
                 ) : (
                   <span className="btn btn-secondary opacity-40">Next</span>
                 )}

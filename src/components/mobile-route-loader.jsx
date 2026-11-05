@@ -1,7 +1,7 @@
 export function MobileRouteLoader() {
   return (
     <div
-      className="fixed inset-0 z-[200] grid place-items-center bg-[#f3f8ef]/95 md:hidden"
+      className="fixed inset-0 z-[200] grid place-items-center bg-[#f3f8ef]/95"
       role="status"
       aria-label="Loading page"
     >

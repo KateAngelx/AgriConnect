@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { DashboardIcon } from '@/components/dashboard-icons'
+import { PagedRows } from '@/components/paged-rows'
 import { formatTimeAgo } from '@/lib/dashboard-format'
 
 const previewCount = 5
@@ -11,7 +12,7 @@ function UpdateList({ notes }) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   return (
-    <ul className="space-y-4">
+    <PagedRows className="space-y-4">
       {notes.map((note) => (
         <li key={note.id} className="flex gap-3">
           <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-[#f1f3f4] text-[#455a64]">
@@ -24,7 +25,7 @@ function UpdateList({ notes }) {
           </div>
         </li>
       ))}
-    </ul>
+    </PagedRows>
   )
 }
 

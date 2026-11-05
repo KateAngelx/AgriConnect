@@ -1,12 +1,13 @@
 import { refreshDeliveryEtaIso } from '@/lib/delivery-eta'
 import { isValidPin } from '@/lib/geo'
-import { getSupabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { deliveryAssignmentForViewer, listDeliveryWorkForUser } from './delivery-assignments'
 import { notify } from './notifications'
 import { collectCash, DELIVERY_FEE } from './payments'
 import { isApprovedDelivery, hasRole, rolesFromLegacy } from './roles'
 import { save } from './sync'
 import { readyStore } from './store'
+import { orderFromDatabaseRow } from './order-record'
 
 function deliveryHintForOrder(store, order) {
   const parts = [order.deliveryAddress || '', order.instructions || '']
@@ -50,6 +51,43 @@ export async function deliverySnapshot(user) {
   if (!isApprovedDelivery(user)) {
     return { open: 0, assigned: 0, active: 0, completed: 0, earnings: 0, commission: 0 }
   }
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const count = (query, label) => query.then((result) => {
+      if (result.error) throw new Error(`Could not load ${label} delivery count: ${result.error.message}`)
+      return result.count || 0
+    })
+    const [open, assigned, active, completed, commission] = await Promise.all([
+      count(
+        client.from('deliveries').select('id', { count: 'exact', head: true }).eq('status', 'open').is('courier_id', null),
+        'open',
+      ),
+      count(
+        client.from('deliveries').select('id', { count: 'exact', head: true }).eq('courier_id', user.id).eq('status', 'accepted'),
+        'assigned',
+      ),
+      count(
+        client.from('deliveries').select('id', { count: 'exact', head: true }).eq('courier_id', user.id).in('status', ['picked-up', 'in-transit']),
+        'active',
+      ),
+      count(
+        client.from('deliveries').select('id', { count: 'exact', head: true }).eq('courier_id', user.id).in('status', ['delivered', 'completed']),
+        'completed',
+      ),
+      count(
+        client.from('deliveries').select('id', { count: 'exact', head: true }).eq('courier_id', user.id).in('status', ['delivered', 'completed']).neq('commission_status', 'paid'),
+        'unpaid commission',
+      ),
+    ])
+    return {
+      open,
+      assigned,
+      active,
+      completed,
+      earnings: completed * DELIVERY_FEE,
+      commission: commission * DELIVERY_FEE,
+    }
+  }
   const store = await readyStore()
   const mine = store.deliveries.filter((item) => item.courierId === user.id)
   const completed = mine.filter((item) => ['delivered', 'completed'].includes(item.status))
@@ -92,6 +130,65 @@ export async function listCommissions(user) {
 
 export async function listDeliveryHistory(user) {
   if (!isApprovedDelivery(user)) return []
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const { data: deliveryRows, error: deliveryError } = await client
+      .from('deliveries')
+      .select('id,order_id,courier_id,status,commission,commission_status,note,updates,updated_at')
+      .eq('courier_id', user.id)
+      .in('status', ['delivered', 'completed', 'cancelled', 'delivery-failed'])
+      .order('updated_at', { ascending: false })
+    if (deliveryError) throw new Error(`Could not load delivery history: ${deliveryError.message}`)
+    if (!deliveryRows?.length) return []
+    const orderIds = [...new Set(deliveryRows.map((delivery) => delivery.order_id))]
+    const { data: orderRows, error: orderError } = await client
+      .from('orders')
+      .select('id,reference,buyer_id,buyer_name,fulfillment,contact_number,delivery_address,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,created_at,items')
+      .in('id', orderIds)
+    if (orderError) throw new Error(`Could not load completed delivery orders: ${orderError.message}`)
+    const orders = new Map((orderRows || []).map((row) => [row.id, orderFromDatabaseRow(row)]))
+    const store = { products: [], sellers: [] }
+    return deliveryRows.map((row) => {
+      const delivery = {
+        id: row.id,
+        orderId: row.order_id,
+        courierId: row.courier_id || '',
+        status: row.status,
+        commission: Number(row.commission || 0),
+        commissionStatus: row.commission_status || 'pending',
+        note: row.note || '',
+        updates: Array.isArray(row.updates) ? row.updates : [],
+        updatedAt: row.updated_at || '',
+      }
+      const order = orders.get(delivery.orderId) || null
+      const assignment = deliveryAssignmentForViewer(store, delivery, order, user.id)
+      return {
+        id: assignment.id,
+        orderId: assignment.orderId,
+        status: assignment.status,
+        reference: assignment.reference,
+        pickupArea: assignment.pickupArea,
+        deliveryAreaGeneral: assignment.deliveryAreaGeneral,
+        itemCount: assignment.itemCount,
+        pickupLocations: assignment.pickupLocations,
+        updates: assignment.updates.map(({ status, at }) => ({ status, at })),
+        deliveryDate: delivery.updatedAt || delivery.updates.at(-1)?.at || order?.createdAt || '',
+        earnedCommission: ['delivered', 'completed'].includes(delivery.status) ? DELIVERY_FEE : 0,
+        order: order
+          ? {
+              id: order.id,
+              reference: order.reference,
+              status: order.status,
+              createdAt: order.createdAt || '',
+              items: order.items.map((item) => ({
+                name: item.product?.name || item.name || 'Product',
+                quantity: Number(item.quantity) || 0,
+              })),
+            }
+          : null,
+      }
+    })
+  }
   const store = await readyStore()
   return store.deliveries
     .filter((delivery) => (
@@ -136,6 +233,38 @@ export async function listDeliveryHistory(user) {
 }
 
 export async function assignmentForOrder(orderId) {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const { data: row, error } = await client
+      .from('deliveries')
+      .select('id,order_id,courier_id,status,commission,commission_status,note,updates,updated_at')
+      .eq('order_id', orderId)
+      .maybeSingle()
+    if (error) throw new Error(`Could not load order delivery assignment: ${error.message}`)
+    if (!row) return null
+    let courier = null
+    if (row.courier_id) {
+      const { data: profile, error: profileError } = await client
+        .from('profiles')
+        .select('id,name')
+        .eq('id', row.courier_id)
+        .maybeSingle()
+      if (profileError) throw new Error(`Could not load courier name: ${profileError.message}`)
+      if (profile) courier = { id: profile.id, name: profile.name }
+    }
+    return {
+      id: row.id,
+      orderId: row.order_id,
+      courierId: row.courier_id || '',
+      status: row.status,
+      commission: Number(row.commission || 0),
+      commissionStatus: row.commission_status || 'pending',
+      note: row.note || '',
+      updates: Array.isArray(row.updates) ? row.updates : [],
+      updatedAt: row.updated_at || '',
+      courier,
+    }
+  }
   const store = await readyStore()
   const delivery = store.deliveries.find((item) => item.orderId === orderId) || null
   if (!delivery) return null

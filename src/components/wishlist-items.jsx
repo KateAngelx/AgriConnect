@@ -8,7 +8,29 @@ import { peso } from '@/lib/dashboard-format'
 import { PagedRows } from './paged-rows'
 
 export function WishlistItems() {
-  const { wishlist, addToCart, cartBusy } = useMarketplaceState()
+  const {
+    wishlist,
+    wishlistLoading,
+    wishlistError,
+    refreshWishlist,
+    addToCart,
+    cartBusy,
+  } = useMarketplaceState()
+
+  if (wishlistLoading) {
+    return <p role="status" className="text-sm text-[#5c6f62]">Loading saved products…</p>
+  }
+
+  if (wishlistError) {
+    return (
+      <div role="alert" className="text-sm text-[#963b2d]">
+        <p>{wishlistError}</p>
+        <button type="button" onClick={refreshWishlist} className="btn btn-secondary mt-3">
+          Try again
+        </button>
+      </div>
+    )
+  }
 
   if (!wishlist.length) {
     return <p className="text-sm text-[#5c6f62]">Save a product from its page to keep it here.</p>

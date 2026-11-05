@@ -24,7 +24,7 @@ export default async function LoginPage({ searchParams }) {
             role="status"
             className="rounded-xl border border-[#5dbb38]/30 bg-[#eef8e8] px-4 py-3 text-sm leading-6 text-[#2d5a3a]"
           >
-            Your account is registered. Sign in with the credentials you just created.
+            Account created successfully. Sign in with the credentials you just created.
           </p>
         ) : null
       }

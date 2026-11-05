@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
@@ -49,9 +50,9 @@ export function Modal({ title, subtitle, closeHref, children, size = 'lg' }) {
             <h2 id="app-modal-title" className="truncate text-[17px] font-bold text-[#142016]">{title}</h2>
             {subtitle ? <p className="mt-0.5 text-[13px] leading-5 text-[#5c6f62]">{subtitle}</p> : null}
           </div>
-          <a href={closeHref} className="grid size-9 shrink-0 place-items-center rounded-lg text-xl leading-none text-[#5c6f62] hover:bg-[#e7f3e4]" aria-label="Close">
+          <Link href={closeHref} className="grid size-9 shrink-0 place-items-center rounded-lg text-xl leading-none text-[#5c6f62] hover:bg-[#e7f3e4]" aria-label="Close">
             ×
-          </a>
+          </Link>
         </div>
         <div className="overflow-y-auto px-5 py-5">{children}</div>
       </div>

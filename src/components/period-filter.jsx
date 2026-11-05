@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { PERIODS } from '@/lib/report-period'
 
 export function PeriodFilter({ period = 'all', pathname, extra = {} }) {
@@ -13,7 +14,7 @@ export function PeriodFilter({ period = 'all', pathname, extra = {} }) {
         const href = query ? `${pathname}?${query}` : pathname
         const selected = period === id
         return (
-          <a
+          <Link
             key={id}
             href={href}
             aria-current={selected ? 'true' : undefined}
@@ -22,7 +23,7 @@ export function PeriodFilter({ period = 'all', pathname, extra = {} }) {
             }`}
           >
             {label}
-          </a>
+          </Link>
         )
       })}
     </div>

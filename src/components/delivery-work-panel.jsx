@@ -1,4 +1,5 @@
 import { collectDeliveryAction, trackAction } from '@/app/(frontend)/delivery/actions'
+import Link from 'next/link'
 import { OverviewPanel } from '@/components/dashboard-overview-ui'
 import { DarkButton, FieldInput, StatusBadge } from '@/components/dashboard-ui'
 import { LocationRouteMap } from '@/components/location-route-map'
@@ -43,9 +44,9 @@ export function DeliveryWorkPanel({ work, detailsHref = '/delivery/deliveries', 
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <StatusBadge status={deliveryStatusLabel(assignment.status)} />
-            <a href={`${detailsHref}?job=${encodeURIComponent(assignment.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${assignment.reference || 'assignment'}`} title="View details">
+            <Link href={`${detailsHref}?job=${encodeURIComponent(assignment.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${assignment.reference || 'assignment'}`} title="View details">
               <DashboardIcon name="eye" className="size-4" />
-            </a>
+            </Link>
           </div>
         </li>
       ))}

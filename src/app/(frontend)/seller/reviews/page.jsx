@@ -1,5 +1,6 @@
 import { DashboardShell } from '@/components/dashboard-shell'
 import { StatusBadge } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { requireApprovedSeller } from '@/server/guards'
 import { sellerRatingSummary } from '@/server/reviews'
 
@@ -42,7 +43,7 @@ export default async function SellerReviewsPage() {
                     {average.toFixed(1)} / 5 · {group.reviews.length} review{group.reviews.length === 1 ? '' : 's'}
                   </p>
                 </header>
-                <ul className="divide-y divide-brand-line">
+                <PagedRows className="divide-y divide-brand-line">
                   {group.reviews.map((review) => (
                     <li key={review.id} className="px-5 py-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -68,7 +69,7 @@ export default async function SellerReviewsPage() {
                       )}
                     </li>
                   ))}
-                </ul>
+                </PagedRows>
               </section>
             )
           })}

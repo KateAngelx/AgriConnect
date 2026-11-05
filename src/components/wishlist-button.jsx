@@ -4,20 +4,23 @@ import { useMarketplaceState } from './marketplace-state'
 import { DashboardIcon } from './dashboard-icons'
 
 export function WishlistButton({ product, className = 'btn btn-secondary', iconOnly = false }) {
-  const { wishlist, wishlistBusy, setWishlistItem } = useMarketplaceState()
+  const { wishlist, wishlistBusy, wishlistLoading, setWishlistItem } = useMarketplaceState()
   const saved = wishlist.some((item) => item.productId === product.id)
 
   return (
     <button
       type="button"
       className={className}
-      disabled={wishlistBusy}
+      disabled={wishlistBusy || wishlistLoading}
+      aria-busy={wishlistLoading || wishlistBusy || undefined}
       aria-pressed={saved}
       aria-label={iconOnly ? `Remove ${product.name || 'product'} from wishlist` : undefined}
-      title={iconOnly ? 'Remove from wishlist' : undefined}
+      title={iconOnly ? (wishlistLoading ? 'Loading wishlist' : 'Remove from wishlist') : undefined}
       onClick={() => setWishlistItem(product, !saved)}
     >
-      {wishlistBusy
+      {wishlistLoading
+        ? 'Loading…'
+        : wishlistBusy
         ? 'Updating…'
         : iconOnly
           ? <DashboardIcon name="trash" className="size-4" />

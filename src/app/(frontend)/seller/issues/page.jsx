@@ -1,5 +1,6 @@
 import { submitBuyerReportAction } from '@/app/(frontend)/reports/actions'
 import { DashboardShell } from '@/components/dashboard-shell'
+import { PagedRows } from '@/components/paged-rows'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
 import { requireApprovedSeller } from '@/server/guards'
 import { reportsForBuyer, reportOptions, reportTypesForRole } from '@/server/reports'
@@ -55,7 +56,7 @@ export default async function SellerIssuesPage({ searchParams }) {
       <section className="mt-6">
         <h2 className="mb-3 text-lg font-semibold text-brand-900">Your reports</h2>
         {sellerReports.length ? (
-          <div className="grid gap-4">
+          <PagedRows asList={false} className="grid gap-4">
             {sellerReports.map((report) => (
               <article key={report.id} className="ui-card p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -79,7 +80,7 @@ export default async function SellerIssuesPage({ searchParams }) {
                 ) : null}
               </article>
             ))}
-          </div>
+          </PagedRows>
         ) : <div className="page-empty">You have not submitted any reports yet.</div>}
       </section>
     </DashboardShell>

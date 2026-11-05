@@ -1,4 +1,6 @@
 import { DashboardShell } from '@/components/dashboard-shell'
+import { FeedbackSubmitButton } from '@/components/feedback-submit-button'
+import { PagedRows } from '@/components/paged-rows'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
 import { submitFeedbackAction } from '@/app/(frontend)/feedback/actions'
 import { requireApprovedSeller } from '@/server/guards'
@@ -38,13 +40,13 @@ export default async function SellerFeedbackPage({ searchParams }) {
             Message
             <textarea name="message" required minLength={10} maxLength={5000} rows={5} className="rounded-xl border border-brand-line bg-white px-3 py-2" />
           </label>
-          <button type="submit" className="btn btn-primary w-fit">Submit feedback</button>
+          <FeedbackSubmitButton>Submit feedback</FeedbackSubmitButton>
         </form>
       </section>
       <section className="mt-6">
         <h2 className="mb-3 text-lg font-semibold text-brand-900">Your submissions</h2>
         {submissions.length ? (
-          <div className="grid gap-4">
+          <PagedRows asList={false} className="grid gap-4">
             {submissions.map((entry) => (
               <article key={entry.id} className="ui-card p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -66,7 +68,7 @@ export default async function SellerFeedbackPage({ searchParams }) {
                 ) : <p className="mt-4 text-sm text-brand-muted">No administrator response yet.</p>}
               </article>
             ))}
-          </div>
+          </PagedRows>
         ) : <div className="page-empty">You have not submitted any feedback yet.</div>}
       </section>
     </DashboardShell>

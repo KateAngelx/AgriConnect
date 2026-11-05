@@ -18,22 +18,38 @@ import {
 } from './payments'
 import { save } from './sync'
 import { readyStore } from './store'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
+import { orderFromDatabaseRow } from './order-record'
+import { listBuyerOrders } from './order-listing'
 
 export { itemSellerId }
 
-export async function listOrders(userId) {
-  const store = await readyStore()
+const ORDER_DETAIL_COLUMNS =
+  'id,reference,buyer_id,buyer_name,buyer_email,fulfillment,contact_number,delivery_address,delivery_landmark,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,subtotal,delivery_fee,platform_fee,platform_fee_status,created_at,items'
+
+export async function listOrders(userId, requestedPage = 1) {
   const buyerId = userId ?? (await currentUser())?.id
-  const docs = [...store.orders.values()]
-    .filter((order) => order.buyer === buyerId)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  return { docs, totalDocs: docs.length, totalPages: docs.length ? 1 : 0, page: 1 }
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  const store = client ? null : await readyStore()
+  return listBuyerOrders(buyerId, requestedPage, { client, store })
 }
 
 export async function getOrder(orderId, userId) {
+  const buyerId = userId ?? (await currentUser())?.id
+  if (!buyerId) return null
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const { data, error } = await client
+      .from('orders')
+      .select(ORDER_DETAIL_COLUMNS)
+      .eq('id', orderId)
+      .eq('buyer_id', buyerId)
+      .maybeSingle()
+    if (error) throw new Error(`Could not load buyer order details: ${error.message}`)
+    return data ? orderFromDatabaseRow(data) : null
+  }
   const store = await readyStore()
   const order = store.orders.get(orderId)
-  const buyerId = userId ?? (await currentUser())?.id
   if (!order || order.buyer !== buyerId) return null
   return order
 }

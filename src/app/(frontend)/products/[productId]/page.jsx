@@ -8,6 +8,7 @@ import { isApprovedBuyer, isApprovedSeller } from '@/server/roles'
 import { getProduct, listProductReviews, listRelatedProducts } from '@/server/catalog'
 import { ProductPurchaseActions } from '@/components/product-purchase-actions'
 import { WishlistButton } from '@/components/wishlist-button'
+import { PagedRows } from '@/components/paged-rows'
 import { peso } from '@/lib/dashboard-format'
 import { authHref } from '@/lib/auth-links'
 import { buyerReviewForProduct } from '@/server/reviews'
@@ -199,7 +200,7 @@ export default async function ProductDetailsPage({ params, searchParams }) {
             ) : null}
           </div>
           {reviews.docs.length ? (
-            <div className="mt-5 grid gap-3">
+            <PagedRows asList={false} className="mt-5 grid gap-3">
               {reviews.docs.map((review) => {
                 const reviewDate = review.createdAt ? new Date(review.createdAt) : null
                 const validDate = reviewDate && !Number.isNaN(reviewDate.getTime())
@@ -227,7 +228,7 @@ export default async function ProductDetailsPage({ params, searchParams }) {
                   </article>
                 )
               })}
-            </div>
+            </PagedRows>
           ) : (
             <div className="page-empty mt-5">This product has no reviews yet.</div>
           )}

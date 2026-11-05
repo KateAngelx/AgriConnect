@@ -1,6 +1,9 @@
+import Link from 'next/link'
 import { MarketplaceAssistant } from '@/components/marketplace-assistant'
 import { ProductCard } from '@/components/product-card'
 import { SellerCard } from '@/components/seller-card'
+import { FeedbackSubmitButton } from '@/components/feedback-submit-button'
+import { submitFeedbackAction } from '@/app/(frontend)/feedback/actions'
 
 function partnerHref(user, path) {
   if ((user?.roles?.includes('buyer') || user?.role === 'buyer') && user.status === 'approved') return path
@@ -61,21 +64,21 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
             <p className="page-eyebrow">Browse the market</p>
             <h2 className="page-section-title mt-2 text-3xl text-brand-900">Shop by category</h2>
           </div>
-          <a href="/categories" className="inline-flex items-center gap-2 text-sm font-bold text-brand-700">View all categories <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current stroke-2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <Link href="/categories" className="inline-flex items-center gap-2 text-sm font-bold text-brand-700">View all categories <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current stroke-2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></Link>
         </div>
         {categories.length ? (
           <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {categories.slice(0, 4).map((category, index) => {
               const image = typeof category.image === 'object' && category.image?.url ? category.image.url : null
               return (
-                <a key={category.id} href={`/products?category=${encodeURIComponent(category.id)}`} className="ui-card flex h-full flex-col overflow-hidden transition-colors hover:border-[#d2d2d7]">
+                <Link key={category.id} href={`/products?category=${encodeURIComponent(category.id)}`} className="ui-card flex h-full flex-col overflow-hidden transition-colors hover:border-[#d2d2d7]">
                   <div className="aspect-square bg-[#f5f5f7]">
                     {image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-[15px] font-semibold text-[#6e6e73]">{String(index + 1).padStart(2, '0')}</div>}
                   </div>
                   <div className="p-4">
                     <span className="text-[15px] font-semibold tracking-[-0.01em] text-[#1d1d1f]">{category.name}</span>
                   </div>
-                </a>
+                </Link>
               )
             })}
           </div>
@@ -88,7 +91,7 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
               <p className="page-eyebrow">In season now</p>
               <h2 className="page-section-title mt-2 text-3xl text-brand-900">Fresh from nearby farms</h2>
             </div>
-            <a href="/products" className="btn btn-secondary">Browse marketplace</a>
+            <Link href="/products" className="btn btn-secondary">Browse marketplace</Link>
           </div>
           {products.length ? (
             <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
@@ -106,7 +109,7 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
               <p className="page-eyebrow">Meet the growers</p>
               <h2 className="page-section-title mt-2 text-3xl text-brand-900">Farms in our marketplace</h2>
             </div>
-            <a href="/sellers" className="btn btn-secondary">Browse all sellers</a>
+            <Link href="/sellers" className="btn btn-secondary">Browse all sellers</Link>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {sellers.slice(0, 4).map((seller) => (
@@ -124,8 +127,8 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
               <h2 className="mt-2 text-3xl font-semibold leading-tight text-[#1d1d1f]">Build your livelihood with AgriConnect.</h2>
               <p className="mt-3 text-[15px] leading-6 text-[#6e6e73]">Grow your customer base and sell your harvest through one trusted marketplace.</p>
               <div className="mt-5 flex flex-wrap gap-3">
-                <a href={partnerHref(user, '/account/become-seller')} className="btn btn-primary w-fit">Apply as seller</a>
-                <a href={partnerHref(user, '/account/become-delivery')} className="btn btn-secondary w-fit">Apply as delivery partner</a>
+                <Link href={partnerHref(user, '/account/become-seller')} className="btn btn-primary w-fit">Apply as seller</Link>
+                <Link href={partnerHref(user, '/account/become-delivery')} className="btn btn-secondary w-fit">Apply as delivery partner</Link>
               </div>
             </div>
             <img src="https://images.unsplash.com/photo-1595855759920-86582396756a?auto=format&fit=crop&w=1200&q=85" alt="Farmer with freshly harvested produce" className="h-56 w-full object-cover lg:h-full" />
@@ -141,9 +144,71 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
             <p className="mt-1 max-w-xl text-[14px] leading-6 text-white/75">Browse what is in season, or see how buying, selling, and delivery work on AgriConnect.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <a href="/products" className="btn btn-primary">Shop products</a>
-            <a href="/how-it-works" className="btn btn-ghost">How it works</a>
+            <Link href="/products" className="btn btn-primary">Shop products</Link>
+            <Link href="/how-it-works" className="btn btn-ghost">How it works</Link>
           </div>
+        </div>
+      </section>
+
+      <section id="platform-feedback" className="page-container page-section scroll-mt-24">
+        <div className="ui-card grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10">
+          <div>
+            <p className="page-eyebrow">Help us improve</p>
+            <h2 className="page-section-title mt-2 text-2xl text-brand-900">
+              Feedback about AgriConnect
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-brand-muted">
+              Share a suggestion, report a bug, or tell us how the marketplace is working for you.
+              Sign in with an approved buyer or seller account to submit.
+            </p>
+            <p className="mt-3 text-xs leading-5 text-brand-muted">
+              Platform feedback is private to you and authorized administrators. Only published
+              product reviews appear publicly.
+            </p>
+          </div>
+          <form action={submitFeedbackAction} className="grid gap-4">
+            <input type="hidden" name="returnTo" value="/" />
+            {user?.roles?.includes('seller') ? (
+              <input type="hidden" name="submitterRole" value="seller" />
+            ) : null}
+            <label className="grid gap-1 text-sm font-medium text-brand-900">
+              Subject
+              <input
+                name="subject"
+                required
+                minLength={3}
+                maxLength={120}
+                className="min-h-11 rounded-xl border border-brand-line bg-white px-3"
+              />
+            </label>
+            <label className="grid gap-1 text-sm font-medium text-brand-900">
+              Category
+              <select
+                name="category"
+                required
+                className="min-h-11 rounded-xl border border-brand-line bg-white px-3"
+              >
+                <option value="">Choose a category</option>
+                <option value="general-feedback">General Feedback</option>
+                <option value="suggestion">Suggestions</option>
+                <option value="bug-report">Bug Reports</option>
+                <option value="user-experience">User Experience Feedback</option>
+                <option value="other-concern">Other Concerns</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm font-medium text-brand-900">
+              Message
+              <textarea
+                name="message"
+                required
+                minLength={10}
+                maxLength={5000}
+                rows={4}
+                className="rounded-xl border border-brand-line bg-white px-3 py-2"
+              />
+            </label>
+            <FeedbackSubmitButton>Submit platform feedback</FeedbackSubmitButton>
+          </form>
         </div>
       </section>
     </main>

@@ -7,9 +7,6 @@ import { RefreshOnFocus } from '@/components/refresh-on-focus'
 import { MarketplaceStateProvider } from '@/components/marketplace-state'
 import { currentUser } from '@/server/auth'
 import { isApprovedBuyer } from '@/server/roles'
-import { getCart } from '@/server/cart'
-import { listWishlistState } from '@/server/wishlist'
-import { ready } from '@/server/sync'
 import './styles.css'
 
 const title = 'AgriConnect | Filipino Agricultural Marketplace'
@@ -42,12 +39,8 @@ export const metadata = {
 }
 
 export default async function RootLayout({ children }) {
-  await ready()
   const user = await currentUser()
   const buyerEnabled = isApprovedBuyer(user)
-  const [initialCart, initialWishlist] = buyerEnabled
-    ? await Promise.all([getCart(user.id), listWishlistState(user.id)])
-    : [null, { items: [], revision: 0 }]
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
@@ -60,9 +53,6 @@ export default async function RootLayout({ children }) {
         <div id="root" tabIndex={-1}>
           <MarketplaceStateProvider
             userId={buyerEnabled ? user.id : null}
-            initialCart={initialCart}
-            initialWishlist={initialWishlist.items}
-            initialWishlistRevision={initialWishlist.revision}
           >
             {children}
           </MarketplaceStateProvider>

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardIcon } from './dashboard-icons'
@@ -8,7 +9,7 @@ import { useMarketplaceState } from './marketplace-state'
 
 export function CartDrawer({ open, onClose }) {
   const router = useRouter()
-  const { cart, cartBusy, updateCart } = useMarketplaceState()
+  const { cart, cartBusy, cartLoading, cartError, refreshCart, updateCart } = useMarketplaceState()
   const [drafts, setDrafts] = useState({})
   const [error, setError] = useState('')
 
@@ -72,7 +73,16 @@ export function CartDrawer({ open, onClose }) {
         </header>
 
         <div className="min-h-0 max-h-[min(28rem,55vh)] flex-1 overflow-y-auto overscroll-contain px-4 py-4">
-          {error ? (
+          {cartLoading ? (
+            <p role="status" className="py-12 text-center text-sm text-[#647066]">Loading your cart…</p>
+          ) : cartError ? (
+            <div role="alert" className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">
+              <p>{cartError}</p>
+              <button type="button" onClick={refreshCart} className="btn btn-secondary mt-3">
+                Try again
+              </button>
+            </div>
+          ) : error ? (
             <p className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">{error}</p>
           ) : items.length === 0 ? (
             <div className="py-12 text-center">
@@ -162,13 +172,13 @@ export function CartDrawer({ open, onClose }) {
             </div>
             <p className="mt-1 text-xs text-[#647066]">Delivery fees are calculated at checkout.</p>
             <div className="mt-4 grid gap-2">
-                <a
+                <Link
                 href="/checkout"
                 onClick={onClose}
                 className="btn btn-primary btn-block"
               >
                 Proceed to checkout
-              </a>
+              </Link>
               <button
                 type="button"
                 onClick={onClose}

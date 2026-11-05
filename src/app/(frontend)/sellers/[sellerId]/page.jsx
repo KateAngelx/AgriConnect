@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { ProductCard } from '@/components/product-card'
+import { PagedRows } from '@/components/paged-rows'
 import { SiteShell } from '@/components/site-shell'
 import { getSeller, listSellerProducts } from '@/server/catalog'
 export default async function SellerPage({ params }) {
@@ -35,11 +36,11 @@ export default async function SellerPage({ params }) {
           </p>
           <h2 className="page-section-title mt-8 text-3xl text-brand-900">Available products</h2>
           {products.docs.length ? (
-            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
+            <PagedRows asList={false} className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
               {products.docs.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
-            </div>
+            </PagedRows>
           ) : (
             <div className="page-empty mt-6">
               This shop has no active products right now.

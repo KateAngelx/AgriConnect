@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatTimeAgo } from '@/lib/dashboard-format'
@@ -138,7 +139,7 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
             <ul>
               {items.slice(0, 12).map((note) => (
                 <li key={note.id} className="border-b border-[#173c2c]/6 last:border-0">
-                  <a
+                  <Link
                     href={note.href || '/notifications'}
                     className={`block px-4 py-3 hover:bg-[#f7faf6] ${note.read ? 'opacity-75' : 'bg-[#f4faf0]/60'}`}
                     onClick={() => {
@@ -149,16 +150,16 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
                     <p className="text-sm font-semibold text-[#142016]">{note.title}</p>
                     {note.body ? <p className="mt-0.5 text-xs leading-5 text-[#647066]">{note.body}</p> : null}
                     <p className="mt-1 text-[11px] text-[#647066]">{formatTimeAgo(note.createdAt)}</p>
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
           )}
         </div>
         <footer className="border-t border-[#173c2c]/8 px-4 py-2.5 text-center">
-          <a href="/notifications" onClick={onClose} className="text-xs font-bold text-[#4b9f30] hover:text-[#2e7d32]">
+          <Link href="/notifications" onClick={onClose} className="text-xs font-bold text-[#4b9f30] hover:text-[#2e7d32]">
             View all notifications
-          </a>
+          </Link>
         </footer>
       </div>
     </div>

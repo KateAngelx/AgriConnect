@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { requireAdmin } from '@/server/guards'
 import { listOrdersForAdmin } from '@/server/admin'
 
@@ -121,7 +122,7 @@ export default async function AdminOrdersPage({ searchParams }) {
           ) : null}
         </div>
         {orders.length ? (
-          <ul className="divide-y divide-brand-line">
+          <PagedRows className="divide-y divide-brand-line">
             {orders.map((order) => (
               <li key={order.id} className="px-4 py-4 sm:px-5">
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
@@ -223,7 +224,7 @@ export default async function AdminOrdersPage({ searchParams }) {
                 </details>
               </li>
             ))}
-          </ul>
+          </PagedRows>
         ) : (
           <p className="p-6 text-sm text-brand-muted">No orders match these filters.</p>
         )}

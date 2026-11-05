@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useMarketplaceState } from './marketplace-state'
 import { peso } from '@/lib/dashboard-format'
 import { DashboardIcon } from './dashboard-icons'
 
 export function CartPageContent() {
-  const { cart, cartBusy, updateCart } = useMarketplaceState()
+  const { cart, cartBusy, cartLoading, cartError, refreshCart, updateCart } = useMarketplaceState()
   const [quantities, setQuantities] = useState({})
   const items = cart?.items?.filter((item) => typeof item.product === 'object') ?? []
   const eligibleItems = items.filter(
@@ -38,6 +39,21 @@ export function CartPageContent() {
         return next
       })
     }
+  }
+
+  if (cartLoading) {
+    return <p role="status" className="text-sm text-[#5c6f62]">Loading your cart…</p>
+  }
+
+  if (cartError) {
+    return (
+      <div role="alert" className="rounded-xl border border-red-200 bg-white p-5 text-sm text-[#963b2d]">
+        <p>{cartError}</p>
+        <button type="button" onClick={refreshCart} className="btn btn-secondary mt-3">
+          Try again
+        </button>
+      </div>
+    )
   }
 
   return items.length ? (
@@ -140,9 +156,9 @@ export function CartPageContent() {
           Delivery is charged per seller order. Final stock and fees are confirmed at checkout.
         </p>
         {canCheckout ? (
-          <a href="/checkout" className="btn btn-primary mt-6 w-full">
+          <Link href="/checkout" className="btn btn-primary mt-6 w-full">
             Continue to checkout
-          </a>
+          </Link>
         ) : (
           <span className="btn btn-primary mt-6 w-full cursor-not-allowed opacity-50" aria-disabled="true">
             Update cart to continue
@@ -154,9 +170,9 @@ export function CartPageContent() {
     <div className="rounded-2xl border border-dashed border-brand-800/15 bg-white px-6 py-14 text-center">
       <h2 className="text-xl font-bold text-brand-900">Your cart is empty</h2>
       <p className="mt-2 text-brand-muted">Browse active products and add the items you want.</p>
-      <a href="/products" className="btn btn-primary mt-6">
+      <Link href="/products" className="btn btn-primary mt-6">
         Browse products
-      </a>
+      </Link>
     </div>
   )
 }

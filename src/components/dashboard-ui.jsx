@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { DashboardIcon } from '@/components/dashboard-icons'
 
 export function StatCard({ label, value, hint, icon }) {
@@ -54,7 +55,7 @@ export function WorkSection({ title, description, count, href, linkLabel = 'View
           {typeof count === 'number' ? <p className="text-[13px] font-semibold text-[#2e7d32]">{count}</p> : null}
           {action}
           {href ? (
-            <a
+            <Link
               href={href}
               className={shouldBePrimary
                 ? 'inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#256628] bg-[#2e7d32] px-4 py-2 text-[13px] font-bold text-white shadow-[0_3px_10px_rgba(46,125,50,0.22)] transition hover:bg-[#256628]'
@@ -62,7 +63,7 @@ export function WorkSection({ title, description, count, href, linkLabel = 'View
             >
               {shouldBePrimary ? <DashboardIcon name={/add|create/i.test(linkLabel) ? 'plus' : 'arrow-right'} className="size-4" /> : null}
               {linkLabel}
-            </a>
+            </Link>
           ) : null}
         </div>
       </div>
@@ -175,9 +176,9 @@ export function DarkButton({ className = '', ...props }) {
 
 export function PrimaryLink({ href, className = '', children }) {
   return (
-    <a href={href} className={`btn btn-primary ${className}`}>
+    <Link href={href} className={`btn btn-primary ${className}`}>
       {children}
-    </a>
+    </Link>
   )
 }
 

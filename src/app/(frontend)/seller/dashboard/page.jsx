@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
 import { MetricBoard, MetricTile, NotificationFeed, QuickActions } from '@/components/dashboard-overview-ui'
 import { StatusBadge, WorkSection, workGridClass } from '@/components/dashboard-ui'
@@ -5,28 +6,13 @@ import { PagedRows } from '@/components/paged-rows'
 import { groupBySection, sellerOrderSection } from '@/lib/work-sections'
 import { requireSeller } from '@/server/guards'
 import { listNotifications } from '@/server/notifications'
-import { listOwnedOrders, listOwnedProducts, sellerSnapshot } from '@/server/seller'
-import { commissionRateFrom } from '@/server/payments'
-import { readyStore } from '@/server/store'
+import { listOwnedOrders, sellerSnapshot } from '@/server/seller'
+import { commissionRate } from '@/server/payments'
 import { AlertBanner } from '@/components/dashboard-ui'
 import { DashboardIcon } from '@/components/dashboard-icons'
 
 export default async function SellerDashboardPage() {
   const user = await requireSeller()
-
-  const [summary, orders, products, notes, store] = await Promise.all([
-    sellerSnapshot(user),
-    listOwnedOrders(user),
-    listOwnedProducts(user),
-    listNotifications(user.id),
-    readyStore(),
-  ])
-  const commissionRate = commissionRateFrom(store)
-  const grouped = groupBySection(orders, sellerOrderSection)
-  const needsYou = grouped['needs-you'] || []
-  const activeOrders = grouped.active || []
-  const completed = grouped.completed || []
-  const activeProducts = products.filter((item) => item.status === 'active').length
 
   return (
     <DashboardShell
@@ -35,63 +21,19 @@ export default async function SellerDashboardPage() {
       subtitle="Orders that need you, deliveries in progress, and shop totals."
       variant="overview"
     >
-      <div className="mb-4">
-        <AlertBanner tone="info">
-          Platform commission: ₱{commissionRate} per item is charged for eligible delivered orders. This commission is
-          deducted from payouts and is not added to the buyer&apos;s checkout price.
-        </AlertBanner>
-      </div>
+      <Suspense fallback={<MetricsLoading />}>
+        <SellerMetrics user={user} />
+      </Suspense>
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
-        <div className="min-w-0 space-y-4">
-          <MetricBoard>
-            <MetricTile section="Shop" label="Total products" value={summary.products} icon="package" tone="teal" />
-            <MetricTile section="Shop" label="Active products" value={summary.activeProducts} icon="store" tone="green" />
-            <MetricTile section="Orders" label="Pending orders" value={summary.pendingOrders} icon="clipboard" tone="amber" />
-            <MetricTile section="Orders" label="Completed orders" value={summary.completedOrders} icon="package" tone="blue" />
-            <MetricTile section="Sales" label="Total sales" value={peso(summary.totalSales)} hint="Completed product sales" icon="coin" tone="green" />
-            <MetricTile section="Sales" label="Earnings" value={peso(summary.earnings)} hint="After platform commission" icon="wallet" tone="teal" />
-            <MetricTile section="Inventory" label="Low stock" value={summary.lowStock} hint={`${activeProducts} active listings`} icon="boxes" tone="amber" />
-          </MetricBoard>
-
-          <div className={workGridClass}>
-          <WorkSection
-            title="Needs your action"
-            description="Confirm, prepare, or finish these before anything else."
-            count={needsYou.length}
-            href="/seller/orders"
-            linkLabel="Open orders"
-            empty={<p className="text-sm text-[#5c6f62]">No orders are waiting on you.</p>}
-          >
-            <OrderPreview rows={needsYou} />
-          </WorkSection>
-
-          <WorkSection
-            title="Active orders"
-            description="Already moving. The courier updates these stages."
-            count={activeOrders.length}
-            href="/seller/orders"
-            linkLabel="Open orders"
-            empty={<p className="text-sm text-[#5c6f62]">No orders are in progress with a courier.</p>}
-          >
-            <OrderPreview rows={activeOrders} />
-          </WorkSection>
-
-          <WorkSection
-            title="Completed"
-            description="Orders you have finished."
-            count={completed.length}
-            href="/seller/earnings"
-            linkLabel="View earnings"
-            empty={<p className="text-sm text-[#5c6f62]">Completed orders will show up here.</p>}
-          >
-            <OrderPreview rows={completed} />
-          </WorkSection>
-          </div>
-
+        <div className="min-w-0">
+          <Suspense fallback={<OrdersLoading />}>
+            <SellerOrderSections user={user} />
+          </Suspense>
         </div>
-
         <aside className="space-y-4">
-          <NotificationFeed notes={notes} />
+          <Suspense fallback={<NotificationsLoading />}>
+            <SellerNotifications user={user} />
+          </Suspense>
           <QuickActions
             columns={1}
             actions={[
@@ -107,6 +49,96 @@ export default async function SellerDashboardPage() {
         </aside>
       </div>
     </DashboardShell>
+  )
+}
+
+async function SellerMetrics({ user }) {
+  const [summary, currentCommissionRate] = await Promise.all([sellerSnapshot(user), commissionRate()])
+
+  return (
+    <>
+      <div className="mb-4">
+        <AlertBanner tone="info">
+          Platform commission: ₱{currentCommissionRate} per item is charged for eligible delivered orders. This commission is
+          deducted from payouts and is not added to the buyer&apos;s checkout price.
+        </AlertBanner>
+      </div>
+      <MetricBoard>
+        <MetricTile section="Shop" label="Total products" value={summary.products} icon="package" tone="teal" />
+        <MetricTile section="Shop" label="Active products" value={summary.activeProducts} icon="store" tone="green" />
+        <MetricTile section="Orders" label="Pending orders" value={summary.pendingOrders} icon="clipboard" tone="amber" />
+        <MetricTile section="Orders" label="Completed orders" value={summary.completedOrders} icon="package" tone="blue" />
+        <MetricTile section="Sales" label="Total sales" value={peso(summary.totalSales)} hint="Completed product sales" icon="coin" tone="green" />
+        <MetricTile section="Sales" label="Earnings" value={peso(summary.earnings)} hint="After platform commission" icon="wallet" tone="teal" />
+        <MetricTile section="Inventory" label="Low stock" value={summary.lowStock} hint={`${summary.activeProducts} active listings`} icon="boxes" tone="amber" />
+      </MetricBoard>
+    </>
+  )
+}
+
+async function SellerOrderSections({ user }) {
+  const orders = await listOwnedOrders(user, { limit: 30 })
+  const grouped = groupBySection(orders, sellerOrderSection)
+
+  return (
+    <div className={workGridClass}>
+      <WorkSection
+        title="Needs your action"
+        description="Recent orders that need confirmation, preparation, or handoff."
+        count={(grouped['needs-you'] || []).length}
+        href="/seller/orders"
+        linkLabel="Open orders"
+        empty={<p className="text-sm text-[#5c6f62]">No orders are waiting on you.</p>}
+      >
+        <OrderPreview rows={grouped['needs-you'] || []} />
+      </WorkSection>
+      <WorkSection
+        title="Active orders"
+        description="Recent orders already moving through fulfillment."
+        count={(grouped.active || []).length}
+        href="/seller/orders"
+        linkLabel="Open orders"
+        empty={<p className="text-sm text-[#5c6f62]">No orders are in progress with a courier.</p>}
+      >
+        <OrderPreview rows={grouped.active || []} />
+      </WorkSection>
+      <WorkSection
+        title="Completed"
+        description="Recently completed orders."
+        count={(grouped.completed || []).length}
+        href="/seller/earnings"
+        linkLabel="View earnings"
+        empty={<p className="text-sm text-[#5c6f62]">Completed orders will show up here.</p>}
+      >
+        <OrderPreview rows={grouped.completed || []} />
+      </WorkSection>
+    </div>
+  )
+}
+
+async function SellerNotifications({ user }) {
+  const notes = await listNotifications(user.id)
+  return <NotificationFeed notes={notes} />
+}
+
+function MetricsLoading() {
+  return <LoadingPanel label="Loading shop and sales summary…" />
+}
+
+function OrdersLoading() {
+  return <LoadingPanel label="Loading your recent orders…" />
+}
+
+function NotificationsLoading() {
+  return <LoadingPanel label="Loading notifications…" />
+}
+
+function LoadingPanel({ label }) {
+  return (
+    <div role="status" className="ui-card mb-4 flex min-h-20 items-center gap-3 p-5 text-sm text-[#5c6f62]">
+      <span className="size-4 animate-spin rounded-full border-2 border-[#b8d2af] border-t-[#2e7d32]" />
+      {label}
+    </div>
   )
 }
 

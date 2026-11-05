@@ -4,6 +4,7 @@ import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
 import { ConfirmButton } from '@/components/confirm-button'
 import { AdminAiAssist } from '@/components/admin-ai-assist'
+import { PagedRows } from '@/components/paged-rows'
 import { requireAdmin } from '@/server/guards'
 import { listProductsForAdmin } from '@/server/admin'
 
@@ -120,7 +121,7 @@ export default async function AdminProductsPage({ searchParams }) {
           ) : null}
         </div>
         {products.length ? (
-          <ul className="divide-y divide-brand-line">
+          <PagedRows className="divide-y divide-brand-line">
             {products.map((product) => {
               const image = product.images[0]?.url
               return (
@@ -199,7 +200,7 @@ export default async function AdminProductsPage({ searchParams }) {
                 </li>
               )
             })}
-          </ul>
+          </PagedRows>
         ) : (
           <p className="p-6 text-sm text-brand-muted">No products match these filters.</p>
         )}

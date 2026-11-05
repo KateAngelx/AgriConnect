@@ -7,6 +7,8 @@ import { collectCash, itemSellerId } from './payments'
 import { hasRole, isApprovedSeller } from './roles'
 import { save } from './sync'
 import { readyStore } from './store'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
+import { orderFromDatabaseRow } from './order-record'
 
 const units = ['kilogram', 'bundle', 'tray', 'sack', 'piece']
 const sellerSteps = {
@@ -70,7 +72,94 @@ export function sellerIdForUser(store, user) {
   return user.sellerId || sellerRecord(store, user)?.id || null
 }
 
+export function sellerOrderContainsFilter(item) {
+  return JSON.stringify([item])
+}
+
+async function sellerIdFromDatabase(client, user) {
+  if (user.sellerId) return user.sellerId
+  const { data, error } = await client
+    .from('sellers')
+    .select('id')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+  if (error) throw new Error(`Could not resolve seller account: ${error.message}`)
+  return data?.id || null
+}
+
+async function sellerOrderRows(client, sellerId, columns, limit) {
+  const buildQuery = (item) => {
+    let query = client
+      .from('orders')
+      .select(columns)
+      .contains('items', sellerOrderContainsFilter(item))
+      .order('created_at', { ascending: false })
+    if (Number.isInteger(limit) && limit > 0) query = query.limit(limit)
+    return query
+  }
+  const [sellerIdResult, nestedSellerResult, sellerStringResult] = await Promise.all([
+    buildQuery({ sellerId }),
+    buildQuery({ product: { seller: { id: sellerId } } }),
+    buildQuery({ product: { seller: sellerId } }),
+  ])
+  if (sellerIdResult.error) throw new Error(`Could not load seller orders: ${sellerIdResult.error.message}`)
+  if (nestedSellerResult.error) throw new Error(`Could not load seller orders: ${nestedSellerResult.error.message}`)
+  if (sellerStringResult.error) throw new Error(`Could not load seller orders: ${sellerStringResult.error.message}`)
+  return [...new Map(
+    [...(sellerIdResult.data || []), ...(nestedSellerResult.data || []), ...(sellerStringResult.data || [])]
+      .map((row) => [row.id, row]),
+  ).values()]
+}
+
 export async function sellerSnapshot(user) {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const sellerId = await sellerIdFromDatabase(client, user)
+    if (!sellerId) {
+      return {
+        products: 0,
+        activeProducts: 0,
+        pendingOrders: 0,
+        completedOrders: 0,
+        totalSales: 0,
+        earnings: 0,
+        lowStock: 0,
+        openOrders: 0,
+      }
+    }
+    const [orderRows, productResult] = await Promise.all([
+      sellerOrderRows(client, sellerId, 'id,status,platform_fee,created_at,items'),
+      client.from('products').select('status,stock').eq('seller_id', sellerId),
+    ])
+    if (productResult.error) throw new Error(`Could not load seller products: ${productResult.error.message}`)
+    const orders = orderRows.map((row) => {
+      const order = orderFromDatabaseRow(row)
+      const items = order.items.filter((item) => itemSellerId(item) === sellerId)
+      return { ...order, items }
+    }).filter((order) => order.items.length > 0)
+    const completedOrders = orders.filter((order) =>
+      ['completed', 'delivered', 'picked-up'].includes(String(order.status || '').toLowerCase().replaceAll('_', '-')),
+    )
+    const totalSales = completedOrders.reduce((sum, order) => sum + sellerOrderTotal(order, sellerId), 0)
+    const commission = completedOrders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0)
+    const products = productResult.data || []
+    return {
+      products: products.length,
+      activeProducts: products.filter((product) => product.status === 'active').length,
+      pendingOrders: orders.filter((order) =>
+        !['completed', 'delivered', 'picked-up', 'cancelled', 'delivery-failed'].includes(
+          String(order.status || '').toLowerCase().replaceAll('_', '-'),
+        ),
+      ).length,
+      completedOrders: completedOrders.length,
+      totalSales,
+      earnings: Math.max(0, totalSales - commission),
+      lowStock: products.filter((product) => product.status === 'active' && Number(product.stock) < 10).length,
+      openOrders: orders.filter((order) =>
+        !['completed', 'cancelled'].includes(String(order.status || '').toLowerCase().replaceAll('_', '-')),
+      ).length,
+    }
+  }
   const store = await readyStore()
   const sellerId = sellerIdForUser(store, user)
   const products = store.products.filter((product) => product.seller?.id === sellerId)
@@ -109,12 +198,46 @@ export async function ownedProduct(user, productId) {
   return products.find((product) => product.id === productId) || null
 }
 
-export async function listOwnedOrders(user) {
+const SELLER_ORDER_COLUMNS =
+  'id,reference,buyer_id,buyer_name,buyer_email,fulfillment,contact_number,delivery_address,delivery_landmark,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,subtotal,delivery_fee,platform_fee,platform_fee_status,created_at,items'
+
+export async function listOwnedOrders(user, { limit } = {}) {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  let sellerId = user.sellerId || null
+  if (client && !sellerId) {
+    sellerId = await sellerIdFromDatabase(client, user)
+  }
+  if (client && sellerId) {
+    const orderRows = await sellerOrderRows(client, sellerId, SELLER_ORDER_COLUMNS, limit)
+    return orderRows
+      .map(orderFromDatabaseRow)
+      .map((order) => {
+        const items = order.items.filter((item) => itemSellerId(item) === sellerId)
+        return {
+          ...order,
+          items,
+          subtotal: sellerOrderTotal({ ...order, items }, sellerId),
+        }
+      })
+      .filter((order) => order.items.length > 0)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, Number.isInteger(limit) && limit > 0 ? limit : undefined)
+  }
+
   const store = await readyStore()
-  const sellerId = sellerIdForUser(store, user)
-  return [...store.orders.values()]
+  sellerId = sellerIdForUser(store, user)
+  const orders = [...store.orders.values()]
     .filter((order) => order.items.some((item) => itemSellerId(item) === sellerId))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map((order) => {
+      const items = order.items.filter((item) => itemSellerId(item) === sellerId)
+      return {
+        ...order,
+        items,
+        subtotal: sellerOrderTotal({ ...order, items }, sellerId),
+      }
+    })
+  return Number.isInteger(limit) && limit > 0 ? orders.slice(0, limit) : orders
 }
 
 function sellerOrderTotal(order, sellerId) {

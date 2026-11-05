@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { AuthenticatedHeaderActions } from './header-actions'
 import { activeNavHref, dashboardNav, dashboardNavRole, groupDashboardNav, homeForNav } from '@/components/dashboard-nav'
@@ -56,7 +57,7 @@ function WorkspaceSwitch({ workspaces, navRole, onNavigate, itemClass }) {
     <div className="mt-3 space-y-1">
       <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">Also on this account</p>
       {others.map((item) => (
-        <a
+        <Link
           key={item.href}
           href={item.href}
           onClick={onNavigate}
@@ -64,7 +65,7 @@ function WorkspaceSwitch({ workspaces, navRole, onNavigate, itemClass }) {
         >
           <span className="block">{item.label}</span>
           <span className="mt-0.5 block text-[11px] font-normal leading-4 text-[#5c6f62]">{item.hint}</span>
-        </a>
+        </Link>
       ))}
     </div>
   )
@@ -86,7 +87,7 @@ function NavItems({ items, isActive, navBadges, unread, onNavigate }) {
     const badge = navBadges[item.href] ?? (item.href === '/notifications' && unread > 0 ? unread : 0)
     const active = isActive(item.href)
     return (
-      <a
+      <Link
         key={`${item.href}-${item.label}`}
         href={item.href}
         aria-current={active ? 'page' : undefined}
@@ -100,7 +101,7 @@ function NavItems({ items, isActive, navBadges, unread, onNavigate }) {
             {badge > 99 ? '99+' : badge}
           </span>
         ) : null}
-      </a>
+      </Link>
     )
   })
 }
@@ -151,12 +152,12 @@ export function DashboardFrame({
   return (
     <div className="min-h-screen bg-[#f3f8ef] text-[#142016]">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-[#d5e4d4] bg-[#e7f3e4] lg:flex">
-        <a href={homeForNav(user.role)} className="flex h-14 shrink-0 items-center gap-2.5 px-4">
+        <Link href={homeForNav(user.role)} className="flex h-14 shrink-0 items-center gap-2.5 px-4">
           <span className="grid size-8 place-items-center rounded-[10px] bg-[#2e7d32] text-white">
             <DashboardIcon name="leaf" className="size-5" />
           </span>
           <span className="text-lg font-bold text-brand-900">AgriConnect</span>
-        </a>
+        </Link>
 
         <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-3" aria-label="Dashboard">
           <NavGroups items={navItems} isActive={isActive} navBadges={navBadges} unread={unread} />
@@ -229,12 +230,12 @@ export function DashboardFrame({
               aria-label="Dashboard"
             >
               <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[#d5e4d4] px-3">
-                <a href={homeForNav(user.role)} className="flex min-w-0 items-center gap-2" onClick={() => setMobileNav(false)}>
+                <Link href={homeForNav(user.role)} className="flex min-w-0 items-center gap-2" onClick={() => setMobileNav(false)}>
                   <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-[#2e7d32] text-white">
                     <DashboardIcon name="leaf" className="size-5" />
                   </span>
                   <span className="truncate text-[15px] font-bold text-[#142016]">AgriConnect</span>
-                </a>
+                </Link>
                 <button
                   type="button"
                   onClick={() => setMobileNav(false)}

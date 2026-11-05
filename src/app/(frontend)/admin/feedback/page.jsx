@@ -1,6 +1,7 @@
 import { respondToFeedbackAction } from '@/app/(frontend)/admin/feedback/actions'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { AdminAiAssist } from '@/components/admin-ai-assist'
 import { FEEDBACK_CATEGORIES, feedbackForAdmin } from '@/server/feedback'
 import { requireAdmin } from '@/server/guards'
@@ -75,7 +76,7 @@ export default async function AdminFeedbackPage({ searchParams }) {
         </button>
       </form>
       {entries.length ? (
-        <ul className="ui-card divide-y divide-brand-line overflow-hidden">
+        <PagedRows className="ui-card divide-y divide-brand-line overflow-hidden">
           {entries.map((entry) => (
             <li key={entry.id} className="p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -167,7 +168,7 @@ export default async function AdminFeedbackPage({ searchParams }) {
               </form>
             </li>
           ))}
-        </ul>
+        </PagedRows>
       ) : (
         <div className="page-empty">No feedback submissions match these filters.</div>
       )}

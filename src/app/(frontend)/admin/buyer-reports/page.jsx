@@ -1,6 +1,7 @@
 import { updateBuyerReportAction } from '@/app/(frontend)/admin/buyer-reports/actions'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { AdminAiAssist } from '@/components/admin-ai-assist'
 import { requireAdmin } from '@/server/guards'
 import { reportsForAdmin, BUYER_REPORT_TYPES } from '@/server/reports'
@@ -93,7 +94,7 @@ export default async function AdminBuyerReportsPage({ searchParams }) {
         </p>
       ) : null}
       {reports.length ? (
-        <ul className="ui-card divide-y divide-brand-line overflow-hidden">
+        <PagedRows className="ui-card divide-y divide-brand-line overflow-hidden">
           {reports.map((report) => (
             <li key={report.id} className="p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -244,7 +245,7 @@ export default async function AdminBuyerReportsPage({ searchParams }) {
               </form>
             </li>
           ))}
-        </ul>
+        </PagedRows>
       ) : (
         <div className="page-empty">
           {targetId ? 'There are no reports for this item.' : 'There are no buyer reports.'}

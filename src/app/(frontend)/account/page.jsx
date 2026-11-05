@@ -35,8 +35,8 @@ export default async function AccountPage() {
   return (
     <DashboardShell user={user} title="Overview" subtitle="Active orders, delivered orders, and saved items." variant="overview">
       <MetricBoard>
-        <MetricTile section="Orders" label="Active orders" value={activeOrders.length} icon="clipboard" tone="amber" />
-        <MetricTile section="Orders" label="Delivered" value={deliveredOrders.length} icon="package" tone="green" />
+        <MetricTile section="Orders" label="Active orders" value={orders.sectionCounts?.active ?? activeOrders.length} icon="clipboard" tone="amber" />
+        <MetricTile section="Orders" label="Delivered" value={orders.sectionCounts?.delivered ?? deliveredOrders.length} icon="package" tone="green" />
         <MetricTile section="Shopping" label="Wishlist items" value={wishlist.length} icon="heart" tone="teal" />
       </MetricBoard>
 
@@ -44,7 +44,7 @@ export default async function AccountPage() {
         <WorkSection
           title="Orders"
           description="Active orders first, then ones you already received."
-          count={allOrders.length}
+          count={(orders.sectionCounts?.active ?? activeOrders.length) + (orders.sectionCounts?.delivered ?? deliveredOrders.length)}
           href="/buyer/orders"
           linkLabel="View all"
           empty={

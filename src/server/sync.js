@@ -98,7 +98,7 @@ function snapshot(store) {
       email: user.email || null,
       phone: user.phone || null,
       phone_verified: Boolean(user.phoneVerified),
-      password_hash: user.passwordHash || user.password,
+      password_hash: user.passwordHash ?? user.password ?? '',
       role: user.role,
       status: user.status,
       seller_id: user.sellerId || null,
@@ -666,9 +666,12 @@ export function ready() {
 }
 
 export async function mutateBuyerCart(input) {
-  await ready()
-  if (globalThis.__agriconnectStatus?.mode !== 'supabase') return null
-  const client = getSupabaseAdmin()
+  let client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (!client) {
+    await ready()
+    if (globalThis.__agriconnectStatus?.mode !== 'supabase') return null
+    client = getSupabaseAdmin()
+  }
   if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
   const { data, error } = await client.rpc('mutate_buyer_cart', {
     p_buyer_id: input.buyerId,
@@ -700,9 +703,12 @@ export async function mutateBuyerCart(input) {
 }
 
 export async function readBuyerCart(buyerId) {
-  await ready()
-  if (globalThis.__agriconnectStatus?.mode !== 'supabase') return undefined
-  const client = getSupabaseAdmin()
+  let client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (!client) {
+    await ready()
+    if (globalThis.__agriconnectStatus?.mode !== 'supabase') return undefined
+    client = getSupabaseAdmin()
+  }
   if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
   const { data, error } = await client
     .from('carts')

@@ -19,6 +19,25 @@ async function readResponse(response) {
   return data
 }
 
+async function readBuyerStateResponse(path, signal) {
+  const response = await fetch(path, {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    signal,
+  })
+  let data = {}
+  try {
+    data = await response.json()
+  } catch {
+    data = {}
+  }
+  if (!response.ok) {
+    if (response.status === 401 && data.redirectTo) window.location.assign(data.redirectTo)
+    throw new Error(data.error || 'Could not load your saved shopping data.')
+  }
+  return data
+}
+
 export function MarketplaceStateProvider({
   userId,
   initialCart = null,
@@ -32,6 +51,10 @@ export function MarketplaceStateProvider({
     wishlist: initialWishlist,
     cartBusy: false,
     wishlistBusy: false,
+    cartLoading: Boolean(userId && !initialCart),
+    wishlistLoading: Boolean(userId && !initialCart),
+    cartError: '',
+    wishlistError: '',
   }))
   const cartRef = useRef(userId === state.userId ? initialCart : null)
   const wishlistRef = useRef(userId === state.userId ? initialWishlist : [])
@@ -41,6 +64,8 @@ export function MarketplaceStateProvider({
   const wishlistBusy = useRef(false)
   const channel = useRef(null)
   const updateSequence = useRef({ cart: 0, wishlist: 0 })
+  const [cartReloadVersion, setCartReloadVersion] = useState(0)
+  const [wishlistReloadVersion, setWishlistReloadVersion] = useState(0)
 
   useEffect(() => {
     if (state.userId === userId) return
@@ -56,6 +81,10 @@ export function MarketplaceStateProvider({
       wishlist: initialWishlist,
       cartBusy: false,
       wishlistBusy: false,
+      cartLoading: Boolean(userId && !initialCart),
+      wishlistLoading: Boolean(userId && !initialCart),
+      cartError: '',
+      wishlistError: '',
     })
   }, [userId, state.userId, initialCart, initialWishlist, initialWishlistRevision])
 
@@ -67,14 +96,14 @@ export function MarketplaceStateProvider({
       cartRevision.current = nextRevision
       cartRef.current = value
       setState((previous) =>
-        previous.userId === userId ? { ...previous, cart: value } : previous,
+        previous.userId === userId ? { ...previous, cart: value, cartError: '' } : previous,
       )
     } else {
       if (nextRevision < wishlistRevision.current) return false
       wishlistRevision.current = nextRevision
       wishlistRef.current = value
       setState((previous) =>
-        previous.userId === userId ? { ...previous, wishlist: value } : previous,
+        previous.userId === userId ? { ...previous, wishlist: value, wishlistError: '' } : previous,
       )
     }
     updateSequence.current[kind] = Math.max(
@@ -111,6 +140,92 @@ export function MarketplaceStateProvider({
   ])
 
   useEffect(() => {
+    if (!userId || state.userId !== userId) return
+    let active = true
+    const controller = new AbortController()
+    setState((previous) =>
+      previous.userId === userId
+        ? { ...previous, cartLoading: true, cartError: '' }
+        : previous,
+    )
+
+    async function loadCart() {
+      try {
+        const data = await readBuyerStateResponse('/api/cart', controller.signal)
+        if (
+          data.userId !== userId ||
+          (data.cart &&
+            (data.cart.buyer !== userId || !Array.isArray(data.cart.items)))
+        ) {
+          throw new Error('Could not verify cart ownership. Please sign in again.')
+        }
+        if (!active) return
+        if (!cartBusy.current) publish('cart', data.cart, data.cart?.revision || 0)
+      } catch (error) {
+        if (!active || error?.name === 'AbortError') return
+        const message = error instanceof Error ? error.message : 'Could not load your cart.'
+        setState((previous) =>
+          previous.userId === userId ? { ...previous, cartError: message } : previous,
+        )
+        announce('error', message)
+      } finally {
+        if (active) {
+          setState((previous) =>
+            previous.userId === userId ? { ...previous, cartLoading: false } : previous,
+          )
+        }
+      }
+    }
+
+    void loadCart()
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [userId, state.userId, cartReloadVersion, publish])
+
+  useEffect(() => {
+    if (!userId || state.userId !== userId) return
+    let active = true
+    const controller = new AbortController()
+    setState((previous) =>
+      previous.userId === userId
+        ? { ...previous, wishlistLoading: true, wishlistError: '' }
+        : previous,
+    )
+
+    async function loadWishlist() {
+      try {
+        const data = await readBuyerStateResponse('/api/wishlist', controller.signal)
+        if (data.userId !== userId || !Array.isArray(data.items)) {
+          throw new Error('Could not verify wishlist ownership. Please sign in again.')
+        }
+        if (!active) return
+        if (!wishlistBusy.current) publish('wishlist', data.items, data.revision || 0)
+      } catch (error) {
+        if (!active || error?.name === 'AbortError') return
+        const message = error instanceof Error ? error.message : 'Could not load your wishlist.'
+        setState((previous) =>
+          previous.userId === userId ? { ...previous, wishlistError: message } : previous,
+        )
+        announce('error', message)
+      } finally {
+        if (active) {
+          setState((previous) =>
+            previous.userId === userId ? { ...previous, wishlistLoading: false } : previous,
+          )
+        }
+      }
+    }
+
+    void loadWishlist()
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [userId, state.userId, wishlistReloadVersion, publish])
+
+  useEffect(() => {
     if (typeof BroadcastChannel === 'undefined' || !userId) return
     const connection = new BroadcastChannel('agriconnect-buyer-state')
     channel.current = connection
@@ -127,7 +242,7 @@ export function MarketplaceStateProvider({
         updateSequence.current.cart = sequence
         cartRef.current = data.value
         setState((previous) =>
-          previous.userId === userId ? { ...previous, cart: data.value } : previous,
+          previous.userId === userId ? { ...previous, cart: data.value, cartError: '' } : previous,
         )
       }
       if (
@@ -139,7 +254,7 @@ export function MarketplaceStateProvider({
         updateSequence.current.wishlist = sequence
         wishlistRef.current = data.value
         setState((previous) =>
-          previous.userId === userId ? { ...previous, wishlist: data.value } : previous,
+          previous.userId === userId ? { ...previous, wishlist: data.value, wishlistError: '' } : previous,
         )
       }
     }
@@ -148,6 +263,14 @@ export function MarketplaceStateProvider({
       if (channel.current === connection) channel.current = null
     }
   }, [userId])
+
+  const refreshCart = useCallback(() => {
+    setCartReloadVersion((version) => version + 1)
+  }, [])
+
+  const refreshWishlist = useCallback(() => {
+    setWishlistReloadVersion((version) => version + 1)
+  }, [])
 
   const addToCart = useCallback(async (product, quantity = 1, replace = false) => {
     if (!userId) return { error: 'Sign in with an approved buyer account to use your cart.' }
@@ -296,18 +419,28 @@ export function MarketplaceStateProvider({
         wishlist: initialWishlist,
         cartBusy: false,
         wishlistBusy: false,
+        cartLoading: Boolean(userId && !initialCart),
+        wishlistLoading: Boolean(userId && !initialCart),
+        cartError: '',
+        wishlistError: '',
       }
   const value = useMemo(() => ({
     cart: visibleState.cart,
     wishlist: visibleState.wishlist,
     cartBusy: visibleState.cartBusy,
     wishlistBusy: visibleState.wishlistBusy,
+    cartLoading: visibleState.cartLoading,
+    wishlistLoading: visibleState.wishlistLoading,
+    cartError: visibleState.cartError,
+    wishlistError: visibleState.wishlistError,
     cartCount: visibleState.cart?.items?.reduce((total, item) => total + Number(item.quantity || 0), 0) || 0,
     wishlistCount: visibleState.wishlist?.length || 0,
     addToCart,
     updateCart,
     setWishlistItem,
-  }), [visibleState, addToCart, updateCart, setWishlistItem])
+    refreshCart,
+    refreshWishlist,
+  }), [visibleState, addToCart, updateCart, setWishlistItem, refreshCart, refreshWishlist])
 
   return (
     <MarketplaceStateContext.Provider value={value}>

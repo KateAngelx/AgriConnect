@@ -1,5 +1,5 @@
-import { getSupabaseAdmin } from '@/lib/supabase'
-import { readyStore } from './store'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
+import { getStore, readyStore } from './store'
 
 function databaseEnabled() {
   return globalThis.__agriconnectStatus?.mode === 'supabase'
@@ -13,6 +13,19 @@ function wishlistItems(store, records) {
 }
 
 export async function listWishlistState(userId) {
+  const directClient = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (directClient) {
+    const { data, error } = await directClient.rpc('read_buyer_wishlist', { p_buyer_id: userId })
+    if (error) throw new Error(`wishlist_items: ${error.message}`)
+    const records = Array.isArray(data?.items) ? data.items : []
+    const store = getStore()
+    store.wishlists.set(userId, records)
+    const revision = Number(data?.revision || 0)
+    store.wishlistRevisions.set(userId, revision)
+    const products = await wishlistProducts(directClient, records)
+    return { items: records.map((item) => ({ ...item, product: products.get(item.productId) || null })), revision }
+  }
+
   const store = await readyStore()
   if (databaseEnabled()) {
     const client = getSupabaseAdmin()
@@ -30,6 +43,42 @@ export async function listWishlistState(userId) {
     items: wishlistItems(store, records),
     revision: Number(store.wishlistRevisions.get(userId) || 0),
   }
+}
+
+async function wishlistProducts(client, records) {
+  const productIds = [...new Set(records.map((item) => item.productId).filter(Boolean))]
+  if (!productIds.length) return new Map()
+  const { data: productRows, error: productError } = await client
+    .from('products')
+    .select('id,name,price,unit,stock,location,status,seller_id,images')
+    .in('id', productIds)
+  if (productError) throw new Error(`Could not load wishlist products: ${productError.message}`)
+  const sellerIds = [...new Set((productRows || []).map((product) => product.seller_id).filter(Boolean))]
+  const { data: sellerRows, error: sellerError } = sellerIds.length
+    ? await client.from('sellers').select('id,farm_name,status').in('id', sellerIds)
+    : { data: [], error: null }
+  if (sellerError) throw new Error(`Could not load wishlist sellers: ${sellerError.message}`)
+  const sellers = new Map((sellerRows || []).map((seller) => [seller.id, seller]))
+  return new Map((productRows || []).map((product) => [
+    product.id,
+    {
+      id: product.id,
+      name: product.name,
+      price: Number(product.price || 0),
+      unit: product.unit || 'item',
+      stock: Number(product.stock || 0),
+      location: product.location || '',
+      status: product.status,
+      images: product.images || [],
+      seller: sellers.has(product.seller_id)
+        ? {
+            id: product.seller_id,
+            farmName: sellers.get(product.seller_id).farm_name,
+            status: sellers.get(product.seller_id).status,
+          }
+        : null,
+    },
+  ]))
 }
 
 export async function listWishlist(userId) {
@@ -56,12 +105,33 @@ export async function setWishlistItem(user, productId, saved) {
   if (!normalizedProductId) return { error: 'Choose a product.' }
   if (typeof saved !== 'boolean') return { error: 'Choose whether to save or remove this product.' }
 
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const { data, error } = await client.rpc('set_buyer_wishlist_item', {
+      p_buyer_id: user.id,
+      p_product_id: normalizedProductId,
+      p_saved: saved,
+    })
+    if (error) throw new Error(`wishlist_items: ${error.message}`)
+    const records = Array.isArray(data?.items) ? data.items : []
+    const revision = Number(data?.revision || 0)
+    const store = getStore()
+    store.wishlists.set(user.id, records)
+    store.wishlistRevisions.set(user.id, revision)
+    const products = await wishlistProducts(client, records)
+    return {
+      saved,
+      items: records.map((item) => ({ ...item, product: products.get(item.productId) || null })),
+      revision,
+    }
+  }
+
   const store = await readyStore()
-  const client = databaseEnabled() ? getSupabaseAdmin() : null
-  if (databaseEnabled() && !client)
+  const fallbackClient = databaseEnabled() ? getSupabaseAdmin() : null
+  if (databaseEnabled() && !fallbackClient)
     throw new Error('Supabase is configured but its server client is unavailable.')
 
-  if (saved && !client) {
+  if (saved && !fallbackClient) {
     const product = store.products.find((item) => item.id === normalizedProductId)
     if (!product || product.status !== 'active' || product.seller?.status !== 'approved')
       return { error: 'That product is not available.' }
@@ -69,8 +139,8 @@ export async function setWishlistItem(user, productId, saved) {
 
   let records = store.wishlists.get(user.id) ?? []
   let revision = Number(store.wishlistRevisions.get(user.id) || 0)
-  if (client) {
-    const { data, error } = await client.rpc('set_buyer_wishlist_item', {
+  if (fallbackClient) {
+    const { data, error } = await fallbackClient.rpc('set_buyer_wishlist_item', {
       p_buyer_id: user.id,
       p_product_id: normalizedProductId,
       p_saved: saved,

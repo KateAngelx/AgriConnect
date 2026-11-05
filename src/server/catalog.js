@@ -143,9 +143,12 @@ export async function listCategoriesWithCounts() {
 
 export async function listSellers(filters = {}) {
   const store = await readyStore()
+  const page = Math.max(1, Number(filters.page) || 1)
   const limit = Math.max(1, Number(filters.limit) || 12)
-  const docs = store.sellers.filter((seller) => seller.status === 'approved')
-  return pageResult(docs, 1, limit)
+  const docs = store.sellers
+    .filter((seller) => seller.status === 'approved')
+    .sort((a, b) => String(a.farmName || '').localeCompare(String(b.farmName || '')))
+  return pageResult(docs, page, limit)
 }
 
 export async function getSeller(id) {

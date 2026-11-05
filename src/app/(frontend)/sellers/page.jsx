@@ -2,8 +2,10 @@ import { SiteShell } from '@/components/site-shell'
 import { SellerCard } from '@/components/seller-card'
 import { listSellers } from '@/server/catalog'
 
-export default async function SellersPage() {
-  const sellers = await listSellers({ limit: 100 })
+export default async function SellersPage({ searchParams }) {
+  const query = await searchParams
+  const page = Math.max(1, Number(query.page) || 1)
+  const sellers = await listSellers({ limit: 5, page })
   return (
     <SiteShell>
       <main>
@@ -20,11 +22,46 @@ export default async function SellersPage() {
         </section>
         <section className="page-container page-section">
           {sellers.docs.length ? (
+            <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {sellers.docs.map((seller) => (
                 <SellerCard key={seller.id} seller={seller} />
               ))}
             </div>
+            {sellers.totalPages > 1 ? (
+              <nav className="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="Seller pagination">
+                {page > 1 ? (
+                  <a href={`/sellers?page=${page - 1}`} className="btn btn-secondary" rel="prev">
+                    Previous
+                  </a>
+                ) : (
+                  <span className="btn btn-secondary opacity-40">Previous</span>
+                )}
+                {Array.from({ length: sellers.totalPages }, (_, index) => {
+                  const number = index + 1
+                  const current = page === number
+                  return (
+                    <a
+                      key={number}
+                      href={`/sellers?page=${number}`}
+                      aria-label={`Page ${number}`}
+                      aria-current={current ? 'page' : undefined}
+                      className={`grid size-9 place-items-center rounded-lg text-[13px] font-semibold ${current ? 'bg-[#1d1d1f] text-white' : 'bg-white text-[#1d1d1f] ring-1 ring-[#e5e5ea]'}`}
+                    >
+                      {number}
+                    </a>
+                  )
+                })}
+                {page < sellers.totalPages ? (
+                  <a href={`/sellers?page=${page + 1}`} className="btn btn-secondary" rel="next">
+                    Next
+                  </a>
+                ) : (
+                  <span className="btn btn-secondary opacity-40">Next</span>
+                )}
+              </nav>
+            ) : null}
+            </>
           ) : (
             <div className="page-empty">Approved seller profiles will appear here.</div>
           )}

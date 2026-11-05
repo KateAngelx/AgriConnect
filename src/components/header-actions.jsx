@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import { logoutAction } from '@/app/(frontend)/account/actions'
 import { activeNavHref, homeForNav } from '@/components/dashboard-nav'
@@ -13,9 +14,9 @@ function iconButtonClass(active) {
   return `relative grid size-9 place-items-center rounded-lg text-[#1d1d1f] hover:bg-[#e8e8ed] ${active ? 'bg-[#e8e8ed]' : ''}`
 }
 
-function HeaderIconButton({ label, icon, badge = 0, active = false, onClick }) {
+function HeaderIconButton({ label, icon, badge = 0, active = false, busy = false, onClick }) {
   return (
-    <button type="button" aria-label={label} onClick={onClick} className={iconButtonClass(active)}>
+    <button type="button" aria-label={label} aria-busy={busy || undefined} onClick={onClick} className={iconButtonClass(active)}>
       <DashboardIcon name={icon} className="size-5" />
       {badge > 0 ? (
         <span className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-[#2e7d32] px-1 text-[10px] font-bold text-white">
@@ -26,16 +27,16 @@ function HeaderIconButton({ label, icon, badge = 0, active = false, onClick }) {
   )
 }
 
-function HeaderIconLink({ href, label, icon, badge = 0, active = false }) {
+function HeaderIconLink({ href, label, icon, badge = 0, active = false, busy = false }) {
   return (
-    <a href={href} aria-label={label} className={iconButtonClass(active)}>
+    <Link href={href} aria-label={label} aria-busy={busy || undefined} className={iconButtonClass(active)}>
       <DashboardIcon name={icon} className="size-5" />
       {badge > 0 ? (
         <span className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-[#2e7d32] px-1 text-[10px] font-bold text-white">
           {badge > 9 ? '9+' : badge}
         </span>
       ) : null}
-    </a>
+    </Link>
   )
 }
 
@@ -95,13 +96,13 @@ export function RoleDashboardLinks({ user }) {
   return (
     <div className="hidden shrink-0 items-center gap-2 lg:flex">
       {links.map((link) => (
-        <a
+        <Link
           key={link.href}
           href={link.href}
           className="btn btn-secondary"
         >
           {link.label}
-        </a>
+        </Link>
       ))}
     </div>
   )
@@ -174,7 +175,7 @@ export function UserProfileMenu({ user, pathname = '' }) {
                 .map((link) => {
                   const active = link.href === activeNavHref(pathname, links.map((item) => item.href))
                   return (
-                  <a
+                  <Link
                     key={`${link.href}-${link.label}`}
                     role="menuitem"
                     href={link.href}
@@ -184,7 +185,7 @@ export function UserProfileMenu({ user, pathname = '' }) {
                   >
                     <DashboardIcon name={link.icon} className="size-4 text-[#65766d]" />
                     {link.label}
-                  </a>
+                  </Link>
                   )
                 })}
             </div>
@@ -204,7 +205,7 @@ export function AuthenticatedHeaderActions({
   pathname = '',
   mobileAccountInMenu = false,
 }) {
-  const { cartCount, wishlistCount } = useMarketplaceState()
+  const { cartCount, wishlistCount, cartLoading, wishlistLoading } = useMarketplaceState()
   const [cartOpen, setCartOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(unread)
@@ -234,15 +235,17 @@ export function AuthenticatedHeaderActions({
                 href="/wishlist"
                 label="Wishlist"
                 icon="heart"
-                badge={wishlistCount}
+                badge={wishlistLoading ? 0 : wishlistCount}
                 active={pathname.startsWith('/wishlist')}
+                busy={wishlistLoading}
               />
             </span>
             <HeaderIconButton
               label="Shopping cart"
               icon="cart"
-              badge={cartCount}
+              badge={cartLoading ? 0 : cartCount}
               active={pathname.startsWith('/checkout')}
+              busy={cartLoading}
               onClick={() => setCartOpen(true)}
             />
             <HeaderIconButton

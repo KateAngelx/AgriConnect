@@ -22,10 +22,9 @@ export default async function BuyerOrdersPage({ searchParams }) {
   const user = await requireApprovedBuyer('/buyer/orders')
   const query = await searchParams
   if (query.payment === 'return') {
-    await confirmBuyerPayments(user.id)
-    await confirmXenditPayments(user.id)
+    await Promise.all([confirmBuyerPayments(user.id), confirmXenditPayments(user.id)])
   }
-  const orders = await listOrders(user.id)
+  const orders = await listOrders(user.id, query.page)
   const grouped = groupBySection(orders.docs, buyerOrderSection)
   const orderId = typeof query.order === 'string' ? query.order : ''
   const selected = orderId ? await getOrder(orderId, user.id) : null
@@ -65,7 +64,7 @@ export default async function BuyerOrdersPage({ searchParams }) {
                 key={key}
                 title={title}
                 description={description}
-                count={rows.length}
+                count={orders.sectionCounts[key]}
                 empty={<p className="text-sm text-[#5c6f62]">Nothing in this section.</p>}
               >
                 <PagedRows>
@@ -104,8 +103,32 @@ export default async function BuyerOrdersPage({ searchParams }) {
         </div>
       )}
 
+      {orders.totalPages > 1 ? (
+        <nav className="mt-6 flex items-center justify-between gap-4" aria-label="Order history pages">
+          {orders.page > 1 ? (
+            <Link
+              href={`/buyer/orders?page=${orders.page - 1}`}
+              className="btn btn-secondary"
+            >
+              Previous orders
+            </Link>
+          ) : <span />}
+          <p className="text-sm text-[#5c6f62]">
+            Page {orders.page} of {orders.totalPages} · {orders.totalDocs} orders
+          </p>
+          {orders.page < orders.totalPages ? (
+            <Link
+              href={`/buyer/orders?page=${orders.page + 1}`}
+              className="btn btn-secondary"
+            >
+              More orders
+            </Link>
+          ) : <span />}
+        </nav>
+      ) : null}
+
       {orderId ? (
-        <Modal title={selected?.reference || 'Order'} subtitle="Items, payment, and where this order is going." closeHref="/buyer/orders" size="xl">
+        <Modal title={selected?.reference || 'Order'} subtitle="Items, payment, and where this order is going." closeHref={`/buyer/orders${orders.page > 1 ? `?page=${orders.page}` : ''}`} size="xl">
           {selected ? (
             <BuyerOrderDetail order={selected} delivery={delivery} payment={payment} error={detailError} success={detailSuccess} />
           ) : (

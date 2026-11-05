@@ -3,7 +3,7 @@ import { currentUser } from '@/server/auth'
 import { authHref } from '@/lib/auth-links'
 import { isApprovedBuyer } from '@/server/roles'
 
-export async function GET() {
+export async function GET(request) {
   const user = await currentUser()
   if (!user) {
     return Response.json(
@@ -14,7 +14,8 @@ export async function GET() {
   if (!isApprovedBuyer(user)) {
     return Response.json({ error: 'An approved buyer account is required.' }, { status: 403 })
   }
-  return Response.json(await listOrders(user.id))
+  const page = new URL(request.url).searchParams.get('page') || 1
+  return Response.json(await listOrders(user.id, page))
 }
 
 export async function POST(request) {

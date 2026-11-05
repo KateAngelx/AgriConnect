@@ -1,4 +1,5 @@
 import { peso } from '@/lib/dashboard-format'
+import Link from 'next/link'
 
 function relationName(value) {
   return typeof value === 'object' && value?.farmName ? value.farmName : 'Local seller'
@@ -29,7 +30,7 @@ export function ProductCard({ product }) {
 
   return (
     <article className="ui-card flex h-full flex-col overflow-hidden transition-colors hover:border-[#d2d2d7]">
-      <a href={`/products/${product.id}`} className="flex h-full flex-col text-inherit no-underline">
+      <Link href={`/products/${product.id}`} className="flex h-full flex-col text-inherit no-underline">
         <div className="product-photo">
           {image ? (
             <img src={image} alt={imageAlt} />
@@ -63,7 +64,7 @@ export function ProductCard({ product }) {
             <span className="text-[13px] font-normal text-[#6e6e73]"> / {product.unit}</span>
           </p>
         </div>
-      </a>
+      </Link>
     </article>
   )
 }

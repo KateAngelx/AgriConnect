@@ -1,6 +1,7 @@
 import { setStatusAction } from '@/app/(frontend)/admin/actions'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { pretty } from '@/lib/dashboard-format'
 import { listUsers } from '@/server/admin'
 import { requireAdmin } from '@/server/guards'
@@ -84,7 +85,7 @@ export default async function AdminUsersPage({ searchParams }) {
           ) : null}
         </div>
         {users.length ? (
-          <ul className="divide-y divide-brand-line">
+          <PagedRows className="divide-y divide-brand-line">
             {users.map((entry) => (
               <li key={entry.id} className="px-4 py-4 sm:px-5">
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-start">
@@ -121,7 +122,7 @@ export default async function AdminUsersPage({ searchParams }) {
                 </details>
               </li>
             ))}
-          </ul>
+          </PagedRows>
         ) : (
           <p className="p-6 text-sm text-brand-muted">No accounts match these filters.</p>
         )}

@@ -1,5 +1,6 @@
 import { DashboardShell } from '@/components/dashboard-shell'
-import { DashboardPanel, DataTable, StatusBadge, workStackClass } from '@/components/dashboard-ui'
+import { DashboardPanel, StatusBadge, workStackClass } from '@/components/dashboard-ui'
+import { PagedRows } from '@/components/paged-rows'
 import { listAuditEvents } from '@/server/admin'
 import { requireAdmin } from '@/server/guards'
 import Link from 'next/link'
@@ -42,21 +43,23 @@ export default async function AdminAuditPage({ searchParams }) {
       <div className={workStackClass}>
       <DashboardPanel title="Application decisions" description={`${events.length} recorded in this view.`}>
         {events.length ? (
-          <DataTable embedded columns={['Applicant', 'Type', 'Status', 'Note', 'Updated']}>
+          <PagedRows asList={false} className="divide-y divide-brand-line">
             {events.map((event) => (
-              <tr key={event.id}>
-                <td className="px-5 py-3 font-semibold">{event.applicant}</td>
-                <td className="px-5 py-3 capitalize">{event.type}</td>
-                <td className="px-5 py-3">
+              <article key={event.id} className="grid gap-2 p-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <div>
+                  <p className="font-semibold">{event.applicant}</p>
+                  <p className="text-sm capitalize text-[#647066]">{event.type}</p>
+                  <p className="mt-1 text-sm text-[#647066]">{event.note || '—'}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                   <StatusBadge status={event.status} />
-                </td>
-                <td className="max-w-xs truncate px-5 py-3 text-[#647066]">{event.note || '—'}</td>
-                <td className="px-5 py-3 text-[#647066]">
-                  {event.at ? new Date(event.at).toLocaleString('en-PH') : '—'}
-                </td>
-              </tr>
+                  <time className="text-sm text-[#647066]">
+                    {event.at ? new Date(event.at).toLocaleString('en-PH') : '—'}
+                  </time>
+                </div>
+              </article>
             ))}
-          </DataTable>
+          </PagedRows>
         ) : (
           <p className="text-sm text-[#65766d]">No review events recorded yet.</p>
         )}

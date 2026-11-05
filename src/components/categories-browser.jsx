@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { CategoryIcon } from '@/components/category-icons'
 
 function SearchIcon({ className }) {
@@ -17,7 +18,7 @@ function CategoryCard({ category }) {
     category.productCount === 1 ? '1 product' : `${category.productCount} products`
 
   return (
-    <a
+    <Link
       href={`/products?category=${encodeURIComponent(category.id)}`}
       className="ui-card group flex h-full flex-col overflow-hidden transition-colors hover:border-[#d2d2d7]"
     >
@@ -52,7 +53,7 @@ function CategoryCard({ category }) {
           Explore category →
         </span>
       </div>
-    </a>
+    </Link>
   )
 }
 
@@ -72,12 +73,12 @@ function PromoCard() {
           Every purchase helps farming communities grow. Learn how AgriConnect connects harvests to
           households.
         </p>
-        <a
+        <Link
           href="/about"
           className="btn btn-primary mt-5 w-fit"
         >
           Learn more →
-        </a>
+        </Link>
       </div>
     </article>
   )

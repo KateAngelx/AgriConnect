@@ -1,6 +1,12 @@
 import { DELIVERY_FEE } from './payments'
 import { hasRole } from './roles'
 import { readyStore } from './store'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
+import { orderFromDatabaseRow } from './order-record'
+
+const DELIVERY_COLUMNS = 'id,order_id,courier_id,status,commission,commission_status,note,updates,updated_at'
+const DELIVERY_ORDER_COLUMNS =
+  'id,reference,buyer_id,buyer_name,fulfillment,contact_number,delivery_address,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,items'
 
 function generalArea(text) {
   const value = String(text ?? '').trim()
@@ -21,11 +27,13 @@ function pickupDetailsForOrder(store, order) {
     const seller =
       product?.seller || store.sellers.find((entry) => entry.id === item.sellerId)
     if (item.pickupLocation) locations.push(item.pickupLocation)
+    else if (item.product?.pickupLocation) locations.push(item.product.pickupLocation)
     else if (seller?.location) locations.push(seller.location)
     else if (product?.location) locations.push(product.location)
     pickupLat ??= item.pickupLat ?? product?.pickupLat ?? seller?.pickupLat ?? null
     pickupLng ??= item.pickupLng ?? product?.pickupLng ?? seller?.pickupLng ?? null
   }
+  if (!locations.length && order?.sellerPickup?.location) locations.push(order.sellerPickup.location)
   const unique = [...new Set(locations.filter(Boolean))]
   return {
     pickupArea: unique.length ? generalArea(unique.join('; ')) : 'Area not specified',
@@ -101,6 +109,60 @@ export function deliveryAssignmentForViewer(store, delivery, order, viewerUserId
 
 export async function listDeliveryWorkForUser(user) {
   if (!hasRole(user, 'delivery') || user.status !== 'approved') return []
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const [openResult, mineResult] = await Promise.all([
+      client.from('deliveries').select(DELIVERY_COLUMNS).eq('status', 'open'),
+      client.from('deliveries').select(DELIVERY_COLUMNS).eq('courier_id', user.id),
+    ])
+    if (openResult.error) throw new Error(`Could not load open deliveries: ${openResult.error.message}`)
+    if (mineResult.error) throw new Error(`Could not load assigned deliveries: ${mineResult.error.message}`)
+    const deliveries = new Map(
+      [...(openResult.data || []), ...(mineResult.data || [])].map((row) => [row.id, row]),
+    )
+    const rows = [...deliveries.values()]
+    if (!rows.length) return []
+    const orderIds = [...new Set(rows.map((item) => item.order_id))]
+    const { data: orderRows, error: orderError } = await client
+      .from('orders')
+      .select(DELIVERY_ORDER_COLUMNS)
+      .in('id', orderIds)
+    if (orderError) throw new Error(`Could not load delivery order details: ${orderError.message}`)
+    const orders = new Map((orderRows || []).map((row) => [row.id, orderFromDatabaseRow(row)]))
+    const store = { products: [], sellers: [] }
+    return rows
+      .map((row) => {
+        const order = orders.get(row.order_id) || null
+        const delivery = {
+          id: row.id,
+          orderId: row.order_id,
+          courierId: row.courier_id || '',
+          status: row.status,
+          commission: Number(row.commission || 0),
+          commissionStatus: row.commission_status || 'pending',
+          note: row.note || '',
+          updates: Array.isArray(row.updates) ? row.updates : [],
+          updatedAt: row.updated_at || '',
+        }
+        return {
+          ...deliveryAssignmentForViewer(store, delivery, order, user.id),
+          order: order
+            ? {
+                id: order.id,
+                reference: order.reference,
+                canCollectCash:
+                  delivery.courierId === user.id &&
+                  delivery.status === 'delivered' &&
+                  order.paymentMethod === 'cash-on-delivery' &&
+                  order.paymentStatus !== 'paid',
+              }
+            : null,
+          deliveryId: delivery.id,
+        }
+      })
+      .sort((a, b) => (a.reference < b.reference ? 1 : -1))
+  }
+
   const store = await readyStore()
   return store.deliveries
     .filter((item) => item.status === 'open' || item.courierId === user.id)

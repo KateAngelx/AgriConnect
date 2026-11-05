@@ -52,7 +52,17 @@ export default async function DeliveryAssignmentsPage({ searchParams }) {
       {jobId ? (
         <Modal
           title={selected?.reference || 'Delivery'}
-          subtitle={selected ? (selected.privacy === 'preview' ? 'Limited details until you accept.' : 'Pickup, drop-off, and the next step.') : 'This job is not in your list.'}
+          subtitle={
+            !selected
+              ? 'This job is not in your list.'
+              : selected.privacy === 'preview'
+                ? 'Limited details until you accept.'
+                : ['delivered', 'completed'].includes(selected.status)
+                  ? 'This delivery has been completed.'
+                  : ['cancelled', 'delivery-failed'].includes(selected.status)
+                    ? 'This assignment is closed.'
+                    : 'Pickup, drop-off, and the next step.'
+          }
           closeHref="/delivery/deliveries"
           size="xl"
         >

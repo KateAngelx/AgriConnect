@@ -1,6 +1,7 @@
 import { notify } from './notifications'
 import { save } from './sync'
 import { readyStore } from './store'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 
 export { verifyPaymongoWebhook } from './paymongo-signature.js'
 
@@ -47,6 +48,16 @@ export function commissionRateFrom(store) {
 
 /** Async version – reads the rate from the store via readyStore(). */
 export async function commissionRate() {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const { data, error } = await client
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'commissionRate')
+      .maybeSingle()
+    if (error) throw new Error(`Could not load platform commission setting: ${error.message}`)
+    return data?.value === undefined ? COMMISSION_PER_ITEM : normalizeCommissionRate(data.value)
+  }
   const store = await readyStore()
   return commissionRateFrom(store)
 }
@@ -213,6 +224,29 @@ export function electronicPaymentProvider() {
 }
 
 export async function paymentFor(orderId) {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const { data, error } = await client
+      .from('payments')
+      .select('id,order_id,method,amount,status,provider,provider_reference,created_at')
+      .eq('order_id', orderId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) throw new Error(`Could not load order payment: ${error.message}`)
+    return data
+      ? {
+          id: data.id,
+          orderId: data.order_id,
+          method: data.method,
+          amount: Number(data.amount),
+          status: data.status,
+          provider: data.provider,
+          providerReference: data.provider_reference || '',
+          createdAt: data.created_at || '',
+        }
+      : null
+  }
   const store = await readyStore()
   return store.payments.find((payment) => payment.orderId === orderId) || null
 }

@@ -4,8 +4,9 @@ import { hashPassword, verifyPassword } from './passwords'
 import { phoneSmsConfigured } from './phone-verify'
 import { notify } from './notifications'
 import { mirrorAuthUser, save, signInWithSupabase } from './sync'
-import { getSupabaseAdmin } from '@/lib/supabase'
-import { homeForRole, publicUser, readyStore } from './store'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
+import { getStore, homeForRole, publicUser, readyStore } from './store'
+import { userFromProfileRow } from './profile-user'
 
 const SESSION_COOKIE = 'agriconnect-session'
 const secureSessionCookie = () =>
@@ -18,18 +19,42 @@ async function cookieStore() {
 export { homeForRole }
 
 export async function currentUser() {
-  const store = await readyStore()
   const token = (await cookieStore()).get(SESSION_COOKIE)?.value
   if (!token) return null
+
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const { data: session, error: sessionError } = await client
+      .from('sessions')
+      .select('user_id')
+      .eq('token', token)
+      .maybeSingle()
+    if (sessionError) {
+      throw new Error(`Could not restore the authenticated session: ${sessionError.message}`)
+    }
+    if (!session?.user_id) return null
+
+    const { data: profile, error: profileError } = await client
+      .from('profiles')
+      .select('id,name,email,phone,phone_verified,password_hash,role,roles,status,seller_id,service_area,delivery_addresses,created_at')
+      .eq('id', session.user_id)
+      .maybeSingle()
+    if (profileError) {
+      throw new Error(`Could not load the authenticated account: ${profileError.message}`)
+    }
+    if (!profile) return null
+
+    const user = userFromProfileRow(profile)
+    const store = getStore()
+    store.sessions.set(token, user.id)
+    store.users.set(user.id, user)
+    return publicUser(user)
+  }
+
+  const store = await readyStore()
   let userId = store.sessions.get(token)
   if (!userId) {
-    const client = getSupabaseAdmin()
-    if (client) {
-      const { data, error } = await client.from('sessions').select('user_id').eq('token', token).maybeSingle()
-      if (error) console.error('Could not recover AgriConnect session:', error.message)
-      userId = data?.user_id || ''
-      if (userId) store.sessions.set(token, userId)
-    }
+    return null
   }
   return publicUser(store.users.get(userId))
 }
@@ -37,6 +62,11 @@ export async function currentUser() {
 export async function startSession(user) {
   const store = await readyStore()
   const token = crypto.randomUUID()
+  const client = getSupabaseAdmin()
+  if (client) {
+    const { error } = await client.from('sessions').upsert({ token, user_id: user.id })
+    if (error) throw new Error(`Could not persist the authenticated session: ${error.message}`)
+  }
   store.sessions.set(token, user.id)
   ;(await cookieStore()).set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -45,13 +75,6 @@ export async function startSession(user) {
     path: '/',
     maxAge: 60 * 60 * 24 * 7,
   })
-  const client = getSupabaseAdmin()
-  if (client) {
-    const { error } = await client.from('sessions').upsert({ token, user_id: user.id })
-    if (error) {
-      console.error('Could not persist AgriConnect session:', error.message)
-    }
-  }
   try {
     await save()
   } catch {
@@ -136,7 +159,6 @@ export async function registerAccount(input) {
   if (authMethod === 'phone') {
     return { ok: true, needsPhoneVerification: true, phone, user: publicUser(user) }
   }
-  await startSession(user)
   return { ok: true, user: publicUser(user) }
 }
 
@@ -166,24 +188,11 @@ export async function loginAccount(input) {
       const client = getSupabaseAdmin()
       const { data: profile } = await client
         ?.from('profiles')
-        .select('id,name,email,phone,phone_verified,role,roles,status,seller_id,service_area,delivery_addresses')
+        .select('id,name,email,phone,phone_verified,password_hash,role,roles,status,seller_id,service_area,delivery_addresses,created_at')
         .eq('email', email)
         .maybeSingle() || {}
       if (profile?.id) {
-        user = {
-          id: profile.id,
-          name: profile.name,
-          email: profile.email,
-          phone: profile.phone || '',
-          phoneVerified: Boolean(profile.phone_verified),
-          passwordHash: '',
-          role: profile.role,
-          roles: profile.roles || [profile.role],
-          status: profile.status,
-          sellerId: profile.seller_id || undefined,
-          serviceArea: profile.service_area || '',
-          savedAddresses: Array.isArray(profile.delivery_addresses) ? profile.delivery_addresses : [],
-        }
+        user = userFromProfileRow(profile)
         store.users.set(user.id, user)
       }
     }

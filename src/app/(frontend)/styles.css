@@ -369,8 +369,9 @@ a {
     min-height: 44px;
   }
 
-  button,
-  a[role='button'] {
-    touch-action: manipulation;
-  }
+}
+
+button,
+a {
+  touch-action: manipulation;
 }

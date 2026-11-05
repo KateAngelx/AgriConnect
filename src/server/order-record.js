@@ -1,0 +1,27 @@
+export function orderFromDatabaseRow(row) {
+  return {
+    id: row.id,
+    reference: row.reference,
+    buyer: row.buyer_id,
+    buyerName: row.buyer_name || '',
+    buyerEmail: row.buyer_email || '',
+    items: Array.isArray(row.items) ? row.items : [],
+    fulfillment: row.fulfillment,
+    contactNumber: row.contact_number || '',
+    deliveryAddress: row.delivery_address || '',
+    deliveryLandmark: row.delivery_landmark || '',
+    deliveryLat: row.delivery_lat ?? null,
+    deliveryLng: row.delivery_lng ?? null,
+    sellerPickup: row.seller_pickup || null,
+    estimatedArrivalAt: row.estimated_arrival_at || null,
+    instructions: row.instructions || '',
+    paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status,
+    status: row.status,
+    subtotal: Number(row.subtotal || 0),
+    deliveryFee: Number(row.delivery_fee || 0),
+    platformFee: Number(row.platform_fee || 0),
+    platformFeeStatus: row.platform_fee_status || 'none',
+    createdAt: row.created_at || '',
+  }
+}

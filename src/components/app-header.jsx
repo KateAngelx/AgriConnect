@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/(frontend)/account/actions'
 import { InstallAppMenuButton } from './install-app-toast'
@@ -72,7 +73,7 @@ export function AppHeader({
               {mobileMenuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
             </svg>
           </button>
-          <a
+          <Link
             href={logoHref}
             className="flex min-w-0 items-center gap-2 font-bold tracking-tight text-[#142016]"
           >
@@ -83,7 +84,7 @@ export function AppHeader({
               </svg>
             </span>
             <span className="truncate text-[17px]">AgriConnect</span>
-          </a>
+          </Link>
         </div>
 
         <nav
@@ -93,13 +94,13 @@ export function AppHeader({
           {publicNav.map(([label, href]) => {
             const active = pathname === href || (href !== '/' && pathname.startsWith(href))
             return (
-              <a
+              <Link
                 key={href}
                 href={href}
                 className={`rounded-lg px-3 py-1.5 ${navLinkClass(active)}`}
               >
                 {label}
-              </a>
+              </Link>
             )
           })}
         </nav>
@@ -118,12 +119,12 @@ export function AppHeader({
 
           {!user ? (
             <>
-              <a href="/login" className="btn btn-secondary !hidden sm:!inline-flex">
+              <Link href="/login" className="btn btn-secondary !hidden sm:!inline-flex">
                 Login
-              </a>
-              <a href="/register" className="btn btn-primary !hidden sm:!inline-flex">
+              </Link>
+              <Link href="/register" className="btn btn-primary !hidden sm:!inline-flex">
                 Register
-              </a>
+              </Link>
             </>
           ) : null}
         </div>
@@ -145,14 +146,14 @@ export function AppHeader({
               {publicNav.map(([label, href]) => {
                 const active = pathname === href || (href !== '/' && pathname.startsWith(href))
                 return (
-                  <a
+                  <Link
                     key={href}
                     href={href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex min-h-11 items-center rounded-lg px-3 text-[15px] font-medium ${active ? 'bg-[#e3f3d8] text-[#1b5e20]' : 'text-[#142016]'}`}
                   >
                     {label}
-                  </a>
+                  </Link>
                 )
               })}
               <InstallAppMenuButton onDone={() => setMobileMenuOpen(false)} />
@@ -160,14 +161,14 @@ export function AppHeader({
                 <div className="mt-2 border-t border-[#d5e4d4] pt-2">
                   <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[#5c6f62]">My workspace</p>
                   {roleLinks.map(([label, href]) => (
-                    <a
+                    <Link
                       key={href}
                       href={href}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`flex min-h-11 items-center rounded-lg px-3 text-[15px] font-medium ${pathname.startsWith(href) ? 'bg-[#e3f3d8] text-[#1b5e20]' : 'text-[#142016]'}`}
                     >
                       {label}
-                    </a>
+                    </Link>
                   ))}
                 </div>
               ) : null}
@@ -184,7 +185,7 @@ export function AppHeader({
                     </div>
                   </div>
                   {showWishlist ? (
-                    <a
+                    <Link
                       href="/wishlist"
                       onClick={() => setMobileMenuOpen(false)}
                       className={`flex min-h-11 items-center justify-between rounded-lg px-3 text-[15px] font-medium ${pathname.startsWith('/wishlist') ? 'bg-[#e3f3d8] text-[#1b5e20]' : 'text-[#142016]'}`}
@@ -195,15 +196,15 @@ export function AppHeader({
                           {wishlistCount > 99 ? '99+' : wishlistCount}
                         </span>
                       ) : null}
-                    </a>
+                    </Link>
                   ) : null}
-                  <a
+                  <Link
                     href="/account/settings"
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex min-h-11 items-center rounded-lg px-3 text-[15px] font-medium ${pathname.startsWith('/account/settings') ? 'bg-[#e3f3d8] text-[#1b5e20]' : 'text-[#142016]'}`}
                   >
                     Account settings
-                  </a>
+                  </Link>
                   <form action={logoutAction}>
                     <SignOutButton className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-[15px] font-semibold text-[#963b2d]" />
                   </form>
@@ -211,12 +212,12 @@ export function AppHeader({
               ) : null}
               {!user ? (
                 <div className="mt-3 grid gap-2 border-t border-[#d5e4d4] pt-3 sm:hidden">
-                  <a href="/login" className="btn btn-secondary w-full" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/login" className="btn btn-secondary w-full" onClick={() => setMobileMenuOpen(false)}>
                     Login
-                  </a>
-                  <a href="/register" className="btn btn-primary w-full" onClick={() => setMobileMenuOpen(false)}>
+                  </Link>
+                  <Link href="/register" className="btn btn-primary w-full" onClick={() => setMobileMenuOpen(false)}>
                     Register
-                  </a>
+                  </Link>
                 </div>
               ) : null}
             </div>

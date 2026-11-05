@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 function sellerInitial(name) {
   return String(name || 'Farm')
     .trim()
@@ -9,7 +11,7 @@ export function SellerCard({ seller }) {
   const image = typeof seller.image === 'object' ? seller.image : null
   return (
     <article className="ui-card flex h-full flex-col overflow-hidden">
-      <a href={`/sellers/${seller.id}`} className="flex h-full flex-col text-inherit no-underline">
+      <Link href={`/sellers/${seller.id}`} className="flex h-full flex-col text-inherit no-underline">
         <div className="flex items-center gap-4 p-5">
           {image?.url ? (
             <img
@@ -35,7 +37,7 @@ export function SellerCard({ seller }) {
         <p className="mt-auto px-5 pb-5 text-sm leading-6 text-brand-muted">
           {seller.description || 'View this farm profile and its available products.'}
         </p>
-      </a>
+      </Link>
     </article>
   )
 }

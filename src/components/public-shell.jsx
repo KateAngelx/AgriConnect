@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { AppHeader } from './app-header'
 
 function FooterColumn({ title, links }) {
@@ -8,9 +9,9 @@ function FooterColumn({ title, links }) {
       <p className="text-[13px] font-semibold">{title}</p>
       <div className="mt-1">
         {links.map(([label, href]) => (
-          <a key={`${title}-${href}`} href={href} className="block py-2 text-[14px] leading-5 text-white/75 hover:text-white">
+          <Link key={`${title}-${href}`} href={href} className="block py-2 text-[14px] leading-5 text-white/75 hover:text-white">
             {label}
-          </a>
+          </Link>
         ))}
       </div>
     </div>
@@ -50,7 +51,8 @@ export function PublicFooter() {
             ['FAQ', '/contact#faq'],
             ['Shipping and delivery', '/how-it-works'],
             ['Orders and issues', '/contact#orders'],
-          ]}
+          ['Platform feedback', '/#platform-feedback'],
+        ]}
         />
         <FooterColumn
           title="My account"

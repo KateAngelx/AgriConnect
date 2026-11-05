@@ -1,7 +1,7 @@
 import { save } from './sync'
-import { readyStore } from './store'
+import { getStore, readyStore } from './store'
 import { sendPushNotifications } from './push-notifications'
-import { getSupabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 
 export async function notify(userId, title, body, href) {
   if (!userId) return null
@@ -30,8 +30,7 @@ export async function notify(userId, title, body, href) {
 }
 
 export async function listNotifications(userId) {
-  const store = await readyStore()
-  const client = getSupabaseAdmin()
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
   if (client) {
     const { data, error } = await client
       .from('notifications')
@@ -48,12 +47,14 @@ export async function listNotifications(userId) {
       read: Boolean(row.read),
       createdAt: row.created_at,
     }))
+    const store = getStore()
     store.notifications = [
       ...store.notifications.filter((note) => note.userId !== userId),
       ...notes,
     ]
     return notes
   }
+  const store = await readyStore()
   return store.notifications
     .filter((note) => note.userId === userId)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))

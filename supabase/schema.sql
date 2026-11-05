@@ -150,6 +150,13 @@ create table if not exists orders (
   items jsonb not null default '[]'::jsonb
 );
 
+create index if not exists orders_buyer_created_idx
+  on orders (buyer_id, created_at desc);
+create index if not exists orders_buyer_status_created_idx
+  on orders (buyer_id, status, created_at desc);
+create index if not exists orders_items_gin_idx
+  on orders using gin (items jsonb_path_ops);
+
 create table if not exists deliveries (
   id text primary key,
   order_id text not null,
@@ -162,6 +169,11 @@ create table if not exists deliveries (
   updated_at timestamptz default now()
 );
 
+create index if not exists deliveries_courier_status_updated_idx
+  on deliveries (courier_id, status, updated_at desc);
+create index if not exists deliveries_order_id_idx
+  on deliveries (order_id);
+
 create table if not exists payments (
   id text primary key,
   order_id text not null,
@@ -172,6 +184,9 @@ create table if not exists payments (
   provider_reference text default '',
   created_at timestamptz default now()
 );
+
+create index if not exists payments_order_created_idx
+  on payments (order_id, created_at desc);
 
 create table if not exists notifications (
   id text primary key,
