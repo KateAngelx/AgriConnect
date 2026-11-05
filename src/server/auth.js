@@ -8,6 +8,8 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 import { homeForRole, publicUser, readyStore } from './store'
 
 const SESSION_COOKIE = 'agriconnect-session'
+const secureSessionCookie = () =>
+  Boolean(process.env.VERCEL) || /^https:/i.test(process.env.NEXT_PUBLIC_SITE_URL || '')
 
 async function cookieStore() {
   return cookies()
@@ -19,7 +21,15 @@ export async function currentUser() {
   const store = await readyStore()
   const token = (await cookieStore()).get(SESSION_COOKIE)?.value
   if (!token) return null
-  const userId = store.sessions.get(token)
+  let userId = store.sessions.get(token)
+  if (!userId) {
+    const client = getSupabaseAdmin()
+    if (client) {
+      const { data } = await client.from('sessions').select('user_id').eq('token', token).maybeSingle()
+      userId = data?.user_id || ''
+      if (userId) store.sessions.set(token, userId)
+    }
+  }
   return publicUser(store.users.get(userId))
 }
 
@@ -30,7 +40,7 @@ export async function startSession(user) {
   ;(await cookieStore()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure: secureSessionCookie(),
     path: '/',
     maxAge: 60 * 60 * 24 * 7,
   })
@@ -200,7 +210,13 @@ export async function logoutAccount() {
   const store = await readyStore()
   const token = (await cookieStore()).get(SESSION_COOKIE)?.value
   if (token) store.sessions.delete(token)
-  ;(await cookieStore()).delete(SESSION_COOKIE)
+  ;(await cookieStore()).set(SESSION_COOKIE, '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: secureSessionCookie(),
+    path: '/',
+    expires: new Date(0),
+  })
   const client = getSupabaseAdmin()
   if (client && token) {
     await client.from('sessions').delete().eq('token', token)

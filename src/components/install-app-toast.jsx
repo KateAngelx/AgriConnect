@@ -53,10 +53,15 @@ export function InstallAppToast() {
       window.__agriconnectInstall = event
       setHasPrompt(true)
     }
-    syncPrompt()
+    const showDelay = window.setTimeout(() => {
+      syncPrompt()
+      setReady(true)
+    }, 1200)
     window.addEventListener('beforeinstallprompt', onPrompt)
-    setReady(true)
-    return () => window.removeEventListener('beforeinstallprompt', onPrompt)
+    return () => {
+      window.clearTimeout(showDelay)
+      window.removeEventListener('beforeinstallprompt', onPrompt)
+    }
   }, [])
 
   if (!ready) return null
@@ -82,7 +87,7 @@ export function InstallAppToast() {
   const body = insecureAndroid
     ? 'Android can install the app only from a secure https address. A plain http link on Wi-Fi will not show the install dialog.'
     : ios
-      ? 'Opens the share sheet. Choose Add to Home Screen, or Add Bookmark from that same sheet. Use Safari if this page is open in another app.'
+      ? 'Tap Share, then choose Add to Home Screen. For only a quick saved link, tap Share and choose Add Bookmark.'
       : hasPrompt
         ? 'Add AgriConnect to this phone and open it from the home screen.'
         : 'If the install dialog does not open, use the browser menu and choose Install app.'
@@ -95,9 +100,17 @@ export function InstallAppToast() {
       <p className="text-sm font-bold text-[#142016]">{title}</p>
       <p className="mt-1 text-[13px] leading-5 text-[#5c6f62]">{message || body}</p>
       <div className="mt-3 flex gap-2">
-        {insecureAndroid ? null : (
+        {insecureAndroid ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setMessage('Open Chrome on an HTTPS address, such as your deployed site. Then use Chrome menu and choose Add to Home screen.')}
+          >
+            How to install
+          </button>
+        ) : (
           <button type="button" className="btn btn-primary" onClick={install}>
-            {ios ? 'Add to Home Screen' : 'Install'}
+            {ios ? 'Install or bookmark' : hasPrompt ? 'Install' : 'Install app'}
           </button>
         )}
         <button type="button" className="btn btn-secondary" onClick={dismiss}>Not now</button>
