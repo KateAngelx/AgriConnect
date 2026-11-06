@@ -1,9 +1,8 @@
-import Link from 'next/link'
 import { MarketplaceAssistant } from '@/components/marketplace-assistant'
-import { ProductCard } from '@/components/product-card'
 import { ProductSort } from '@/components/product-sort'
+import { ProductResults } from '@/components/product-results'
 import { SiteShell } from '@/components/site-shell'
-import { getCatalogSnapshot, listCategories, listProducts } from '@/server/catalog'
+import { getCatalogSnapshot, listCategories, listProductsPage } from '@/server/catalog'
 
 export default async function ProductsPage({ searchParams }) {
   const query = await searchParams
@@ -17,19 +16,9 @@ export default async function ProductsPage({ searchParams }) {
   if (typeof query.fulfillment === 'string' && query.fulfillment) filterParams.set('fulfillment', query.fulfillment)
   if (query.available === 'true') filterParams.set('available', 'true')
   if (sort !== '-createdAt') filterParams.set('sort', sort)
-  const withParams = (values) => {
-    const params = new URLSearchParams(filterParams)
-    Object.entries(values).forEach(([key, value]) => {
-      if (value) params.set(key, String(value))
-      else params.delete(key)
-    })
-    const queryString = params.toString()
-    return queryString ? `/products?${queryString}` : '/products'
-  }
-
-  const catalog = await getCatalogSnapshot()
+  const catalog = await getCatalogSnapshot({ includeImages: false, includeReviews: false })
   const [products, categories] = await Promise.all([
-    listProducts({
+    listProductsPage({
       search,
       category,
       sort: sort === 'price' || sort === '-price' ? sort : '-createdAt',
@@ -117,69 +106,24 @@ export default async function ProductsPage({ searchParams }) {
             </form>
           </aside>
 
-          <section>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-              <p className="text-sm text-brand-muted">
-                {products.totalDocs === 1 ? '1 product' : `${products.totalDocs} products`}
-                {search ? ` for “${search}”` : ''}
-              </p>
-              <ProductSort
-                search={search}
-                category={category}
-                fulfillment={typeof query.fulfillment === 'string' ? query.fulfillment : ''}
-                available={query.available === 'true'}
-                sort={sort}
-              />
-            </div>
-
-            {products.docs.length ? (
-              <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
-                {products.docs.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            ) : (
-              <div className="page-empty">
-                <h2 className="text-xl font-semibold text-brand-900">No products match these filters</h2>
-                <p className="mt-2 text-brand-muted">Try another category, or clear the search to see every active listing.</p>
-                <Link href="/products" className="btn btn-secondary mt-5">Clear filters</Link>
-              </div>
-            )}
-
-            {products.totalPages > 1 && (
-              <nav className="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="Pagination">
-                {page > 1 ? (
-                  <Link href={withParams({ page: page - 1 })} className="btn btn-secondary" rel="prev">
-                    Previous
-                  </Link>
-                ) : (
-                  <span className="btn btn-secondary opacity-40">Previous</span>
-                )}
-                {Array.from({ length: products.totalPages }, (_, index) => {
-                  const number = index + 1
-                  const current = page === number
-                  return (
-                    <Link
-                      key={number}
-                      href={withParams({ page: number })}
-                      aria-label={`Page ${number}`}
-                      aria-current={current ? 'page' : undefined}
-                      className={`grid size-9 place-items-center rounded-lg text-[13px] font-semibold ${current ? 'bg-[#1d1d1f] text-white' : 'bg-white text-[#1d1d1f] ring-1 ring-[#e5e5ea]'}`}
-                    >
-                      {number}
-                    </Link>
-                  )
-                })}
-                {page < products.totalPages ? (
-                  <Link href={withParams({ page: page + 1 })} className="btn btn-secondary" rel="next">
-                    Next
-                  </Link>
-                ) : (
-                  <span className="btn btn-secondary opacity-40">Next</span>
-                )}
-              </nav>
-            )}
-          </section>
+          <div className="space-y-4">
+            <ProductSort
+              search={search}
+              category={category}
+              fulfillment={typeof query.fulfillment === 'string' ? query.fulfillment : ''}
+              available={query.available === 'true'}
+              sort={sort}
+            />
+            <ProductResults
+              key={filterParams.toString()}
+              initialProducts={products.docs}
+              totalDocs={products.totalDocs}
+              totalPages={products.totalPages}
+              initialPage={page}
+              search={search}
+              baseParams={filterParams.toString()}
+            />
+          </div>
         </div>
         </div>
       </main>

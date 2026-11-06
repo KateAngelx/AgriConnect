@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { isPublicProduct, listProducts, listSellers, summarizeRatings } from '../src/server/catalog.js'
+import { isPublicProduct, listProducts, listProductsPage, listSellers, summarizeRatings } from '../src/server/catalog.js'
 import { submitFeedback } from '../src/server/feedback.js'
 import { submitBuyerReport } from '../src/server/reports.js'
 import { saveBuyerReview } from '../src/server/reviews.js'
@@ -47,9 +47,12 @@ test('public catalog listings return five records per page', async () => {
 
   try {
     const products = await listProducts({ limit: 5, page: 2 })
+    const pagedProducts = await listProductsPage({ limit: 5, page: 2 })
     const sellers = await listSellers({ limit: 5, page: 2 })
     assert.equal(products.docs.length, 2)
     assert.equal(products.totalPages, 2)
+    assert.equal(pagedProducts.docs.length, 2)
+    assert.equal(pagedProducts.totalPages, 2)
     assert.equal(sellers.docs.length, 2)
     assert.equal(sellers.totalPages, 2)
   } finally {

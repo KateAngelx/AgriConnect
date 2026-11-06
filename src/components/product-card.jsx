@@ -6,8 +6,13 @@ function relationName(value) {
 }
 
 function mediaURL(product) {
+  if (product.imageSrc) return product.imageSrc
   const first = product.images?.[0]
-  return typeof first === 'object' && first?.url ? first.url : null
+  const url = typeof first === 'object' && first?.url ? first.url : null
+  if (url?.startsWith('data:image/')) {
+    return `/api/products/${encodeURIComponent(product.id)}/image`
+  }
+  return url
 }
 
 function stockBadge(stock) {
@@ -33,7 +38,7 @@ export function ProductCard({ product }) {
       <Link href={`/products/${product.id}`} className="flex h-full flex-col text-inherit no-underline">
         <div className="product-photo">
           {image ? (
-            <img src={image} alt={imageAlt} />
+            <img src={image} alt={imageAlt} loading="lazy" decoding="async" />
           ) : (
             <div className="grid h-full place-items-center px-6 text-center text-[13px] text-brand-muted">No photo yet</div>
           )}

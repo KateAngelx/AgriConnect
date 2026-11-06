@@ -192,6 +192,54 @@ export async function listProducts(filters = {}, store = null) {
   return productsPage(store || (await getCatalogSnapshot()), filters)
 }
 
+export async function listProductsPage(filters = {}, store = null) {
+  const useSupabase = supabaseEnv().enabled
+  store ||= await getCatalogSnapshot({
+    includeImages: !useSupabase,
+    includeReviews: !useSupabase,
+  })
+  const result = productsPage(store, filters)
+  if (result.docs.length === 0) return result
+  if (!useSupabase) {
+    return {
+      ...result,
+      docs: result.docs.map((product) => ({
+        ...product,
+        imageSrc: `/api/products/${encodeURIComponent(product.id)}/image`,
+        images: [],
+      })),
+    }
+  }
+
+  const client = getSupabaseAdmin()
+  if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+
+  const productIds = result.docs.map((product) => product.id)
+  const [reviewsResult] = await Promise.all([
+    client
+      .from('product_reviews')
+      .select('product_id,rating,moderation_status')
+      .in('product_id', productIds),
+  ])
+  const ratingsByProduct = new Map()
+  for (const review of optionalReviewRows(reviewsResult)) {
+    if (review.moderation_status && review.moderation_status !== 'published') continue
+    const ratings = ratingsByProduct.get(review.product_id) || []
+    ratings.push({ rating: review.rating })
+    ratingsByProduct.set(review.product_id, ratings)
+  }
+
+  return {
+    ...result,
+    docs: result.docs.map((product) => ({
+      ...product,
+      imageSrc: `/api/products/${encodeURIComponent(product.id)}/image`,
+      images: [],
+      ...summarizeRatings(ratingsByProduct.get(product.id)),
+    })),
+  }
+}
+
 export async function getProduct(id, store = null) {
   store ||= await getCatalogSnapshot()
   const product = store.products.find((item) => item.id === id && isPublicProduct(item))
