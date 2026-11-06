@@ -17,6 +17,7 @@ export async function placeOrderAction(_state, formData) {
     deliveryLng: formData.get('deliveryLng'),
     instructions: formData.get('instructions'),
     paymentMethod: formData.get('paymentMethod'),
+    cartItemIds: formData.getAll('cartItemIds'),
     origin: `${proto}://${host}`,
   })
   if (result.redirectTo) redirect(result.redirectTo)

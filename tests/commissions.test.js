@@ -9,7 +9,7 @@ delete process.env.SUPABASE_SERVICE_ROLE_KEY
 
 const { DELIVERY_FEE, PLATFORM_FEE_PER_KILO, kiloPlatformFee, orderTotal, collectCash } = await import('../src/server/payments.js')
 const { readyStore } = await import('../src/server/store.js')
-const { updateAssignment, listCourierWork, listCommissions, listDeliveryHistory, deliverySnapshot } = await import('../src/server/delivery.js')
+const { updateAssignment, submitProofOfDelivery, listCourierWork, listCommissions, listDeliveryHistory, deliverySnapshot } = await import('../src/server/delivery.js')
 const { markCommissionPaid, listAssignments, platformReport } = await import('../src/server/admin.js')
 const { advanceOrder, cancelOrder, nextSellerAction } = await import('../src/server/seller.js')
 const { publishAdminAnnouncement } = await import('../src/server/announcements.js')
@@ -161,17 +161,27 @@ test('seller cancellation notifies the assigned courier and closes the assignmen
 test('cash order: commission becomes ready after delivery and admin can mark it paid', async () => {
   const store = await readyStore()
   const { order, delivery } = makeOrder(store, { id: 'o-cash' })
+  order.status = 'awaiting-delivery'
 
   // Not ready before delivery.
   assert.equal((await markCommissionPaid(admin, delivery.id)).error, 'Pay a commission after delivery is complete.')
 
   // Courier walks the assignment: open → accepted → picked-up → in-transit → delivered.
-  for (const expected of ['accepted', 'picked-up', 'in-transit', 'delivered']) {
+  for (const expected of ['accepted', 'picked-up', 'in-transit']) {
     assert.deepEqual(await updateAssignment(courier, delivery.id, ''), { ok: true })
     assert.equal(delivery.status, expected)
   }
-  assert.equal(delivery.courierId, courier.id)
+  const proof = new File([new Uint8Array([137, 80, 78, 71])], 'proof.png', { type: 'image/png' })
+  assert.deepEqual(await submitProofOfDelivery(courier, delivery.id, proof), { ok: true })
   assert.equal(order.status, 'delivered')
+  assert.equal(delivery.status, 'delivered')
+  const confirmedAt = new Date().toISOString()
+  delivery.buyerConfirmedAt = confirmedAt
+  order.buyerConfirmedAt = confirmedAt
+  order.status = 'completed'
+  delivery.status = 'completed'
+  assert.equal(order.status, 'completed')
+  assert.equal(delivery.courierId, courier.id)
   assert.equal(delivery.commission, DELIVERY_FEE)
   assert.equal(delivery.commissionStatus, 'pending')
   assert.equal((await updateAssignment(courier, delivery.id, '')).error, 'This assignment is already complete.')
@@ -210,8 +220,18 @@ test('cash order: commission becomes ready after delivery and admin can mark it 
 test('online-paid order: commission still appears as ready to pay after delivery', async () => {
   const store = await readyStore()
   const { order, delivery } = makeOrder(store, { id: 'o-online', paymentMethod: 'paymongo', paymentStatus: 'paid' })
-  for (let i = 0; i < 4; i += 1) await updateAssignment(courier, delivery.id, '')
-  assert.equal(delivery.status, 'delivered')
+  order.status = 'awaiting-delivery'
+  for (const expected of ['accepted', 'picked-up', 'in-transit']) {
+    assert.deepEqual(await updateAssignment(courier, delivery.id, ''), { ok: true })
+    assert.equal(delivery.status, expected)
+  }
+  const proof = new File([new Uint8Array([137, 80, 78, 71])], 'proof.png', { type: 'image/png' })
+  assert.deepEqual(await submitProofOfDelivery(courier, delivery.id, proof), { ok: true })
+  const confirmedAt = new Date().toISOString()
+  delivery.buyerConfirmedAt = confirmedAt
+  order.buyerConfirmedAt = confirmedAt
+  order.status = 'completed'
+  delivery.status = 'completed'
   assert.equal((await collectCash(order.id, courier)).error, 'This order is paid electronically.')
   const ready = (await listAssignments()).filter((d) => ['delivered', 'completed'].includes(d.status) && d.commissionStatus !== 'paid')
   assert.ok(ready.some((d) => d.id === delivery.id), 'online-paid delivery must be payable')
@@ -220,7 +240,8 @@ test('online-paid order: commission still appears as ready to pay after delivery
 
 test('another courier cannot take over an accepted assignment', async () => {
   const store = await readyStore()
-  const { delivery } = makeOrder(store, { id: 'o-steal' })
+  const { order, delivery } = makeOrder(store, { id: 'o-steal' })
+  order.status = 'awaiting-delivery'
   await updateAssignment(courier, delivery.id, '')
   assert.equal((await updateAssignment(otherCourier, delivery.id, '')).error, 'Another courier already accepted this assignment.')
   assert.equal((await updateAssignment({ ...otherCourier, status: 'pending' }, delivery.id, '')).error, 'Delivery tools unlock after approval.')
@@ -230,6 +251,7 @@ test('courier dashboard metrics, assignment privacy, delivery history, and earni
   const store = await readyStore()
   const baseline = await deliverySnapshot(courier)
   const { order, delivery } = makeOrder(store, { id: 'o-history' })
+  order.status = 'awaiting-delivery'
   order.paymentMethod = 'cash-on-delivery'
   order.deliveryLat = 14.2
   order.deliveryLng = 121.1
@@ -267,6 +289,11 @@ test('courier dashboard metrics, assignment privacy, delivery history, and earni
   assert.equal(summary.active, baseline.active + 1)
   await updateAssignment(courier, delivery.id, '')
   await updateAssignment(courier, delivery.id, '')
+  const proof = new File([new Uint8Array([137, 80, 78, 71])], 'proof.png', { type: 'image/png' })
+  assert.deepEqual(await submitProofOfDelivery(courier, delivery.id, proof), { ok: true })
+  delivery.buyerConfirmedAt = new Date().toISOString()
+  order.buyerConfirmedAt = delivery.buyerConfirmedAt
+  order.status = 'completed'
   summary = await deliverySnapshot(courier)
   assert.equal(summary.completed, baseline.completed + 1)
   assert.equal(summary.earnings, baseline.earnings + DELIVERY_FEE)
@@ -288,6 +315,7 @@ test('courier dashboard metrics, assignment privacy, delivery history, and earni
   assert.equal((await listDeliveryHistory(otherCourier)).some((item) => item.id === delivery.id), false)
 
   const { order: cancelledOrder, delivery: cancelledDelivery } = makeOrder(store, { id: 'o-cancelled-history' })
+  cancelledOrder.status = 'awaiting-delivery'
   await updateAssignment(courier, cancelledDelivery.id, '')
   cancelledDelivery.status = 'cancelled'
   cancelledDelivery.updatedAt = new Date().toISOString()

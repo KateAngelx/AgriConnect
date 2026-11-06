@@ -73,6 +73,8 @@ export default async function SellerProductsPage({ searchParams }) {
             title={group.title}
             description={group.status === 'active' ? 'Buyers can order these listings.' : group.status === 'unavailable' ? 'Temporarily hidden from buyers; you can reactivate them when ready.' : 'Listings in this status.'}
             count={group.rows.length}
+            fit
+            bodyClassName="p-4 sm:p-5"
             href={group.status === 'active' && !creating ? '/seller/products?new=1' : ''}
             linkLabel="Add product"
             linkVariant={group.status === 'active' && !creating ? 'primary' : ''}
@@ -80,12 +82,21 @@ export default async function SellerProductsPage({ searchParams }) {
           >
             <PagedRows>
               {group.rows.map((product) => (
-                <li key={product.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-[#142016]">{product.name}</p>
-                    <p className="text-[13px] text-[#5c6f62]">
-                      {peso(product.price)} / {product.unit} · {product.stock} in stock · {product.location}
-                    </p>
+                <li key={product.id} className="flex flex-col items-stretch gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#d5e4d4] bg-[#eef0ea]">
+                      {product.images?.[0]?.url ? (
+                        <img src={product.images[0].url} alt={product.name} className="size-full object-cover" />
+                      ) : (
+                        <DashboardIcon name="box" className="size-5 text-[#78936d]" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[#142016]">{product.name}</p>
+                      <p className="text-[13px] text-[#5c6f62]">
+                        {peso(product.price)} / {product.unit} · {product.stock} in stock · {product.location}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <StatusBadge status={pretty(product.status)} />

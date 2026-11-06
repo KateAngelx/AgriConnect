@@ -16,7 +16,7 @@ import {
   computePlatformCommission,
   settlePlatformFeeOnline,
 } from './payments'
-import { save } from './sync'
+import { mutateBuyerCart, save, saveCart } from './sync'
 import { readyStore } from './store'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { orderFromDatabaseRow } from './order-record'
@@ -25,8 +25,27 @@ import { cancelOrderAndReleaseReservations } from './order-cancellation'
 
 export { itemSellerId }
 
+export async function confirmBuyerReceived(user, orderId) {
+  if (!isApprovedBuyer(user)) return { error: 'Buyer tools are locked.' }
+  const store = await readyStore()
+  const order = store.orders.get(String(orderId || ''))
+  if (!order || order.buyer !== user.id) return { error: 'Order not found.' }
+  const delivery = store.deliveries.find((item) => item.orderId === order.id)
+  if (order.status !== 'delivered' || !delivery?.proofOfDelivery?.url) {
+    return { error: 'The courier must upload proof before you can confirm receipt.' }
+  }
+  if (delivery.buyerConfirmedAt) return { ok: true, alreadyConfirmed: true }
+  const confirmedAt = new Date().toISOString()
+  order.buyerConfirmedAt = confirmedAt
+  delivery.buyerConfirmedAt = confirmedAt
+  order.status = 'completed'
+  await notify(order.buyer, `${order.reference} completed`, 'You confirmed receipt. This order is now awaiting admin payment release.', `/buyer/orders?order=${order.id}`)
+  await save()
+  return { ok: true }
+}
+
 const ORDER_DETAIL_COLUMNS =
-  'id,reference,buyer_id,buyer_name,buyer_email,fulfillment,contact_number,delivery_address,delivery_landmark,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,subtotal,delivery_fee,platform_fee,platform_fee_status,created_at,items'
+  'id,reference,buyer_id,buyer_name,buyer_email,fulfillment,contact_number,delivery_address,delivery_landmark,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,subtotal,delivery_fee,platform_fee,platform_fee_status,buyer_confirmed_at,seller_payment_status,seller_released_at,seller_released_by,created_at,items'
 
 export async function listOrders(userId, requestedPage = 1) {
   const buyerId = userId ?? (await currentUser())?.id
@@ -118,10 +137,22 @@ export async function placeOrder(input) {
   }
   const cart = await getCart(user.id)
   if (!cart?.items?.length) return { error: 'Your cart is empty.' }
+  const selectedCartItemIds = Array.isArray(input.cartItemIds)
+    ? input.cartItemIds.map((id) => String(id))
+    : typeof input.cartItemIds === 'string'
+      ? input.cartItemIds.split(',').map((id) => id.trim()).filter(Boolean)
+      : null
+  const selectedIds = selectedCartItemIds ? new Set(selectedCartItemIds) : null
   const store = await readyStore()
   const groups = new Map()
-  for (const item of cart.items) {
-    const product = store.products.find((entry) => entry.id === item.productId)
+  const checkoutItems = selectedIds
+    ? cart.items.filter((item) => selectedIds.has(String(item.id)))
+    : cart.items
+  if (!checkoutItems.length) return { error: 'Select at least one available cart item.' }
+  for (const item of checkoutItems) {
+    const product = item.product && typeof item.product === 'object'
+      ? (store.products.find((entry) => entry.id === item.productId) || item.product)
+      : store.products.find((entry) => entry.id === item.productId)
     if (!product || product.status !== 'active' || product.seller?.status !== 'approved') {
       return { error: `${product?.name ?? 'A product'} is not available.` }
     }
@@ -218,30 +249,8 @@ export async function placeOrder(input) {
       await settlePlatformFeeOnline(order.id)
     }
     createPaymentRecord(store, order)
-    if (fulfillment === 'delivery') {
-      store.deliveries.unshift({
-        id: crypto.randomUUID(),
-        orderId: order.id,
-        courierId: '',
-        status: 'open',
-        commission: DELIVERY_FEE,
-        commissionStatus: 'pending',
-        note: '',
-        updates: [
-          {
-            at: order.createdAt,
-            status: 'open',
-            note: 'Waiting for a courier.',
-          },
-        ],
-        updatedAt: order.createdAt,
-      })
-    }
     created.push(order)
   }
-
-  const savedCart = store.carts.get(user.id)
-  if (savedCart) savedCart.items = []
 
   if (wantsElectronicPayment) {
     const session = wantsXendit
@@ -271,6 +280,25 @@ export async function placeOrder(input) {
       if (payment) payment.providerReference = session.id
     }
     checkoutUrl = session.url
+  }
+
+  const selectedIdsForRemoval = new Set(checkoutItems.map((item) => String(item.id)))
+  if (supabaseEnv().serviceKey) {
+    for (const item of checkoutItems) {
+      await mutateBuyerCart({
+        buyerId: user.id,
+        operation: 'set',
+        cartId: cart.id,
+        itemId: item.id,
+        quantity: 0,
+      })
+    }
+  } else {
+    const savedCart = store.carts.get(user.id)
+    if (savedCart) {
+      savedCart.items = savedCart.items.filter((item) => !selectedIdsForRemoval.has(String(item.id)))
+      await saveCart(savedCart).catch(() => {})
+    }
   }
 
   for (const order of created) {

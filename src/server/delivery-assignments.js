@@ -4,7 +4,7 @@ import { readyStore } from './store'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { orderFromDatabaseRow } from './order-record'
 
-const DELIVERY_COLUMNS = 'id,order_id,courier_id,status,commission,commission_status,note,updates,updated_at'
+const DELIVERY_COLUMNS = 'id,order_id,courier_id,status,commission,commission_status,note,updates,proof_of_delivery,courier_payment_status,courier_released_at,courier_released_by,updated_at'
 const DELIVERY_ORDER_COLUMNS =
   'id,reference,buyer_id,buyer_name,fulfillment,contact_number,delivery_address,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,items'
 
@@ -72,6 +72,7 @@ export function deliveryAssignmentForViewer(store, delivery, order, viewerUserId
       note: update.note || '',
       at: update.at || '',
     })),
+    proofOfDelivery: delivery.proofOfDelivery || null,
   }
 
   if (accepted) {
@@ -131,6 +132,7 @@ export async function listDeliveryWorkForUser(user) {
     const orders = new Map((orderRows || []).map((row) => [row.id, orderFromDatabaseRow(row)]))
     const store = { products: [], sellers: [] }
     return rows
+      .filter((row) => row.status !== 'open' || orders.get(row.order_id)?.status === 'awaiting-delivery')
       .map((row) => {
         const order = orders.get(row.order_id) || null
         const delivery = {
@@ -142,6 +144,10 @@ export async function listDeliveryWorkForUser(user) {
           commissionStatus: row.commission_status || 'pending',
           note: row.note || '',
           updates: Array.isArray(row.updates) ? row.updates : [],
+          proofOfDelivery: row.proof_of_delivery || null,
+          courierPaymentStatus: row.courier_payment_status || row.commission_status || 'pending',
+          courierReleasedAt: row.courier_released_at || '',
+          courierReleasedBy: row.courier_released_by || '',
           updatedAt: row.updated_at || '',
         }
         return {
@@ -165,7 +171,11 @@ export async function listDeliveryWorkForUser(user) {
 
   const store = await readyStore()
   return store.deliveries
-    .filter((item) => item.status === 'open' || item.courierId === user.id)
+    .filter((item) => {
+      if (item.courierId === user.id) return true
+      if (item.status !== 'open') return false
+      return store.orders.get(item.orderId)?.status === 'awaiting-delivery'
+    })
     .map((item) => {
       const order = store.orders.get(item.orderId) || null
       return {

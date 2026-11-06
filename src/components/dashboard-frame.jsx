@@ -180,7 +180,10 @@ export function DashboardFrame({
             {pathname === '/checkout' ? (
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() => {
+                  if (window.history.length > 1) router.back()
+                  else router.replace('/account', { scroll: false })
+                }}
                 className="grid size-10 shrink-0 place-items-center rounded-xl border border-brand-800/12 bg-white text-brand-900 lg:hidden"
                 aria-label="Go back"
               >

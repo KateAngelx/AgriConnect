@@ -57,6 +57,32 @@ function CategoryCard({ category }) {
   )
 }
 
+function AllCategoryCard({ productCount }) {
+  const countLabel = productCount === 1 ? '1 product' : `${productCount} products`
+  return (
+    <Link
+      href="/products?category=all"
+      className="ui-card group flex h-full min-h-72 flex-col justify-between overflow-hidden p-5 transition-colors hover:border-[#d2d2d7] sm:p-6"
+    >
+      <div>
+        <span className="grid size-12 place-items-center rounded-full bg-[#edf8e8] text-[#4f8d3b]">
+          <CategoryIcon categoryId="default" className="size-7" />
+        </span>
+        <h2 className="mt-5 text-lg font-bold text-[#142016] sm:text-xl">All products</h2>
+        <p className="mt-2 text-sm leading-relaxed text-[#65766d]">
+          Browse every active listing from approved local sellers.
+        </p>
+      </div>
+      <div className="mt-5">
+        <p className="text-xs font-medium text-[#65766d]">{countLabel}</p>
+        <span className="mt-4 block text-sm font-bold text-[#4f8d3b] group-hover:text-[#3d8d29]">
+          Browse all products →
+        </span>
+      </div>
+    </Link>
+  )
+}
+
 function PromoCard() {
   return (
     <article className="ui-card relative flex h-full min-h-72 flex-col overflow-hidden">
@@ -146,17 +172,7 @@ export function CategoriesBrowser({ categories }) {
           </div>
         )}
 
-        {categories.length === 0 ? (
-          <div
-            className="page-empty mt-6"
-            role="status"
-          >
-            <CategoryIcon categoryId="default" className="mx-auto size-10 text-[#65766d]/50" />
-            <p className="mt-4 text-[#65766d]">
-              Categories will appear here once they are published in the marketplace.
-            </p>
-          </div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 && query.trim() ? (
           <div
             className="page-empty mt-6"
             role="status"
@@ -165,6 +181,13 @@ export function CategoriesBrowser({ categories }) {
           </div>
         ) : (
           <ul className="mt-6 grid list-none gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {!query.trim() && (
+              <li className="flex">
+                <AllCategoryCard
+                  productCount={categories.reduce((total, category) => total + Number(category.productCount || 0), 0)}
+                />
+              </li>
+            )}
             {filtered.map((category) => (
               <li key={category.id} className="flex">
                 <CategoryCard category={category} />

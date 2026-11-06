@@ -9,12 +9,12 @@ import { ConfirmButton } from '@/components/confirm-button'
 import { formatEstimatedArrival } from '@/lib/delivery-eta'
 import { PagedRows } from '@/components/paged-rows'
 import { CourierLocationSharing } from '@/components/courier-location-sharing'
+import { ProofDeliveryForm } from '@/components/proof-delivery-form'
 
 const nextLabel = {
   open: 'Accept assignment',
   accepted: 'Mark courier picked up',
   'picked-up': 'Mark out for delivery',
-  'in-transit': 'Mark delivered',
 }
 
 const progressSteps = [
@@ -110,6 +110,9 @@ export function DeliveryAssignmentDetail({ assignment }) {
             {nextLabel[assignment.status]}
           </ConfirmButton>
         </form>
+      ) : null}
+      {assignment.status === 'in-transit' && assignment.isMine ? (
+        <ProofDeliveryForm deliveryId={assignment.id} />
       ) : null}
       {assignment.isMine &&
       assignment.order?.canCollectCash ? (

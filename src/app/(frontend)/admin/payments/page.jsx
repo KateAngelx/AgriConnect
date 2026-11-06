@@ -1,4 +1,4 @@
-import { payCommissionAction, payPlatformCommissionAction } from '@/app/(frontend)/admin/actions'
+import { payCommissionAction, payPlatformCommissionAction, paySellerAction } from '@/app/(frontend)/admin/actions'
 import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
 import { PeriodFilter } from '@/components/period-filter'
 import { AlertBanner, StatusBadge, WorkSection, workGridClass } from '@/components/dashboard-ui'
@@ -47,7 +47,11 @@ export default async function AdminPaymentsPage({ searchParams }) {
   )
   const readyToPay = deliveries.filter(
     (delivery) =>
-      ['delivered', 'completed'].includes(delivery.status) && delivery.commissionStatus !== 'paid',
+      delivery.status === 'completed' &&
+      delivery.buyerConfirmedAt &&
+      delivery.proofOfDelivery?.url &&
+      delivery.courierPaymentStatus !== 'released' &&
+      delivery.commissionStatus !== 'paid',
   )
   const paidOut = deliveriesInRange.filter((delivery) => delivery.commissionStatus === 'paid')
 
@@ -262,6 +266,38 @@ export default async function AdminPaymentsPage({ searchParams }) {
                 </div>
               </li>
             ))}
+          </PagedRows>
+        </WorkSection>
+
+        <WorkSection
+          title="Seller payments awaiting release"
+          description="Orders completed by the buyer. Amounts are manually marked released only after buyer confirmation."
+          count={store.orders ? [...store.orders.values()].filter((order) =>
+            order.status === 'completed' && order.sellerPaymentStatus !== 'released'
+          ).length : 0}
+        >
+          <PagedRows>
+            {[...(store.orders?.values() || [])]
+              .filter((order) => order.status === 'completed' && order.sellerPaymentStatus !== 'released')
+              .map((order) => (
+                <li key={order.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[#142016]">{order.reference}</p>
+                    <p className="text-[13px] text-[#5c6f62]">
+                      Buyer confirmed {pretty(order.buyerConfirmedAt)} · Platform fee {peso(order.platformFee || 0)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <p className="text-sm font-semibold">
+                      {peso(Math.max(0, Number(order.subtotal || 0) - Number(order.platformFee || 0)))}
+                    </p>
+                    <form action={paySellerAction}>
+                      <input type="hidden" name="orderId" value={order.id} />
+                      <button type="submit" className="btn btn-dark">Mark seller paid</button>
+                    </form>
+                  </div>
+                </li>
+              ))}
           </PagedRows>
         </WorkSection>
 

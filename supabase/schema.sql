@@ -173,8 +173,19 @@ create table if not exists deliveries (
   commission_status text not null default 'pending',
   note text default '',
   updates jsonb not null default '[]'::jsonb,
+  proof_of_delivery jsonb,
   updated_at timestamptz default now()
 );
+
+alter table deliveries add column if not exists proof_of_delivery jsonb;
+alter table deliveries add column if not exists courier_payment_status text not null default 'pending';
+alter table deliveries add column if not exists courier_released_at timestamptz;
+alter table deliveries add column if not exists courier_released_by text;
+alter table orders add column if not exists buyer_confirmed_at timestamptz;
+alter table orders add column if not exists seller_payment_status text not null default 'pending';
+alter table orders add column if not exists seller_released_at timestamptz;
+alter table orders add column if not exists seller_released_by text;
+create unique index if not exists deliveries_order_id_unique_idx on deliveries (order_id);
 
 create index if not exists deliveries_courier_status_updated_idx
   on deliveries (courier_id, status, updated_at desc);

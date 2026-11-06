@@ -88,6 +88,7 @@ async function SellerOrderSections({ user }) {
         count={(grouped['needs-you'] || []).length}
         href="/seller/orders"
         linkLabel="Open orders"
+        fit
         empty={<p className="text-sm text-[#5c6f62]">No orders are waiting on you.</p>}
       >
         <OrderPreview rows={grouped['needs-you'] || []} />
@@ -98,6 +99,7 @@ async function SellerOrderSections({ user }) {
         count={(grouped.active || []).length}
         href="/seller/orders"
         linkLabel="Open orders"
+        fit
         empty={<p className="text-sm text-[#5c6f62]">No orders are in progress with a courier.</p>}
       >
         <OrderPreview rows={grouped.active || []} />
@@ -108,6 +110,7 @@ async function SellerOrderSections({ user }) {
         count={(grouped.completed || []).length}
         href="/seller/earnings"
         linkLabel="View earnings"
+        fit
         empty={<p className="text-sm text-[#5c6f62]">Completed orders will show up here.</p>}
       >
         <OrderPreview rows={grouped.completed || []} />

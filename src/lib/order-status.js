@@ -22,7 +22,7 @@ export const DELIVERY_STAGES = [
 ]
 
 export const ORDER_STATUS_LABELS = {
-  placed: 'Order placed',
+  placed: 'Pending Seller Confirmation',
   confirmed: 'Order confirmed',
   preparing: 'Preparing order',
   'ready-for-pickup': 'Ready for pickup',
@@ -31,8 +31,8 @@ export const ORDER_STATUS_LABELS = {
   'delivery-assigned': 'Delivery assignment accepted',
   'courier-picked-up': 'Picked up by delivery partner',
   'out-for-delivery': 'Out for delivery',
-  delivered: 'Delivered',
-  completed: 'Completed',
+  delivered: 'Delivered - Awaiting Buyer Confirmation',
+  completed: 'Completed - Awaiting Admin Payment Release',
   cancelled: 'Cancelled',
   'delivery-failed': 'Delivery failed',
 }

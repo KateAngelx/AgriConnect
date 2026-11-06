@@ -20,6 +20,7 @@ export default async function InventoryPage({ searchParams }) {
           title="Stock"
           description="Update how much buyers can still purchase."
           count={products.length}
+          fit
           empty={<p className="text-sm text-[#5c6f62]">Add products first, then update quantities here.</p>}
         >
           <PagedRows>

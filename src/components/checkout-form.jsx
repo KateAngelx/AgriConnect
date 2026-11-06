@@ -134,6 +134,9 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
 
   return (
     <form action={checkoutAction} className="grid gap-8 lg:grid-cols-[1fr_360px]">
+      {summary.items.map((line) => (
+        <input key={line.cartItemId} type="hidden" name="cartItemIds" value={line.cartItemId} />
+      ))}
       <section className="ui-card space-y-6 p-5 sm:p-6">
         {state.error ? (
           <p role="alert" className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">

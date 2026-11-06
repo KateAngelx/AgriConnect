@@ -4,57 +4,9 @@ import { useActionState, useState } from 'react'
 import { saveProductAction } from '@/app/(frontend)/seller/actions'
 import { DashboardIcon } from '@/components/dashboard-icons'
 
-async function loadPhoto(file) {
-  if (typeof createImageBitmap === 'function') {
-    try {
-      return await createImageBitmap(file)
-    } catch {
-      // Some phone photo formats need the image element path.
-    }
-  }
-  const objectUrl = URL.createObjectURL(file)
-  try {
-    const image = await new Promise((resolve, reject) => {
-      const element = new Image()
-      element.onload = () => resolve(element)
-      element.onerror = () => reject(new Error('Could not read that photo. Try a JPG.'))
-      element.src = objectUrl
-    })
-    return image
-  } finally {
-    URL.revokeObjectURL(objectUrl)
-  }
-}
-
-async function photoDataUrl(file) {
-  if (!file || (file.type && !file.type.startsWith('image/'))) {
-    throw new Error('Choose a photo.')
-  }
-  const bitmap = await loadPhoto(file)
-  const max = 1280
-  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height))
-  const width = Math.max(1, Math.round(bitmap.width * scale))
-  const height = Math.max(1, Math.round(bitmap.height * scale))
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const context = canvas.getContext('2d')
-  context.drawImage(bitmap, 0, 0, width, height)
-  bitmap.close?.()
-  let quality = 0.82
-  let data = canvas.toDataURL('image/jpeg', quality)
-  while (data.length > 700_000 && quality > 0.45) {
-    quality -= 0.1
-    data = canvas.toDataURL('image/jpeg', quality)
-  }
-  if (data.length > 1_000_000) {
-    throw new Error('That photo is too large. Try another one.')
-  }
-  return data
-}
-
-function ProductPhotoField({ initial }) {
+function ProductPhotoField({ initial, productId = '' }) {
   const [preview, setPreview] = useState(initial || '')
+  const [savedUrl, setSavedUrl] = useState(initial || '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -62,13 +14,33 @@ function ProductPhotoField({ initial }) {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Use a JPG, PNG, or WebP image.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('The photo is too large. Choose an image smaller than 5 MB.')
+      return
+    }
     setBusy(true)
     setError('')
+    const localPreview = URL.createObjectURL(file)
+    setPreview(localPreview)
     try {
-      setPreview(await photoDataUrl(file))
+      const form = new FormData()
+      form.set('file', file)
+      if (productId) form.set('productId', productId)
+      const response = await fetch('/api/seller/product-image', { method: 'POST', body: form })
+      const result = await response.json().catch(() => ({ error: 'Could not upload the photo.' }))
+      if (!response.ok || !result.url) throw new Error(result.error || 'Could not upload the photo.')
+      setPreview(result.url)
+      setSavedUrl(result.url)
     } catch (pickError) {
       setError(pickError.message || 'Could not use that photo.')
+      setPreview(initial || '')
+      setSavedUrl(initial || '')
     } finally {
+      URL.revokeObjectURL(localPreview)
       setBusy(false)
     }
   }
@@ -90,14 +62,14 @@ function ProductPhotoField({ initial }) {
             <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={onPick} disabled={busy} />
           </label>
           {preview ? (
-            <button type="button" className="btn btn-danger !size-9 !min-h-9 !p-0" onClick={() => { setPreview(''); setError('') }} aria-label="Remove selected photo" title="Remove selected photo">
+            <button type="button" className="btn btn-danger !size-9 !min-h-9 !p-0" onClick={() => { setPreview(''); setSavedUrl(''); setError('') }} aria-label="Remove selected photo" title="Remove selected photo">
               <DashboardIcon name="trash" className="size-4" />
             </button>
           ) : null}
         </div>
       </div>
       <p className="mt-2 text-[12px] text-[#5c6f62]">On a phone, Take photo opens the camera. Upload photo opens your library.</p>
-      <input type="hidden" name="imageUrl" value={preview} />
+      <input type="hidden" name="imageUrl" value={savedUrl} />
       {error ? <p role="alert" className="mt-2 text-sm text-[#963b2d]">{error}</p> : null}
     </div>
   )
@@ -199,7 +171,7 @@ export function ProductForm({ categories, product, commissionRate = 1 }) {
         </label>
         <input id="location" name="location" required defaultValue={product?.location || ''} className={field} />
       </div>
-      <ProductPhotoField initial={image} />
+      <ProductPhotoField initial={image} productId={product?.id || ''} />
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="flex items-center gap-2 text-sm font-bold">
           <input type="checkbox" name="pickup" value="yes" defaultChecked={product ? product.pickup : true} />

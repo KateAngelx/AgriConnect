@@ -7,6 +7,7 @@ import { PagedRows } from '@/components/paged-rows'
 import { pretty } from '@/lib/dashboard-format'
 import { requireAdmin } from '@/server/guards'
 import { reviewsForAdmin } from '@/server/reviews'
+import { StarRating } from '@/components/star-rating'
 
 const reviewStatuses = ['all', 'published', 'hidden', 'removed']
 
@@ -103,7 +104,8 @@ export default async function AdminReviewModerationPage({ searchParams }) {
                       {review.productName}
                     </Link>
                     <p className="mt-1 text-sm text-brand-muted">
-                      {review.reviewerName} · {review.rating} of 5 stars ·{' '}
+                      {review.reviewerName} ·{' '}
+                      <StarRating rating={review.rating} size="sm" showValue className="text-brand-muted" /> ·{' '}
                       {review.createdAt
                         ? new Date(review.createdAt).toLocaleString('en-PH')
                         : 'Date unavailable'}
@@ -125,8 +127,9 @@ export default async function AdminReviewModerationPage({ searchParams }) {
                     <p className="whitespace-pre-wrap text-sm leading-6 text-brand-900">
                       {review.body || 'No written comment.'}
                     </p>
-                    <p className="mt-2 text-xs text-brand-muted">
-                      Customer rating: {review.rating} of 5 · Review date:{' '}
+                    <p className="mt-2 flex items-center gap-2 text-xs text-brand-muted">
+                      <span>Customer rating:</span>
+                      <StarRating rating={review.rating} size="sm" showValue /> · Review date:{' '}
                       {review.createdAt
                         ? new Date(review.createdAt).toLocaleString('en-PH')
                         : 'Date unavailable'}

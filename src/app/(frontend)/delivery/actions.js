@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { currentUser } from '@/server/auth'
 import { hasRole, isApprovedDelivery } from '@/server/roles'
-import { courierCollect, saveServiceArea, updateAssignment } from '@/server/delivery'
+import { courierCollect, saveServiceArea, submitProofOfDelivery, updateAssignment } from '@/server/delivery'
 import { readyStore } from '@/server/store'
 
 async function courier() {
@@ -41,6 +41,14 @@ export async function collectDeliveryAction(formData) {
   const result = await courierCollect(user, formData.get('orderId'))
   if (result.error) redirect(`/delivery/deliveries?error=${encodeURIComponent(result.error)}`)
   redirect('/delivery/deliveries?success=Cash%20collection%20recorded')
+}
+
+export async function proofDeliveryAction(formData) {
+  const user = await courier()
+  const deliveryId = String(formData.get('deliveryId') || '')
+  const result = await submitProofOfDelivery(user, deliveryId, formData.get('proof'))
+  if (result.error) redirect(`/delivery/deliveries?job=${encodeURIComponent(deliveryId)}&error=${encodeURIComponent(result.error)}`)
+  redirect(`/delivery/deliveries?job=${encodeURIComponent(deliveryId)}&success=Proof%20of%20delivery%20submitted`)
 }
 
 export async function serviceAreaAction(_state, formData) {

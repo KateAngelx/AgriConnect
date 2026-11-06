@@ -294,14 +294,41 @@ export async function markCommissionPaid(actor, deliveryId) {
   if (!['delivered', 'completed'].includes(delivery.status)) {
     return { error: 'Pay a commission after delivery is complete.' }
   }
+  const order = store.orders.get(delivery.orderId)
+  if (!order || order.status !== 'completed' || !delivery.buyerConfirmedAt || !delivery.proofOfDelivery?.url) {
+    return { error: 'Release the courier fee only after proof and buyer confirmation.' }
+  }
+  if (delivery.courierPaymentStatus === 'released' || delivery.commissionStatus === 'paid') {
+    return { ok: true, alreadyReleased: true }
+  }
   delivery.commission = DELIVERY_FEE
   delivery.commissionStatus = 'paid'
+  delivery.courierPaymentStatus = 'released'
+  delivery.courierReleasedAt = new Date().toISOString()
+  delivery.courierReleasedBy = actor.id
   await notify(
     delivery.courierId,
     'Commission paid',
-    `₱${DELIVERY_FEE} was marked paid.`,
+    `₱${DELIVERY_FEE} was manually marked as released by an administrator.`,
     '/delivery/commissions',
   )
+  await save()
+  return { ok: true }
+}
+
+export async function markSellerPaid(actor, orderId) {
+  if (actor.role !== 'admin') return { error: 'Only administrators can release seller payments.' }
+  const store = await readyStore()
+  const order = store.orders.get(String(orderId || ''))
+  if (!order) return { error: 'Order not found.' }
+  if (order.status !== 'completed') {
+    return { error: 'Release seller payment only after buyer confirmation.' }
+  }
+  if (order.sellerPaymentStatus === 'released') return { ok: true, alreadyReleased: true }
+  const releasedAt = new Date().toISOString()
+  order.sellerPaymentStatus = 'released'
+  order.sellerReleasedAt = releasedAt
+  order.sellerReleasedBy = actor.id
   await save()
   return { ok: true }
 }

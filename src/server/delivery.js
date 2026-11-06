@@ -44,7 +44,6 @@ const steps = {
   open: 'accepted',
   accepted: 'picked-up',
   'picked-up': 'in-transit',
-  'in-transit': 'delivered',
 }
 
 export async function deliverySnapshot(user) {
@@ -93,7 +92,11 @@ export async function deliverySnapshot(user) {
   const completed = mine.filter((item) => ['delivered', 'completed'].includes(item.status))
   const pending = completed.filter((item) => item.commissionStatus !== 'paid')
   return {
-    open: store.deliveries.filter((item) => item.status === 'open' && !item.courierId).length,
+    open: store.deliveries.filter((item) =>
+      item.status === 'open' &&
+      !item.courierId &&
+      store.orders.get(item.orderId)?.status === 'awaiting-delivery'
+    ).length,
     assigned: mine.filter((item) => item.status === 'accepted').length,
     active: mine.filter((item) => ['picked-up', 'in-transit'].includes(item.status)).length,
     completed: completed.length,
@@ -279,11 +282,38 @@ export async function updateAssignment(user, deliveryId, note) {
   const delivery = store.deliveries.find((item) => item.id === deliveryId)
   const order = delivery ? store.orders.get(delivery.orderId) : null
   if (!delivery || !order) return { error: 'Assignment not found.' }
+  if (delivery.status === 'open' && order.status !== 'awaiting-delivery') {
+    return { error: 'This order has not been confirmed by the seller yet.' }
+  }
   if (delivery.status !== 'open' && delivery.courierId !== user.id) {
     return { error: 'Another courier already accepted this assignment.' }
   }
   const next = steps[delivery.status]
   if (!next) return { error: 'This assignment is already complete.' }
+  if (delivery.status === 'open') {
+    const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+    if (client) {
+      const acceptedAt = new Date().toISOString()
+      const claim = await client
+        .from('deliveries')
+        .update({
+          courier_id: user.id,
+          status: next,
+          updated_at: acceptedAt,
+          updates: [
+            ...(delivery.updates || []),
+            { at: acceptedAt, status: next, note: String(note ?? '').trim().slice(0, 240) },
+          ],
+        })
+        .eq('id', deliveryId)
+        .eq('status', 'open')
+        .is('courier_id', null)
+        .select('id')
+        .maybeSingle()
+      if (claim.error) return { error: `Could not accept assignment: ${claim.error.message}` }
+      if (!claim.data) return { error: 'Another courier already accepted this assignment.' }
+    }
+  }
   if (delivery.status === 'open') delivery.courierId = user.id
   delivery.status = next
   delivery.note = String(note ?? '').trim().slice(0, 240)
@@ -313,6 +343,71 @@ export async function updateAssignment(user, deliveryId, note) {
     delivery.note || 'Your courier updated the delivery.',
     `/buyer/orders/${order.id}`,
   )
+  await save()
+  return { ok: true }
+}
+
+export async function submitProofOfDelivery(user, deliveryId, proofFile) {
+  if (!isApprovedDelivery(user)) return { error: 'Delivery tools unlock after approval.' }
+  if (!(proofFile instanceof File) || !proofFile.type.startsWith('image/')) {
+    return { error: 'Select or capture a valid proof-of-delivery image.' }
+  }
+  if (proofFile.size < 1 || proofFile.size > 10 * 1024 * 1024) {
+    return { error: 'The proof image must be between 1 KB and 10 MB.' }
+  }
+  const store = await readyStore()
+  const delivery = store.deliveries.find((item) => item.id === deliveryId)
+  if (!delivery || delivery.courierId !== user.id) {
+    return { error: 'This assignment is not assigned to your account.' }
+  }
+  if (delivery.status !== 'in-transit') {
+    return { error: 'Mark the order out for delivery before uploading proof.' }
+  }
+  const order = store.orders.get(delivery.orderId)
+  if (!order || order.status !== 'out-for-delivery') {
+    return { error: 'This order is not ready for proof of delivery.' }
+  }
+
+  const bytes = Buffer.from(await proofFile.arrayBuffer())
+  const extension = proofFile.type === 'image/png' ? 'png'
+    : proofFile.type === 'image/webp' ? 'webp'
+      : 'jpg'
+  const path = `${order.id}/${delivery.id}-${Date.now()}.${extension}`
+  let proofUrl = ''
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    await client.storage.createBucket('proof-of-delivery', { public: true })
+      .catch(() => null)
+    const uploaded = await client.storage
+      .from('proof-of-delivery')
+      .upload(path, bytes, { contentType: proofFile.type, upsert: true })
+    if (uploaded.error) return { error: `Could not upload proof image: ${uploaded.error.message}` }
+    proofUrl = client.storage.from('proof-of-delivery').getPublicUrl(path).data.publicUrl
+  } else {
+    proofUrl = `data:${proofFile.type};base64,${bytes.toString('base64')}`
+  }
+
+  const submittedAt = new Date().toISOString()
+  order.proofOfDeliveryUrl = proofUrl
+  order.proofOfDeliveryAt = submittedAt
+  order.proofCourierId = user.id
+  order.status = 'delivered'
+  delivery.status = 'delivered'
+  delivery.commission = DELIVERY_FEE
+  delivery.updatedAt = submittedAt
+  delivery.proofOfDelivery = {
+    url: proofUrl,
+    courierId: user.id,
+    orderId: order.id,
+    uploadedAt: submittedAt,
+  }
+  delivery.updates.push({
+    at: submittedAt,
+    status: 'delivered',
+    note: 'Proof of delivery uploaded and delivery marked complete.',
+  })
+  await notify(order.buyer, `${order.reference} was delivered`, 'Please review the proof of delivery and confirm that you received the products.', `/buyer/orders?order=${order.id}`)
+  await notify(order.seller, `${order.reference} was delivered`, 'The courier uploaded proof of delivery. The buyer must confirm receipt before admin payment release.', `/seller/orders?order=${order.id}`)
   await save()
   return { ok: true }
 }

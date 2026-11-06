@@ -40,11 +40,11 @@ export function DashboardPanel({ title, description, children, action, fit = fal
 export const workGridClass = 'grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 [&>:last-child:nth-child(odd)]:sm:col-span-2'
 export const workStackClass = 'grid grid-cols-1 items-stretch gap-4'
 
-export function WorkSection({ title, description, count, href, linkLabel = 'View all', linkVariant = '', action, toolbar, children, empty }) {
+export function WorkSection({ title, description, count, href, linkLabel = 'View all', linkVariant = '', action, toolbar, children, empty, fit = false, bodyClassName = '' }) {
   const isEmpty = count === 0
   const shouldBePrimary = linkVariant === 'primary'
   return (
-    <section className="ui-card flex h-[33rem] flex-col overflow-hidden max-sm:h-auto max-sm:overflow-visible">
+    <section className={`ui-card flex flex-col overflow-hidden ${fit ? '' : 'h-[33rem]'} max-sm:h-auto max-sm:overflow-visible`}>
       {toolbar ? <div className="shrink-0 border-b border-[#d5e4d4] bg-[#f7fbf4] px-4 py-3">{toolbar}</div> : null}
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#d5e4d4] px-4 py-3 max-sm:flex-col max-sm:items-stretch">
         <div className="min-w-0">
@@ -67,7 +67,7 @@ export function WorkSection({ title, description, count, href, linkLabel = 'View
           ) : null}
         </div>
       </div>
-      <div className={`min-h-0 flex-1 max-sm:min-h-fit ${isEmpty ? 'px-4 py-4' : ''}`}>{isEmpty ? empty : children}</div>
+      <div className={`min-h-0 flex-1 max-sm:min-h-fit ${isEmpty ? 'p-4 sm:p-5' : bodyClassName}`}>{isEmpty ? empty : children}</div>
     </section>
   )
 }

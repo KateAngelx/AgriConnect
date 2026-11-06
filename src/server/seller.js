@@ -473,6 +473,23 @@ export async function advanceOrder(user, orderId) {
     `/buyer/orders/${order.id}`,
   )
   if (next === 'awaiting-delivery' && order.fulfillment === 'delivery') {
+    if (!store.deliveries.some((delivery) => delivery.orderId === order.id)) {
+      store.deliveries.unshift({
+        id: crypto.randomUUID(),
+        orderId: order.id,
+        courierId: '',
+        status: 'open',
+        commission: 49,
+        commissionStatus: 'pending',
+        note: '',
+        updates: [{
+          at: new Date().toISOString(),
+          status: 'open',
+          note: 'Seller confirmed the order. Waiting for a courier.',
+        }],
+        updatedAt: new Date().toISOString(),
+      })
+    }
     for (const courier of eligibleCouriersForOrder(store, order)) {
       await notify(
         courier.id,
@@ -486,7 +503,7 @@ export async function advanceOrder(user, orderId) {
   return { ok: true }
 }
 
-async function closeOrder(user, orderId, rejection = false) {
+async function closeOrder(user, orderId, rejection = false, rejectionReason = '') {
   if (!isApprovedSeller(user)) return { error: 'Order tools are locked.' }
   const store = await readyStore()
   const order = store.orders.get(orderId)
@@ -513,7 +530,7 @@ async function closeOrder(user, orderId, rejection = false) {
     order.buyer,
     rejection ? `${order.reference} was rejected` : `${order.reference} was cancelled`,
     rejection
-      ? 'The seller could not accept this order. Reserved stock was returned.'
+      ? `The seller rejected this order${rejectionReason ? `: ${rejectionReason}` : '.'} Reserved stock was returned.`
       : 'The seller cancelled this order and stock was restored.',
     `/buyer/orders/${order.id}`,
   )
@@ -525,8 +542,8 @@ export async function cancelOrder(user, orderId) {
   return closeOrder(user, orderId)
 }
 
-export async function rejectOrder(user, orderId) {
-  return closeOrder(user, orderId, true)
+export async function rejectOrder(user, orderId, rejectionReason = '') {
+  return closeOrder(user, orderId, true, rejectionReason)
 }
 
 export async function sellerCollect(user, orderId) {

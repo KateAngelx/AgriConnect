@@ -12,6 +12,7 @@ export function CartDrawer({ open, onClose }) {
   const { cart, cartBusy, cartLoading, cartError, refreshCart, updateCart } = useMarketplaceState()
   const [drafts, setDrafts] = useState({})
   const [error, setError] = useState('')
+  const [selectedIds, setSelectedIds] = useState([])
 
   useEffect(() => {
     if (!open) return
@@ -26,6 +27,23 @@ export function CartDrawer({ open, onClose }) {
       document.removeEventListener('keydown', onKey)
     }
   }, [open, onClose])
+
+  const cartItems = cart?.items?.filter((entry) => typeof entry.product === 'object') ?? []
+  const eligibleItems = cartItems.filter((entry) =>
+    entry.product.status === 'active' &&
+    entry.product.seller?.status === 'approved' &&
+    entry.product.stock > 0 &&
+    entry.quantity <= entry.product.stock,
+  )
+
+  useEffect(() => {
+    const eligibleIds = new Set(eligibleItems.map((entry) => entry.id))
+    setSelectedIds((previous) => {
+      const stillSelected = previous.filter((id) => eligibleIds.has(id))
+      if (stillSelected.length) return stillSelected
+      return [...eligibleIds]
+    })
+  }, [cart?.revision, eligibleItems.map((entry) => `${entry.id}:${entry.quantity}`).join('|')])
 
   async function updateQuantity(item, quantity) {
     setError('')
@@ -43,11 +61,29 @@ export function CartDrawer({ open, onClose }) {
 
   if (!open) return null
 
-  const items = cart?.items?.filter((entry) => typeof entry.product === 'object') ?? []
-  const subtotal = items.reduce(
+  const selectedSet = new Set(selectedIds)
+  const selectableIds = eligibleItems.map((entry) => entry.id)
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id))
+  const selectedItems = eligibleItems.filter((entry) => selectedSet.has(entry.id))
+  const subtotal = selectedItems.reduce(
     (sum, entry) => sum + entry.product.price * entry.quantity,
     0,
   )
+  const checkoutHref = selectedIds.length
+    ? `/checkout?cartItemIds=${encodeURIComponent(selectedIds.join(','))}`
+    : '/checkout'
+
+  function toggleItem(itemId) {
+    setSelectedIds((previous) =>
+      previous.includes(itemId)
+        ? previous.filter((id) => id !== itemId)
+        : [...previous, itemId],
+    )
+  }
+
+  function toggleAll() {
+    setSelectedIds(allSelected ? [] : selectableIds)
+  }
 
   return (
     <div className="fixed inset-0 z-[200]" onClick={onClose}>
@@ -84,7 +120,7 @@ export function CartDrawer({ open, onClose }) {
             </div>
           ) : error ? (
             <p className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">{error}</p>
-          ) : items.length === 0 ? (
+          ) : cartItems.length === 0 ? (
             <div className="py-12 text-center">
               <DashboardIcon name="cart" className="mx-auto size-10 text-[#647066]" />
               <p className="mt-4 text-sm font-semibold text-[#142016]">Your cart is empty</p>
@@ -101,12 +137,39 @@ export function CartDrawer({ open, onClose }) {
               </button>
             </div>
           ) : (
-            <ul className="space-y-4">
-              {items.map((entry) => {
+            <>
+              <label className="mb-3 flex items-center gap-2 rounded-lg border border-[#173c2c]/10 px-3 py-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  disabled={selectableIds.length === 0 || cartBusy}
+                  onChange={toggleAll}
+                  className="size-4 accent-[#2e7d32]"
+                />
+                Select All
+                <span className="ml-auto text-xs font-normal text-[#647066]">
+                  {selectedItems.length} selected
+                </span>
+              </label>
+              <ul className="space-y-4">
+              {cartItems.map((entry) => {
                 const product = entry.product
                 const image = product.images?.[0]
+                const selectable =
+                  product.status === 'active' &&
+                  product.seller?.status === 'approved' &&
+                  product.stock > 0 &&
+                  entry.quantity <= product.stock
                 return (
                   <li key={entry.id} className="flex gap-3 rounded-xl border border-[#173c2c]/10 p-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedSet.has(entry.id)}
+                      disabled={!selectable || cartBusy}
+                      onChange={() => toggleItem(entry.id)}
+                      aria-label={`Select ${product.name}`}
+                      className="mt-1 size-4 shrink-0 accent-[#2e7d32]"
+                    />
                     <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#eef0ea]">
                       {image?.url ? (
                         <img src={image.url} alt="" className="size-full object-cover" />
@@ -160,22 +223,27 @@ export function CartDrawer({ open, onClose }) {
                   </li>
                 )
               })}
-            </ul>
+              </ul>
+            </>
           )}
         </div>
 
-        {items.length > 0 ? (
+        {cartItems.length > 0 ? (
           <footer className="shrink-0 border-t border-[#173c2c]/10 bg-white px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="flex justify-between text-sm">
               <span className="text-[#647066]">Subtotal</span>
               <span className="font-bold">{peso(subtotal)}</span>
             </div>
+            <p className="mt-1 text-xs text-[#647066]">
+              {selectedItems.length} item{selectedItems.length === 1 ? '' : 's'} selected
+            </p>
             <p className="mt-1 text-xs text-[#647066]">Delivery fees are calculated at checkout.</p>
             <div className="mt-4 grid gap-2">
                 <Link
-                href="/checkout"
+                href={checkoutHref}
                 onClick={onClose}
-                className="btn btn-primary btn-block"
+                aria-disabled={selectedItems.length === 0}
+                className={`btn btn-primary btn-block ${selectedItems.length === 0 ? 'pointer-events-none opacity-50' : ''}`}
               >
                 Proceed to checkout
               </Link>

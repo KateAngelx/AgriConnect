@@ -39,7 +39,7 @@ export function ProductResults({
     const params = new URLSearchParams(baseParams)
     params.set('page', String(target))
     params.set('limit', String(PAGE_SIZE))
-    const request = fetch(`/api/products?${params}`, { cache: 'no-store' }).then(async (response) => {
+    const request = fetch(`/api/products?${params}`, { cache: 'default' }).then(async (response) => {
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Could not load this product page.')
       if (!Array.isArray(payload.docs)) throw new Error('The product page response was invalid.')
@@ -60,6 +60,9 @@ export function ProductResults({
     setPage(target)
     setError('')
     if (updateHistory) window.history.pushState(null, '', hrefFor(target))
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }))
+    window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 100)
 
     const cached = cache.current.get(target)
     if (cached && Date.now() - cached.savedAt < CACHE_TTL_MS) {

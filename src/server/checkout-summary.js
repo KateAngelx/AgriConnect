@@ -3,7 +3,7 @@ import { getCart } from './cart'
 import { readyStore } from './store'
 import { commissionForItems, commissionRateFrom } from './payments'
 
-export async function checkoutSummaryForBuyer(userId) {
+export async function checkoutSummaryForBuyer(userId, selectedCartItemIds = null) {
   const store = await readyStore()
   const cart = await getCart(userId)
   if (!cart?.items?.length) {
@@ -13,9 +13,15 @@ export async function checkoutSummaryForBuyer(userId) {
   const lines = []
   const unavailableItems = []
   const bySeller = new Map()
+  const selectedIds = Array.isArray(selectedCartItemIds)
+    ? new Set(selectedCartItemIds.map((id) => String(id)))
+    : null
 
   for (const item of cart.items) {
-    const product = store.products.find((entry) => entry.id === item.productId)
+    if (selectedIds && !selectedIds.has(String(item.id))) continue
+    const product = item.product && typeof item.product === 'object'
+      ? item.product
+      : store.products.find((entry) => entry.id === item.productId)
     if (
       !product ||
       product.status !== 'active' ||
@@ -54,8 +60,11 @@ export async function checkoutSummaryForBuyer(userId) {
   const sellerGroups = [...bySeller.values()]
   const subtotal = lines.reduce((sum, line) => sum + line.lineTotal, 0)
   const rate = commissionRateFrom(store)
-  const commission = commissionForItems(cart.items, rate)
-  const totalQuantity = cart.items.reduce((sum, item) => sum + item.quantity, 0)
+  const commission = commissionForItems(
+    lines.map((line) => ({ quantity: line.quantity })),
+    rate,
+  )
+  const totalQuantity = lines.reduce((sum, line) => sum + line.quantity, 0)
   return {
     items: lines,
     sellerGroups,

@@ -65,6 +65,7 @@ export default async function BuyerOrdersPage({ searchParams }) {
                 title={title}
                 description={description}
                 count={orders.sectionCounts[key]}
+                fit
                 empty={<p className="text-sm text-[#5c6f62]">Nothing in this section.</p>}
               >
                 <PagedRows>

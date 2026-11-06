@@ -3,6 +3,7 @@ import { ProductCard } from '@/components/product-card'
 import { PagedRows } from '@/components/paged-rows'
 import { SiteShell } from '@/components/site-shell'
 import { getCatalogSnapshot, getSeller, listSellerProducts } from '@/server/catalog'
+import { StarRating } from '@/components/star-rating'
 export default async function SellerPage({ params }) {
   const { sellerId } = await params
   const catalog = await getCatalogSnapshot()
@@ -10,6 +11,18 @@ export default async function SellerPage({ params }) {
   if (!seller || seller.status !== 'approved') notFound()
   const products = await listSellerProducts(seller.id, catalog)
   const image = typeof seller.image === 'object' ? seller.image : null
+  const productIds = new Set(products.docs.map((product) => product.id))
+  const sellerReviews = (catalog.productReviews || []).filter(
+    (review) =>
+      productIds.has(review.productId) &&
+      (review.moderationStatus || 'published') === 'published',
+  )
+  const ratings = sellerReviews
+    .map((review) => Number(review.rating))
+    .filter((rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5)
+  const sellerRating = ratings.length
+    ? Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10) / 10
+    : 0
   return (
     <SiteShell>
       <main>
@@ -28,6 +41,17 @@ export default async function SellerPage({ params }) {
               </span>
               <h1 className="page-title mt-2 text-3xl text-brand-900 sm:text-4xl">{seller.farmName}</h1>
               <p className="mt-1 text-[#6e6e73]">{seller.location}</p>
+              {ratings.length ? (
+                <StarRating
+                  rating={sellerRating}
+                  reviewCount={ratings.length}
+                  size="md"
+                  showValue
+                  className="mt-2 text-sm font-medium text-brand-muted"
+                />
+              ) : (
+                <p className="mt-2 text-sm text-brand-muted">No reviews yet</p>
+              )}
             </div>
           </div>
         </section>

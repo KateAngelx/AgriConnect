@@ -5,7 +5,7 @@ import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
 import { peso } from '@/lib/dashboard-format'
 import { orderStatusLabel, stageIndex, stagesForFulfillment } from '@/lib/order-status'
 import { formatDateTime } from '@/lib/date-time'
-import { cancelBuyerOrderAction } from '@/app/(frontend)/buyer/actions'
+import { cancelBuyerOrderAction, confirmReceivedAction } from '@/app/(frontend)/buyer/actions'
 import { ConfirmButton } from '@/components/confirm-button'
 import Link from 'next/link'
 
@@ -61,6 +61,22 @@ export function BuyerOrderDetail({ order, delivery, payment, error = '', success
       ) : null}
       {order.status === 'cancelled' ? (
         <AlertBanner tone="error">This order was cancelled and reserved stock was returned.</AlertBanner>
+      ) : null}
+      {order.status === 'delivered' ? (
+        <section className="rounded-xl border border-brand-line bg-white p-4">
+          <h3 className="text-sm font-bold text-[#142016]">Proof of delivery</h3>
+          {delivery?.proofOfDelivery?.url ? (
+            <img src={delivery.proofOfDelivery.url} alt="Proof of delivery" className="mt-3 max-h-80 w-full rounded-lg object-contain" />
+          ) : (
+            <p className="mt-2 text-sm text-[#5c6f62]">The courier has not uploaded proof yet.</p>
+          )}
+          <form action={confirmReceivedAction} className="mt-4">
+            <input type="hidden" name="orderId" value={order.id} />
+            <ConfirmButton type="submit" message="Confirm that you received this order?" className="btn btn-dark">
+              Confirm Received
+            </ConfirmButton>
+          </form>
+        </section>
       ) : null}
 
       <section>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useMarketplaceState } from './marketplace-state'
 import { peso } from '@/lib/dashboard-format'
@@ -9,6 +9,7 @@ import { DashboardIcon } from './dashboard-icons'
 export function CartPageContent() {
   const { cart, cartBusy, cartLoading, cartError, refreshCart, updateCart } = useMarketplaceState()
   const [quantities, setQuantities] = useState({})
+  const [selectedIds, setSelectedIds] = useState([])
   const items = cart?.items?.filter((item) => typeof item.product === 'object') ?? []
   const eligibleItems = items.filter(
     (item) =>
@@ -17,14 +18,46 @@ export function CartPageContent() {
       item.product.stock > 0 &&
       item.quantity <= item.product.stock,
   )
-  const subtotal = items.reduce(
-    (sum, item) =>
-      sum + (eligibleItems.includes(item) ? item.product.price * item.quantity : 0),
+  const selectedSet = new Set(selectedIds)
+  const selectedItems = eligibleItems.filter((item) => selectedSet.has(item.id))
+  const subtotal = selectedItems.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
     0,
   )
-  const sellerCount = new Set(eligibleItems.map((item) => item.product.seller?.id).filter(Boolean)).size
+  const sellerCount = new Set(selectedItems.map((item) => item.product.seller?.id).filter(Boolean)).size
   const deliveryEstimate = subtotal + sellerCount * 49
-  const canCheckout = items.length > 0 && eligibleItems.length === items.length
+  const canCheckout = selectedItems.length > 0
+  const selectableIds = eligibleItems.map((item) => item.id)
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id))
+
+  useEffect(() => {
+    const eligibleIds = new Set(
+      items
+        .filter((item) =>
+          item.product.status === 'active' &&
+          item.product.seller?.status === 'approved' &&
+          item.product.stock > 0 &&
+          item.quantity <= item.product.stock,
+        )
+        .map((item) => item.id),
+    )
+    setSelectedIds((previous) => {
+      const stillSelected = previous.filter((id) => eligibleIds.has(id))
+      return stillSelected.length ? stillSelected : [...eligibleIds]
+    })
+  }, [cart?.revision, items.map((item) => `${item.id}:${item.quantity}`).join('|')])
+
+  function toggleItem(itemId) {
+    setSelectedIds((previous) =>
+      previous.includes(itemId)
+        ? previous.filter((id) => id !== itemId)
+        : [...previous, itemId],
+    )
+  }
+
+  function toggleAll() {
+    setSelectedIds(allSelected ? [] : selectableIds)
+  }
 
   async function saveQuantity(item) {
     const raw = quantities[item.id]
@@ -59,16 +92,38 @@ export function CartPageContent() {
   return items.length ? (
     <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
       <section className="space-y-4">
+        <label className="ui-card flex min-h-12 items-center gap-3 px-4 py-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            disabled={selectableIds.length === 0 || cartBusy}
+            onChange={toggleAll}
+            className="size-4 accent-[#2e7d32]"
+          />
+          Select All
+          <span className="ml-auto text-xs font-normal text-[#647066]">
+            {selectedItems.length} selected
+          </span>
+        </label>
         {items.map((item) => {
           const product = item.product
           const available = product.status === 'active' && product.seller?.status === 'approved'
           const inStock = available && product.stock > 0
           const exceedsStock = inStock && item.quantity > product.stock
+          const selectable = inStock && !exceedsStock
           return (
             <article
               key={item.id}
               className="ui-card flex flex-col gap-5 p-5 sm:flex-row sm:items-center"
             >
+              <input
+                type="checkbox"
+                checked={selectedSet.has(item.id)}
+                disabled={!selectable || cartBusy}
+                onChange={() => toggleItem(item.id)}
+                aria-label={`Select ${product.name}`}
+                className="size-4 shrink-0 accent-[#2e7d32]"
+              />
               <div className="flex-1">
                 <p className={`text-xs font-bold uppercase ${inStock ? 'text-[#5dbb38]' : 'text-[#963b2d]'}`}>
                   {!available ? 'Unavailable' : product.stock > 0 ? `${product.stock} available` : 'Out of stock'}
@@ -147,21 +202,27 @@ export function CartPageContent() {
             <strong>{peso(deliveryEstimate)}</strong>
           </div>
         </div>
+        <p className="mt-3 text-sm font-semibold">
+          {selectedItems.length} item{selectedItems.length === 1 ? '' : 's'} selected
+        </p>
         {!canCheckout ? (
           <p className="mt-3 text-xs leading-5 text-[#963b2d]">
-            Unavailable products and quantities above current stock are excluded from totals. Remove or update them before checkout.
+            Select at least one available product to continue.
           </p>
         ) : null}
         <p className="mt-4 text-[12px] leading-5 text-[#6e6e73]">
           Delivery is charged per seller order. Final stock and fees are confirmed at checkout.
         </p>
         {canCheckout ? (
-          <Link href="/checkout" className="btn btn-primary mt-6 w-full">
+          <Link
+            href={`/checkout?cartItemIds=${encodeURIComponent(selectedIds.join(','))}`}
+            className="btn btn-primary mt-6 w-full"
+          >
             Continue to checkout
           </Link>
         ) : (
           <span className="btn btn-primary mt-6 w-full cursor-not-allowed opacity-50" aria-disabled="true">
-            Update cart to continue
+            Select products to continue
           </span>
         )}
       </aside>

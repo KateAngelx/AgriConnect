@@ -1,5 +1,6 @@
 import { peso } from '@/lib/dashboard-format'
 import Link from 'next/link'
+import { StarRating } from '@/components/star-rating'
 
 function relationName(value) {
   return typeof value === 'object' && value?.farmName ? value.farmName : 'Local seller'
@@ -59,11 +60,12 @@ export function ProductCard({ product }) {
               className="mt-2 flex items-center gap-1 text-[12px] font-medium text-brand-muted"
               aria-label={`Rated ${product.rating} out of 5 from ${product.reviewCount} reviews`}
             >
-              <svg viewBox="0 0 20 20" className="size-3.5 fill-[#d28b00]" aria-hidden="true">
-                <path d="m10 1.7 2.55 5.17 5.7.83-4.13 4.02.98 5.68L10 14.72l-5.1 2.68.98-5.68L1.75 7.7l5.7-.83L10 1.7Z" />
-              </svg>
-              {Number(product.rating).toFixed(1)} ({product.reviewCount}{' '}
-              {product.reviewCount === 1 ? 'review' : 'reviews'})
+              <StarRating
+                rating={product.rating}
+                reviewCount={product.reviewCount}
+                size="sm"
+                showValue
+              />
             </p>
           ) : null}
           <p className="mt-auto pt-3 text-[17px] font-semibold tracking-[-0.02em] text-brand-900">

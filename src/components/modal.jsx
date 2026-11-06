@@ -16,7 +16,7 @@ export function Modal({ title, subtitle, closeHref, children, size = 'lg' }) {
   useEffect(() => {
     if (!mounted) return
     const onKey = (event) => {
-      if (event.key === 'Escape') router.push(closeHref)
+      if (event.key === 'Escape') router.replace(closeHref, { scroll: false })
     }
     document.addEventListener('keydown', onKey)
     const previous = document.body.style.overflow
@@ -36,7 +36,7 @@ export function Modal({ title, subtitle, closeHref, children, size = 'lg' }) {
       className="fixed inset-0 z-[1400] flex items-end justify-center bg-[#142016]/40 p-0 sm:items-center sm:p-4"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) router.push(closeHref)
+        if (event.target === event.currentTarget) router.replace(closeHref, { scroll: false })
       }}
     >
       <div
@@ -50,7 +50,12 @@ export function Modal({ title, subtitle, closeHref, children, size = 'lg' }) {
             <h2 id="app-modal-title" className="truncate text-[17px] font-bold text-[#142016]">{title}</h2>
             {subtitle ? <p className="mt-0.5 text-[13px] leading-5 text-[#5c6f62]">{subtitle}</p> : null}
           </div>
-          <Link href={closeHref} className="grid size-9 shrink-0 place-items-center rounded-lg text-xl leading-none text-[#5c6f62] hover:bg-[#e7f3e4]" aria-label="Close">
+          <Link
+            href={closeHref}
+            replace
+            className="grid size-9 shrink-0 place-items-center rounded-lg text-xl leading-none text-[#5c6f62] hover:bg-[#e7f3e4]"
+            aria-label="Close"
+          >
             ×
           </Link>
         </div>

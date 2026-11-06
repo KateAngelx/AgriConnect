@@ -2,12 +2,13 @@ import { MarketplaceAssistant } from '@/components/marketplace-assistant'
 import { ProductSort } from '@/components/product-sort'
 import { ProductResults } from '@/components/product-results'
 import { SiteShell } from '@/components/site-shell'
-import { getCatalogSnapshot, listCategories, listProductsPage } from '@/server/catalog'
+import { listCategories, listProductsPage } from '@/server/catalog'
 
 export default async function ProductsPage({ searchParams }) {
   const query = await searchParams
   const search = (typeof query.q === 'string' ? query.q : typeof query.search === 'string' ? query.search : '').trim()
-  const category = typeof query.category === 'string' ? query.category : ''
+  const categoryValue = typeof query.category === 'string' ? query.category.trim().toLowerCase() : ''
+  const category = categoryValue === '' || categoryValue === 'all' ? '' : categoryValue
   const sort = typeof query.sort === 'string' ? query.sort : '-createdAt'
   const page = Math.max(1, Number(query.page) || 1)
   const filterParams = new URLSearchParams()
@@ -16,7 +17,6 @@ export default async function ProductsPage({ searchParams }) {
   if (typeof query.fulfillment === 'string' && query.fulfillment) filterParams.set('fulfillment', query.fulfillment)
   if (query.available === 'true') filterParams.set('available', 'true')
   if (sort !== '-createdAt') filterParams.set('sort', sort)
-  const catalog = await getCatalogSnapshot({ includeImages: false, includeReviews: false })
   const [products, categories] = await Promise.all([
     listProductsPage({
       search,
@@ -26,8 +26,8 @@ export default async function ProductsPage({ searchParams }) {
       limit: 5,
       fulfillment: query.fulfillment,
       available: query.available === 'true',
-    }, catalog),
-    listCategories(catalog),
+    }),
+    listCategories(),
   ])
 
   return (
@@ -67,10 +67,10 @@ export default async function ProductsPage({ searchParams }) {
                 <select
                   id="category"
                   name="category"
-                  defaultValue={category}
+                  defaultValue={category || 'all'}
                   className="ui-field mt-2"
                 >
-                  <option value="">All products</option>
+                  <option value="all">All products</option>
                   {categories.docs.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}

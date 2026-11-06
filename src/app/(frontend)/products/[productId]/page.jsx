@@ -19,6 +19,8 @@ import { authHref } from '@/lib/auth-links'
 import { buyerReviewForProduct } from '@/server/reviews'
 import { AlertBanner } from '@/components/dashboard-ui'
 import { deleteProductReviewAction, saveProductReviewAction } from '@/app/(frontend)/products/actions'
+import { StarRating } from '@/components/star-rating'
+import { StarRatingInput } from '@/components/star-rating-input'
 
 export default async function ProductDetailsPage({ params, searchParams }) {
   const { productId } = await params
@@ -94,11 +96,13 @@ export default async function ProductDetailsPage({ params, searchParams }) {
             </p>
             <a href="#reviews" className="mt-2 inline-flex rounded-md focus-visible:outline">
               {product.reviewCount > 0 ? (
-                <span className="text-sm font-medium text-[#5c6f62]" aria-label={`Rated ${product.rating} out of 5 from ${product.reviewCount} reviews`}>
-                  <span aria-hidden="true" className="text-[#d28b00]">?</span>{' '}
-                  {Number(product.rating).toFixed(1)} ? {product.reviewCount}{' '}
-                  {product.reviewCount === 1 ? 'review' : 'reviews'}
-                </span>
+                <StarRating
+                  rating={product.rating}
+                  reviewCount={product.reviewCount}
+                  size="md"
+                  showValue
+                  className="text-sm font-medium text-brand-muted"
+                />
               ) : (
                 <span className="text-sm text-[#5c6f62]">No reviews yet</span>
               )}
@@ -199,8 +203,13 @@ export default async function ProductDetailsPage({ params, searchParams }) {
             </div>
             {product.reviewCount > 0 ? (
               <p className="text-sm font-medium text-[#5c6f62]">
-                {Number(product.rating).toFixed(1)} out of 5 ? {product.reviewCount}{' '}
-                {product.reviewCount === 1 ? 'review' : 'reviews'}
+                <StarRating
+                  rating={product.rating}
+                  reviewCount={product.reviewCount}
+                  size="md"
+                  showValue
+                  className="text-[#5c6f62]"
+                />
               </p>
             ) : null}
           </div>
@@ -224,10 +233,7 @@ export default async function ProductDetailsPage({ params, searchParams }) {
                       ) : null}
                     </div>
                     <p className="mt-1 text-sm font-medium" aria-label={`${review.rating} out of 5 stars`}>
-                      <span aria-hidden="true" className="text-[#d28b00]">
-                        {'?'.repeat(review.rating)}{'?'.repeat(5 - review.rating)}
-                      </span>
-                      <span className="sr-only"> {review.rating} out of 5 stars</span>
+                      <StarRating rating={review.rating} size="sm" />
                     </p>
                     {review.body ? <p className="mt-3 leading-6 text-brand-muted">{review.body}</p> : null}
                   </article>
@@ -249,16 +255,10 @@ export default async function ProductDetailsPage({ params, searchParams }) {
                 <input type="hidden" name="productId" value={product.id} />
                 <label className="grid gap-1 text-sm font-medium text-brand-900">
                   Rating
-                  <select
+                  <StarRatingInput
                     name="rating"
-                    required
-                    defaultValue={String(reviewAccess.review?.rating || 5)}
-                    className="min-h-11 rounded-xl border border-brand-line bg-white px-3"
-                  >
-                    {[5, 4, 3, 2, 1].map((rating) => (
-                      <option key={rating} value={rating}>{rating} {rating === 1 ? 'star' : 'stars'}</option>
-                    ))}
-                  </select>
+                    defaultValue={reviewAccess.review?.rating || 5}
+                  />
                 </label>
                 <label className="grid gap-1 text-sm font-medium text-brand-900">
                   Comment <span className="font-normal text-brand-muted">(optional)</span>

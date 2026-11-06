@@ -22,6 +22,10 @@ export function orderFromDatabaseRow(row) {
     deliveryFee: Number(row.delivery_fee || 0),
     platformFee: Number(row.platform_fee || 0),
     platformFeeStatus: row.platform_fee_status || 'none',
+    buyerConfirmedAt: row.buyer_confirmed_at || '',
+    sellerPaymentStatus: row.seller_payment_status || 'pending',
+    sellerReleasedAt: row.seller_released_at || '',
+    sellerReleasedBy: row.seller_released_by || '',
     createdAt: row.created_at || '',
   }
 }

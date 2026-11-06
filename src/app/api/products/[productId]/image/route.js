@@ -19,7 +19,7 @@ function missingImage() {
   return new Response(PLACEHOLDER_IMAGE, {
     headers: {
       'Content-Type': 'image/svg+xml; charset=utf-8',
-      'Cache-Control': 'no-store',
+      'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
       'X-Content-Type-Options': 'nosniff',
     },
   })
@@ -40,7 +40,7 @@ function imageResponse(images) {
   return new Response(Buffer.from(match[2], 'base64'), {
     headers: {
       'Content-Type': match[1].toLowerCase(),
-      'Cache-Control': 'no-store',
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=900',
       'X-Content-Type-Options': 'nosniff',
     },
   })
@@ -55,18 +55,24 @@ export async function GET(_request, { params }) {
     const client = getSupabaseAdmin()
     if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
 
-    const [productResult, sellersResult] = await Promise.all([
+    const [productResult] = await Promise.all([
       client
         .from('products')
         .select('id,name,location,status,seller_id,images')
         .eq('id', productId)
         .maybeSingle(),
-      client.from('sellers').select('id,farm_name,location,status'),
     ])
     if (productResult.error) throw new Error(`Could not load product image: ${productResult.error.message}`)
-    if (sellersResult.error) throw new Error(`Could not verify product seller: ${sellersResult.error.message}`)
     product = productResult.data
-    seller = sellersResult.data?.find((item) => item.id === product?.seller_id) || null
+    if (product?.seller_id) {
+      const sellerResult = await client
+        .from('sellers')
+        .select('id,farm_name,location,status')
+        .eq('id', product.seller_id)
+        .maybeSingle()
+      if (sellerResult.error) throw new Error(`Could not verify product seller: ${sellerResult.error.message}`)
+      seller = sellerResult.data
+    }
   } else {
     const store = await readyStore()
     product = store.products.find((item) => item.id === productId) || null

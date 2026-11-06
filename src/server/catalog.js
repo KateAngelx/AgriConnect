@@ -7,6 +7,17 @@ import {
   isRemovedNuevaEcijaSeller,
 } from './catalog-visibility'
 
+globalThis.__agriconnectProductPageCache ??= new Map()
+
+function cacheProductPage(key, result) {
+  globalThis.__agriconnectProductPageCache.set(key, { result, savedAt: Date.now() })
+  if (globalThis.__agriconnectProductPageCache.size > 40) {
+    const oldestKey = globalThis.__agriconnectProductPageCache.keys().next().value
+    globalThis.__agriconnectProductPageCache.delete(oldestKey)
+  }
+  return result
+}
+
 function requiredRows(result, table) {
   if (result.error) throw new Error(`Could not load marketplace ${table}: ${result.error.message}`)
   return result.data || []
@@ -158,7 +169,9 @@ function withRating(store, product) {
 
 function matchesProduct(product, filters) {
   if (!isPublicProduct(product)) return false
-  if (filters.category && product.category?.id !== filters.category) return false
+  const categoryValue = String(filters.category || '').trim().toLowerCase()
+  const category = categoryValue === 'all' ? '' : categoryValue
+  if (category && product.category?.id !== category) return false
   if (filters.fulfillment === 'pickup' && !product.pickup) return false
   if (filters.fulfillment === 'delivery' && !product.delivery) return false
   if (filters.available && product.stock <= 0) return false
@@ -194,13 +207,28 @@ export async function listProducts(filters = {}, store = null) {
 
 export async function listProductsPage(filters = {}, store = null) {
   const useSupabase = supabaseEnv().enabled
-  store ||= await getCatalogSnapshot({
-    includeImages: !useSupabase,
-    includeReviews: !useSupabase,
+  const client = getSupabaseAdmin()
+  const categoryValue = String(filters.category || '').trim().toLowerCase()
+  const normalizedCategory = categoryValue === 'all' ? '' : categoryValue
+  const pageCacheKey = JSON.stringify({
+    search: String(filters.search || ''),
+    category: normalizedCategory,
+    sort: String(filters.sort || '-createdAt'),
+    page: Math.max(1, Number(filters.page) || 1),
+    limit: Math.max(1, Number(filters.limit) || 12),
+    fulfillment: String(filters.fulfillment || ''),
+    available: filters.available === true,
   })
-  const result = productsPage(store, filters)
-  if (result.docs.length === 0) return result
-  if (!useSupabase) {
+  if (!store && useSupabase && client && globalThis.__agriconnectProductPageCache) {
+    const cached = globalThis.__agriconnectProductPageCache.get(pageCacheKey)
+    if (cached && Date.now() - cached.savedAt < 3_000) return cached.result
+  }
+  if (!useSupabase || !client) {
+    store ||= await getCatalogSnapshot({
+      includeImages: true,
+      includeReviews: true,
+    })
+    const result = productsPage(store, { ...filters, category: normalizedCategory })
     return {
       ...result,
       docs: result.docs.map((product) => ({
@@ -210,17 +238,60 @@ export async function listProductsPage(filters = {}, store = null) {
       })),
     }
   }
+  const page = Math.max(1, Number(filters.page) || 1)
+  const limit = Math.min(48, Math.max(1, Number(filters.limit) || 12))
+  const from = (page - 1) * limit
+  const to = from + limit - 1
+  let productQuery = client
+    .from('products')
+    .select('*', { count: 'exact' })
+    .eq('status', 'active')
+  if (normalizedCategory) productQuery = productQuery.eq('category_id', normalizedCategory)
+  if (filters.fulfillment === 'pickup') productQuery = productQuery.eq('pickup', true)
+  if (filters.fulfillment === 'delivery') productQuery = productQuery.eq('delivery', true)
+  if (filters.available) productQuery = productQuery.gt('stock', 0)
+  if (filters.search) {
+    const search = String(filters.search).trim().replaceAll(',', ' ')
+    if (search) productQuery = productQuery.or(`name.ilike.%${search}%,description.ilike.%${search}%,location.ilike.%${search}%`)
+  }
+  if (filters.sort === 'price') productQuery = productQuery.order('price', { ascending: true })
+  else if (filters.sort === '-price') productQuery = productQuery.order('price', { ascending: false })
+  else productQuery = productQuery.order('created_at', { ascending: false })
 
-  const client = getSupabaseAdmin()
-  if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+  const { data: productRows, count, error: productError } = await productQuery.range(from, to)
+  if (productError) throw new Error(`Could not load marketplace products: ${productError.message}`)
+  const filteredRows = (productRows || []).filter((row) =>
+    !isRemovedBenguetProduct(row) && !isRemovedNuevaEcijaProduct(row),
+  )
+  if (filteredRows.length === 0) {
+    return cacheProductPage(pageCacheKey, {
+      docs: [],
+      totalDocs: count || 0,
+      totalPages: Math.ceil((count || 0) / limit),
+      page,
+    })
+  }
 
-  const productIds = result.docs.map((product) => product.id)
-  const [reviewsResult] = await Promise.all([
+  const sellerIds = [...new Set(filteredRows.map((row) => row.seller_id).filter(Boolean))]
+  const categoryIds = [...new Set(filteredRows.map((row) => row.category_id).filter(Boolean))]
+  const productIds = filteredRows.map((row) => row.id)
+  const [sellersResult, categoriesResult, reviewsResult] = await Promise.all([
+    sellerIds.length
+      ? client.from('sellers').select('*').in('id', sellerIds)
+      : Promise.resolve({ data: [], error: null }),
+    categoryIds.length
+      ? client.from('categories').select('id,name,description,image').in('id', categoryIds)
+      : Promise.resolve({ data: [], error: null }),
     client
       .from('product_reviews')
       .select('product_id,rating,moderation_status')
       .in('product_id', productIds),
   ])
+  if (sellersResult.error) throw new Error(`Could not load marketplace sellers: ${sellersResult.error.message}`)
+  if (categoriesResult.error) throw new Error(`Could not load marketplace categories: ${categoriesResult.error.message}`)
+  const sellers = requiredRows(sellersResult, 'sellers')
+    .filter((row) => !isRemovedBenguetSeller(row) && !isRemovedNuevaEcijaSeller(row))
+  const categories = requiredRows(categoriesResult, 'categories')
   const ratingsByProduct = new Map()
   for (const review of optionalReviewRows(reviewsResult)) {
     if (review.moderation_status && review.moderation_status !== 'published') continue
@@ -229,15 +300,53 @@ export async function listProductsPage(filters = {}, store = null) {
     ratingsByProduct.set(review.product_id, ratings)
   }
 
-  return {
-    ...result,
-    docs: result.docs.map((product) => ({
-      ...product,
-      imageSrc: `/api/products/${encodeURIComponent(product.id)}/image`,
-      images: [],
-      ...summarizeRatings(ratingsByProduct.get(product.id)),
-    })),
-  }
+  return cacheProductPage(pageCacheKey, {
+    docs: filteredRows.map((row) => {
+      const seller = sellers.find((item) => item.id === row.seller_id)
+      const category = categories.find((item) => item.id === row.category_id)
+      if (!seller || seller.status !== 'approved') return null
+      const product = {
+        id: row.id,
+        name: row.name,
+        description: row.description || '',
+        price: Number(row.price),
+        unit: row.unit,
+        stock: Number(row.stock),
+        location: row.location || '',
+        status: row.status,
+        pickup: row.pickup,
+        delivery: row.delivery,
+        createdAt: row.created_at,
+        images: [],
+        category: category ? { id: category.id, name: category.name, description: category.description || '', image: category.image || {} } : null,
+        seller: {
+          id: seller.id,
+          farmName: seller.farm_name,
+          location: seller.location || '',
+          landmark: seller.landmark || '',
+          pickupLat: seller.pickup_lat ?? null,
+          pickupLng: seller.pickup_lng ?? null,
+          status: seller.status,
+          description: seller.description || '',
+          ownerId: seller.owner_id || '',
+          image: seller.image || {},
+        },
+      }
+      return {
+        ...product,
+        imageSrc: `/api/products/${encodeURIComponent(product.id)}/image`,
+        ...summarizeRatings(ratingsByProduct.get(product.id)),
+      }
+    }).filter(Boolean),
+    totalDocs: count || 0,
+    totalPages: Math.ceil((count || 0) / limit),
+    page,
+  })
+  /*
+   * The former implementation loaded every product and review for every page.
+   * Supabase pagination above keeps the requested interaction on the database
+   * side and only fetches the five visible records.
+   */
 }
 
 export async function getProduct(id, store = null) {
@@ -293,6 +402,23 @@ function activeProductCounts(store) {
 }
 
 export async function listCategories(store = null) {
+  if (!store && supabaseEnv().enabled) {
+    const client = getSupabaseAdmin()
+    if (client) {
+      const { data, error } = await client
+        .from('categories')
+        .select('id,name,description,image')
+        .order('name', { ascending: true })
+        .limit(100)
+      if (error) throw new Error(`Could not load marketplace categories: ${error.message}`)
+      return pageResult((data || []).map((row) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description || '',
+        image: row.image || {},
+      })), 1, 100)
+    }
+  }
   store ||= await getCatalogSnapshot()
   const docs = [...store.categories].sort((a, b) => a.name.localeCompare(b.name))
   return pageResult(docs, 1, 100)

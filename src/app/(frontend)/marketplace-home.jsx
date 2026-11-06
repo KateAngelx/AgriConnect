@@ -66,9 +66,18 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
           </div>
           <Link href="/categories" className="inline-flex items-center gap-2 text-sm font-bold text-brand-700">View all categories <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current stroke-2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></Link>
         </div>
-        {categories.length ? (
-          <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {categories.slice(0, 4).map((category, index) => {
+        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Link href="/products?category=all" className="ui-card flex h-full flex-col overflow-hidden transition-colors hover:border-[#d2d2d7]">
+              <div className="aspect-square grid place-items-center bg-[#edf8e8] text-[#4f8d3b]">
+                <svg viewBox="0 0 24 24" className="size-12 fill-none stroke-current stroke-[1.5]" aria-hidden="true">
+                  <path d="M4 5h16v14H4zM4 9h16M8 5v14"/>
+                </svg>
+              </div>
+              <div className="p-4">
+                <span className="text-[15px] font-semibold text-[#1d1d1f]">All products</span>
+              </div>
+            </Link>
+            {categories.slice(0, 3).map((category, index) => {
               const image = typeof category.image === 'object' && category.image?.url ? category.image.url : null
               return (
                 <Link key={category.id} href={`/products?category=${encodeURIComponent(category.id)}`} className="ui-card flex h-full flex-col overflow-hidden transition-colors hover:border-[#d2d2d7]">
@@ -82,7 +91,9 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
               )
             })}
           </div>
-        ) : <div className="page-empty mt-6">Categories will appear as the marketplace grows.</div>}
+        {categories.length === 0 && (
+          <div className="page-empty mt-6">Categories will appear as the marketplace grows.</div>
+        )}
       </section>
 
       <section className="page-container page-section">

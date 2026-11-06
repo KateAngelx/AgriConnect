@@ -9,6 +9,7 @@ import {
   deactivateProduct,
   markCommissionPaid,
   markPlatformCommissionPaid,
+  markSellerPaid,
   setUserStatus,
 } from '@/server/admin'
 import { moderateProductReview } from '@/server/reviews'
@@ -83,6 +84,13 @@ export async function payCommissionAction(formData) {
   const result = await markCommissionPaid(user, formData.get('deliveryId'))
   if (result.error) redirect(`/admin/payments?error=${encodeURIComponent(result.error)}`)
   redirect('/admin/payments?success=Commission marked as paid.')
+}
+
+export async function paySellerAction(formData) {
+  const user = await admin()
+  const result = await markSellerPaid(user, formData.get('orderId'))
+  if (result.error) redirect(`/admin/payments?error=${encodeURIComponent(result.error)}`)
+  redirect('/admin/payments?success=Seller payment manually marked as released.')
 }
 
 export async function payPlatformCommissionAction(formData) {

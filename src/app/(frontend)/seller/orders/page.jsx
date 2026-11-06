@@ -49,6 +49,7 @@ export default async function SellerOrdersPage({ searchParams }) {
               title={title}
               description={description}
               count={rows.length}
+              fit
               empty={<p className="text-sm text-[#5c6f62]">Nothing in this section.</p>}
             >
               <PagedRows>

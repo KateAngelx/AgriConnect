@@ -86,7 +86,7 @@ export async function cancelOrderAction(formData) {
 
 export async function rejectOrderAction(formData) {
   const user = await seller()
-  const result = await rejectOrder(user, formData.get('orderId'))
+  const result = await rejectOrder(user, formData.get('orderId'), formData.get('reason'))
   if (result.error) redirect(`/seller/orders?error=${encodeURIComponent(result.error)}`)
   redirect('/seller/orders?success=Order%20rejected%20and%20stock%20restored')
 }

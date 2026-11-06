@@ -6,11 +6,15 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 export function ConfirmDialog({ open, title = 'Confirm action', message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, onConfirm, onCancel }) {
   const cancelRef = useRef(null)
+  const confirmingRef = useRef(false)
+  const [confirming, setConfirming] = useState(false)
   const onCancelRef = useRef(onCancel)
   onCancelRef.current = onCancel
 
   useEffect(() => {
     if (!open) return
+    confirmingRef.current = false
+    setConfirming(false)
     cancelRef.current?.focus()
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -37,10 +41,16 @@ export function ConfirmDialog({ open, title = 'Confirm action', message, confirm
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            disabled={confirming}
+            onClick={() => {
+              if (confirmingRef.current) return
+              confirmingRef.current = true
+              setConfirming(true)
+              onConfirm?.()
+            }}
             className={danger ? 'btn btn-danger' : 'btn btn-primary'}
           >
-            {confirmLabel}
+            {confirming ? 'Processing…' : confirmLabel}
           </button>
         </div>
       </div>

@@ -45,6 +45,8 @@ export default async function AccountPage() {
           title="Orders"
           description="Active orders first, then ones you already received."
           count={(orders.sectionCounts?.active ?? activeOrders.length) + (orders.sectionCounts?.delivered ?? deliveredOrders.length)}
+          fit
+          bodyClassName="p-4 sm:p-5"
           href="/buyer/orders"
           linkLabel="View all"
           empty={

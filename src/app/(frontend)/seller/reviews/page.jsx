@@ -3,6 +3,7 @@ import { StatusBadge } from '@/components/dashboard-ui'
 import { PagedRows } from '@/components/paged-rows'
 import { requireApprovedSeller } from '@/server/guards'
 import { sellerRatingSummary } from '@/server/reviews'
+import { StarRating } from '@/components/star-rating'
 
 export default async function SellerReviewsPage() {
   const user = await requireApprovedSeller()
@@ -26,6 +27,15 @@ export default async function SellerReviewsPage() {
           <p className="mt-1 text-3xl font-bold text-brand-900">
             {summary.averageRating === null ? '—' : `${summary.averageRating.toFixed(1)} / 5`}
           </p>
+          {summary.averageRating !== null ? (
+            <StarRating
+              rating={summary.averageRating}
+              reviewCount={summary.reviewCount}
+              size="md"
+              showValue
+              className="mt-2 text-sm text-brand-muted"
+            />
+          ) : null}
         </div>
         <div className="text-sm text-brand-muted">
           {summary.reviewCount} customer review{summary.reviewCount === 1 ? '' : 's'}
@@ -42,6 +52,13 @@ export default async function SellerReviewsPage() {
                   <p className="text-sm font-semibold text-brand-muted">
                     {average.toFixed(1)} / 5 · {group.reviews.length} review{group.reviews.length === 1 ? '' : 's'}
                   </p>
+                  <StarRating
+                    rating={average}
+                    reviewCount={group.reviews.length}
+                    size="md"
+                    showValue
+                    className="text-sm text-brand-muted"
+                  />
                 </header>
                 <PagedRows className="divide-y divide-brand-line">
                   {group.reviews.map((review) => (
@@ -49,9 +66,7 @@ export default async function SellerReviewsPage() {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
                           <span className="font-semibold text-brand-900">{review.reviewerName}</span>
-                          <span className="text-sm font-medium text-amber-700" aria-label={`${review.rating} out of 5 stars`}>
-                            {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
-                          </span>
+                          <StarRating rating={review.rating} size="sm" />
                         </div>
                         <div className="flex items-center gap-2">
                           <StatusBadge status="Customer review" />
