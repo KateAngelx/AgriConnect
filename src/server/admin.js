@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { lastDaySeries, localDayKey } from '@/lib/day-series'
 import { inPeriod } from '@/lib/report-period'
 import { listRoleApplications } from './applications'
@@ -6,10 +7,77 @@ import { DELIVERY_FEE, kiloPlatformFee } from './payments'
 import { isApprovedAdmin, rolesFromLegacy } from './roles'
 import { save } from './sync'
 import { readyStore } from './store'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 
 const statuses = ['approved', 'pending', 'rejected', 'suspended']
 
-export async function adminSnapshot() {
+function missingTable(error) {
+  return (
+    error?.code === 'PGRST205' ||
+    /could not find the table|relation .* does not exist/i.test(error?.message || '')
+  )
+}
+
+async function readDashboardRows(client, table, columns, optional = false) {
+  const rows = []
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await client
+      .from(table)
+      .select(columns)
+      .range(offset, offset + 999)
+    if (error) {
+      if (optional && missingTable(error)) return []
+      throw new Error(`Could not load admin dashboard ${table}: ${error.message}`)
+    }
+    rows.push(...(data || []))
+    if (!data || data.length < 1000) return rows
+  }
+}
+
+export const adminSnapshot = cache(async function adminSnapshot() {
+  if (supabaseEnv().serviceKey) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const [users, products, orders, payments, applications, reports, feedback] = await Promise.all([
+      readDashboardRows(client, 'profiles', 'role,roles,status'),
+      readDashboardRows(client, 'products', 'status'),
+      readDashboardRows(client, 'orders', 'status,platform_fee'),
+      readDashboardRows(client, 'payments', 'status'),
+      readDashboardRows(client, 'role_applications', 'status', true),
+      readDashboardRows(client, 'buyer_reports', 'status', true),
+      readDashboardRows(client, 'buyer_feedback', 'status', true),
+    ])
+    const roles = users.map((user) => ({ user, roles: rolesFromLegacy(user) }))
+    const closed = new Set(['completed', 'cancelled', 'delivered', 'picked-up'])
+    const pendingApplicationStatuses = new Set(['pending', 'under-review', 'needs-info'])
+    const platformFee = orders.reduce((sum, order) => sum + Number(order.platform_fee || 0), 0)
+    return {
+      users: users.length,
+      buyers: users.filter((user) => user.role === 'buyer').length,
+      sellers: roles.filter(({ roles }) => roles.includes('seller')).length,
+      deliveryPersonnel: roles.filter(({ roles }) => roles.includes('delivery')).length,
+      pending: applications.filter((item) => pendingApplicationStatuses.has(item.status)).length,
+      approvedSellers: users.filter(
+        (user) => rolesFromLegacy(user).includes('seller') && user.status === 'approved',
+      ).length,
+      approvedDelivery: users.filter(
+        (user) => rolesFromLegacy(user).includes('delivery') && user.status === 'approved',
+      ).length,
+      products: products.length,
+      activeProducts: products.filter((product) => product.status === 'active').length,
+      orders: orders.length,
+      ordersAttention: orders.filter((order) => !closed.has(order.status)).length,
+      transactions: payments.length,
+      payments: payments.filter((payment) => payment.status === 'pending').length,
+      paidTransactions: payments.filter((payment) => payment.status === 'paid').length,
+      pendingReports: reports.filter((report) =>
+        ['submitted', 'pending', 'in-review', 'under-review'].includes(report.status),
+      ).length,
+      unresolvedFeedback: feedback.filter((entry) => entry.status !== 'resolved').length,
+      platformFee,
+      platformCommission: platformFee,
+    }
+  }
   const store = await readyStore()
   const users = [...store.users.values()]
   const orders = [...store.orders.values()]
@@ -44,7 +112,7 @@ export async function adminSnapshot() {
     platformFee: orders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0),
     platformCommission: orders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0),
   }
-}
+})
 
 export async function adminTransactionReceipt(user, paymentId) {
   if (!isApprovedAdmin(user)) return null
@@ -83,6 +151,39 @@ export async function adminTransactionReceipt(user, paymentId) {
 }
 
 export async function listRecentApplications(limit = 5) {
+  if (supabaseEnv().serviceKey) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const { data, error } = await client
+      .from('role_applications')
+      .select('id,user_id,application_type,status,payload,admin_note,created_at,updated_at')
+      .in('status', ['pending', 'under-review', 'needs-info'])
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) {
+      if (missingTable(error)) return []
+      throw new Error(`Could not load recent applications: ${error.message}`)
+    }
+    const rows = data || []
+    const userIds = [...new Set(rows.map((item) => item.user_id).filter(Boolean))]
+    const usersResult = userIds.length
+      ? await client.from('profiles').select('id,name,email').in('id', userIds)
+      : { data: [], error: null }
+    if (usersResult.error)
+      throw new Error(`Could not load application profiles: ${usersResult.error.message}`)
+    const users = new Map((usersResult.data || []).map((user) => [user.id, user]))
+    return rows.map((item) => ({
+      id: item.id,
+      userId: item.user_id,
+      applicationType: item.application_type,
+      status: item.status,
+      payload: item.payload || {},
+      adminNote: item.admin_note || '',
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+      user: users.get(item.user_id) || null,
+    }))
+  }
   const applications = await listRoleApplications()
   return applications
     .filter((item) => ['pending', 'under-review', 'needs-info'].includes(item.status))
@@ -213,6 +314,22 @@ export async function deactivateProduct(actor, productId) {
 }
 
 export async function adminOrderActivity() {
+  if (supabaseEnv().serviceKey) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() - 6)
+    const { data, error } = await client
+      .from('orders')
+      .select('created_at')
+      .gte('created_at', start.toISOString())
+    if (error) throw new Error(`Could not load admin order activity: ${error.message}`)
+    return lastDaySeries(data || [], (order) => ({
+      key: localDayKey(order.created_at),
+      value: 1,
+    }))
+  }
   const store = await readyStore()
   const orders = [...store.orders.values()]
   return lastDaySeries(orders, (order) => ({ key: localDayKey(order.createdAt), value: 1 }))
@@ -295,7 +412,12 @@ export async function markCommissionPaid(actor, deliveryId) {
     return { error: 'Pay a commission after delivery is complete.' }
   }
   const order = store.orders.get(delivery.orderId)
-  if (!order || order.status !== 'completed' || !delivery.buyerConfirmedAt || !delivery.proofOfDelivery?.url) {
+  if (
+    !order ||
+    order.status !== 'completed' ||
+    !delivery.buyerConfirmedAt ||
+    !delivery.proofOfDelivery?.url
+  ) {
     return { error: 'Release the courier fee only after proof and buyer confirmation.' }
   }
   if (delivery.courierPaymentStatus === 'released' || delivery.commissionStatus === 'paid') {

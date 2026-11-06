@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { refreshDeliveryEtaIso } from '@/lib/delivery-eta'
 import { isValidPin } from '@/lib/geo'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
@@ -46,35 +47,58 @@ const steps = {
   'picked-up': 'in-transit',
 }
 
-export async function deliverySnapshot(user) {
+export const deliverySnapshot = cache(async function deliverySnapshot(user) {
   if (!isApprovedDelivery(user)) {
     return { open: 0, assigned: 0, active: 0, completed: 0, earnings: 0, commission: 0 }
   }
   const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
   if (client) {
-    const count = (query, label) => query.then((result) => {
-      if (result.error) throw new Error(`Could not load ${label} delivery count: ${result.error.message}`)
-      return result.count || 0
-    })
+    const count = (query, label) =>
+      query.then((result) => {
+        if (result.error)
+          throw new Error(`Could not load ${label} delivery count: ${result.error.message}`)
+        return result.count || 0
+      })
     const [open, assigned, active, completed, commission] = await Promise.all([
       count(
-        client.from('deliveries').select('id', { count: 'exact', head: true }).eq('status', 'open').is('courier_id', null),
+        client
+          .from('deliveries')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'open')
+          .is('courier_id', null),
         'open',
       ),
       count(
-        client.from('deliveries').select('id', { count: 'exact', head: true }).eq('courier_id', user.id).eq('status', 'accepted'),
+        client
+          .from('deliveries')
+          .select('id', { count: 'exact', head: true })
+          .eq('courier_id', user.id)
+          .eq('status', 'accepted'),
         'assigned',
       ),
       count(
-        client.from('deliveries').select('id', { count: 'exact', head: true }).eq('courier_id', user.id).in('status', ['picked-up', 'in-transit']),
+        client
+          .from('deliveries')
+          .select('id', { count: 'exact', head: true })
+          .eq('courier_id', user.id)
+          .in('status', ['picked-up', 'in-transit']),
         'active',
       ),
       count(
-        client.from('deliveries').select('id', { count: 'exact', head: true }).eq('courier_id', user.id).in('status', ['delivered', 'completed']),
+        client
+          .from('deliveries')
+          .select('id', { count: 'exact', head: true })
+          .eq('courier_id', user.id)
+          .in('status', ['delivered', 'completed']),
         'completed',
       ),
       count(
-        client.from('deliveries').select('id', { count: 'exact', head: true }).eq('courier_id', user.id).in('status', ['delivered', 'completed']).neq('commission_status', 'paid'),
+        client
+          .from('deliveries')
+          .select('id', { count: 'exact', head: true })
+          .eq('courier_id', user.id)
+          .in('status', ['delivered', 'completed'])
+          .neq('commission_status', 'paid'),
         'unpaid commission',
       ),
     ])
@@ -92,10 +116,11 @@ export async function deliverySnapshot(user) {
   const completed = mine.filter((item) => ['delivered', 'completed'].includes(item.status))
   const pending = completed.filter((item) => item.commissionStatus !== 'paid')
   return {
-    open: store.deliveries.filter((item) =>
-      item.status === 'open' &&
-      !item.courierId &&
-      store.orders.get(item.orderId)?.status === 'awaiting-delivery'
+    open: store.deliveries.filter(
+      (item) =>
+        item.status === 'open' &&
+        !item.courierId &&
+        store.orders.get(item.orderId)?.status === 'awaiting-delivery',
     ).length,
     assigned: mine.filter((item) => item.status === 'accepted').length,
     active: mine.filter((item) => ['picked-up', 'in-transit'].includes(item.status)).length,
@@ -103,7 +128,7 @@ export async function deliverySnapshot(user) {
     earnings: completed.length * DELIVERY_FEE,
     commission: pending.length * DELIVERY_FEE,
   }
-}
+})
 
 export async function listCourierWork(user) {
   return listDeliveryWorkForUser(user)
@@ -113,7 +138,9 @@ export async function listCommissions(user) {
   if (!isApprovedDelivery(user)) return []
   const store = await readyStore()
   return store.deliveries
-    .filter((item) => item.courierId === user.id && ['delivered', 'completed'].includes(item.status))
+    .filter(
+      (item) => item.courierId === user.id && ['delivered', 'completed'].includes(item.status),
+    )
     .map((delivery) => {
       const order = store.orders.get(delivery.orderId)
       return {
@@ -122,10 +149,12 @@ export async function listCommissions(user) {
         commission: DELIVERY_FEE,
         commissionStatus: delivery.commissionStatus || 'pending',
         updatedAt: delivery.updatedAt || '',
-        order: order ? {
-          id: order.id,
-          reference: order.reference,
-        } : null,
+        order: order
+          ? {
+              id: order.id,
+              reference: order.reference,
+            }
+          : null,
       }
     })
     .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
@@ -146,9 +175,12 @@ export async function listDeliveryHistory(user) {
     const orderIds = [...new Set(deliveryRows.map((delivery) => delivery.order_id))]
     const { data: orderRows, error: orderError } = await client
       .from('orders')
-      .select('id,reference,buyer_id,buyer_name,fulfillment,contact_number,delivery_address,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,created_at,items')
+      .select(
+        'id,reference,buyer_id,buyer_name,fulfillment,contact_number,delivery_address,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,created_at,items',
+      )
       .in('id', orderIds)
-    if (orderError) throw new Error(`Could not load completed delivery orders: ${orderError.message}`)
+    if (orderError)
+      throw new Error(`Could not load completed delivery orders: ${orderError.message}`)
     const orders = new Map((orderRows || []).map((row) => [row.id, orderFromDatabaseRow(row)]))
     const store = { products: [], sellers: [] }
     return deliveryRows.map((row) => {
@@ -194,18 +226,20 @@ export async function listDeliveryHistory(user) {
   }
   const store = await readyStore()
   return store.deliveries
-    .filter((delivery) => (
-      delivery.courierId === user.id &&
-      ['delivered', 'completed', 'cancelled', 'delivery-failed'].includes(delivery.status)
-    ))
+    .filter(
+      (delivery) =>
+        delivery.courierId === user.id &&
+        ['delivered', 'completed', 'cancelled', 'delivery-failed'].includes(delivery.status),
+    )
     .map((delivery) => {
       const order = store.orders.get(delivery.orderId) || null
       const assignment = deliveryAssignmentForViewer(store, delivery, order, user.id)
-      const deliveryDate = delivery.updatedAt
-        || delivery.updates?.at(-1)?.at
-        || order?.updatedAt
-        || order?.createdAt
-        || ''
+      const deliveryDate =
+        delivery.updatedAt ||
+        delivery.updates?.at(-1)?.at ||
+        order?.updatedAt ||
+        order?.createdAt ||
+        ''
       return {
         id: assignment.id,
         orderId: assignment.orderId,
@@ -302,7 +336,13 @@ export async function updateAssignment(user, deliveryId, note) {
           updated_at: acceptedAt,
           updates: [
             ...(delivery.updates || []),
-            { at: acceptedAt, status: next, note: String(note ?? '').trim().slice(0, 240) },
+            {
+              at: acceptedAt,
+              status: next,
+              note: String(note ?? '')
+                .trim()
+                .slice(0, 240),
+            },
           ],
         })
         .eq('id', deliveryId)
@@ -316,7 +356,9 @@ export async function updateAssignment(user, deliveryId, note) {
   }
   if (delivery.status === 'open') delivery.courierId = user.id
   delivery.status = next
-  delivery.note = String(note ?? '').trim().slice(0, 240)
+  delivery.note = String(note ?? '')
+    .trim()
+    .slice(0, 240)
   delivery.updatedAt = new Date().toISOString()
   delivery.updates.push({ at: delivery.updatedAt, status: next, note: delivery.note })
   if (next === 'accepted') order.status = 'delivery-assigned'
@@ -369,15 +411,13 @@ export async function submitProofOfDelivery(user, deliveryId, proofFile) {
   }
 
   const bytes = Buffer.from(await proofFile.arrayBuffer())
-  const extension = proofFile.type === 'image/png' ? 'png'
-    : proofFile.type === 'image/webp' ? 'webp'
-      : 'jpg'
+  const extension =
+    proofFile.type === 'image/png' ? 'png' : proofFile.type === 'image/webp' ? 'webp' : 'jpg'
   const path = `${order.id}/${delivery.id}-${Date.now()}.${extension}`
   let proofUrl = ''
   const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
   if (client) {
-    await client.storage.createBucket('proof-of-delivery', { public: true })
-      .catch(() => null)
+    await client.storage.createBucket('proof-of-delivery', { public: true }).catch(() => null)
     const uploaded = await client.storage
       .from('proof-of-delivery')
       .upload(path, bytes, { contentType: proofFile.type, upsert: true })
@@ -406,15 +446,33 @@ export async function submitProofOfDelivery(user, deliveryId, proofFile) {
     status: 'delivered',
     note: 'Proof of delivery uploaded and delivery marked complete.',
   })
-  await notify(order.buyer, `${order.reference} was delivered`, 'Please review the proof of delivery and confirm that you received the products.', `/buyer/orders?order=${order.id}`)
-  await notify(order.seller, `${order.reference} was delivered`, 'The courier uploaded proof of delivery. The buyer must confirm receipt before admin payment release.', `/seller/orders?order=${order.id}`)
+  await notify(
+    order.buyer,
+    `${order.reference} was delivered`,
+    'Please review the proof of delivery and confirm that you received the products.',
+    `/buyer/orders?order=${order.id}`,
+  )
+  await notify(
+    order.seller,
+    `${order.reference} was delivered`,
+    'The courier uploaded proof of delivery. The buyer must confirm receipt before admin payment release.',
+    `/seller/orders?order=${order.id}`,
+  )
   await save()
   return { ok: true }
 }
 
-export async function saveServiceArea(user, serviceArea, serviceAreaLat, serviceAreaLng, serviceLocationsJson = '') {
+export async function saveServiceArea(
+  user,
+  serviceArea,
+  serviceAreaLat,
+  serviceAreaLng,
+  serviceLocationsJson = '',
+) {
   if (!hasRole(user, 'delivery')) return { error: 'Only delivery accounts can set a service area.' }
-  const area = String(serviceArea ?? '').trim().slice(0, 120)
+  const area = String(serviceArea ?? '')
+    .trim()
+    .slice(0, 120)
   if (area.length < 2) return { error: 'Enter the areas you can serve.' }
   const latitude = Number(serviceAreaLat)
   const longitude = Number(serviceAreaLng)
@@ -425,17 +483,35 @@ export async function saveServiceArea(user, serviceArea, serviceAreaLat, service
     if (Array.isArray(parsed)) locations = parsed
   } catch {}
   locations = locations
-    .filter((item) => String(item?.label || '').trim() && isValidPin(Number(item?.lat), Number(item?.lng)))
+    .filter(
+      (item) =>
+        String(item?.label || '').trim() && isValidPin(Number(item?.lat), Number(item?.lng)),
+    )
     .slice(0, 10)
     .map((item, index) => ({
-      id: index === 0 && item.id === 'service-area-pin' ? 'service-area-pin' : String(item.id || crypto.randomUUID()),
+      id:
+        index === 0 && item.id === 'service-area-pin'
+          ? 'service-area-pin'
+          : String(item.id || crypto.randomUUID()),
       label: String(item.label).trim().slice(0, 80),
-      address: String(item.address || item.label).trim().slice(0, 240),
+      address: String(item.address || item.label)
+        .trim()
+        .slice(0, 240),
       landmark: '',
       lat: Number(item.lat),
       lng: Number(item.lng),
     }))
-  if (!locations.length) locations = [{ id: 'service-area-pin', label: area, address: area, landmark: '', lat: latitude, lng: longitude }]
+  if (!locations.length)
+    locations = [
+      {
+        id: 'service-area-pin',
+        label: area,
+        address: area,
+        landmark: '',
+        lat: latitude,
+        lng: longitude,
+      },
+    ]
   const store = await readyStore()
   const record = store.users.get(user.id)
   if (!record) return { error: 'Account not found.' }
@@ -445,10 +521,13 @@ export async function saveServiceArea(user, serviceArea, serviceAreaLat, service
   record.savedAddresses = locations
   const client = getSupabaseAdmin()
   if (client) {
-    const { error } = await client.from('profiles').update({
-      service_area: area,
-      delivery_addresses: locations,
-    }).eq('id', user.id)
+    const { error } = await client
+      .from('profiles')
+      .update({
+        service_area: area,
+        delivery_addresses: locations,
+      })
+      .eq('id', user.id)
     if (error) return { error: `Service area could not be saved to Supabase: ${error.message}` }
   }
   await save()

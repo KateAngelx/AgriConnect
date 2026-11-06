@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ProductCard } from '@/components/product-card'
 
-const PAGE_SIZE = 5
+const PAGE_SIZE = 12
 const CACHE_TTL_MS = 30_000
 
 export function ProductResults({

@@ -2,38 +2,46 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { formatTimeAgo } from '@/lib/dashboard-format'
 
 export function NotificationsPanel({ open, onClose, onUnreadChange }) {
-  const router = useRouter()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [markingIds, setMarkingIds] = useState(() => new Set())
   const [markingAll, setMarkingAll] = useState(false)
   const operationBusy = useRef(false)
+  const loadBusy = useRef(false)
+  const loadedAt = useRef(0)
 
   const load = useCallback(async () => {
+    if (loadBusy.current || Date.now() - loadedAt.current < 30_000) return
+    loadBusy.current = true
     setLoading(true)
     setError('')
     try {
-      const response = await fetch('/api/notifications', { cache: 'no-store', credentials: 'same-origin' })
+      const response = await fetch('/api/notifications', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Could not load notifications.')
       setItems(data.notifications ?? [])
-      const nextUnread = Number(data.unread ?? (data.notifications ?? []).filter((note) => !note.read).length)
+      const nextUnread = Number(
+        data.unread ?? (data.notifications ?? []).filter((note) => !note.read).length,
+      )
       onUnreadChange?.(nextUnread)
+      loadedAt.current = Date.now()
     } catch (err) {
       setError(err.message || 'Could not load notifications.')
     } finally {
+      loadBusy.current = false
       setLoading(false)
     }
   }, [onUnreadChange])
 
   useEffect(() => {
-    if (!open) return
-    load()
+    if (open && Date.now() - loadedAt.current >= 30_000) load()
   }, [open, load])
 
   useEffect(() => {
@@ -63,7 +71,7 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
       if (!response.ok) throw new Error(data.error || 'Could not update notification.')
       setItems((prev) => prev.map((note) => (note.id === id ? { ...note, read: true } : note)))
       onUnreadChange?.(Math.max(0, unread - 1))
-      router.refresh()
+      loadedAt.current = Date.now()
     } catch (err) {
       setError(err.message || 'Could not update notification.')
     } finally {
@@ -92,7 +100,7 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
       if (!response.ok) throw new Error(data.error || 'Could not update notifications.')
       setItems((prev) => prev.map((note) => ({ ...note, read: true })))
       onUnreadChange?.(0)
-      router.refresh()
+      loadedAt.current = Date.now()
     } catch (err) {
       setError(err.message || 'Could not update notifications.')
     } finally {
@@ -130,7 +138,14 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
           ) : null}
         </header>
         <div className="max-h-[min(24rem,70vh)] overflow-y-auto">
-          {error ? <p role="alert" className="m-3 rounded-xl bg-[#fff1ed] px-3 py-2 text-sm text-[#963b2d]">{error}</p> : null}
+          {error ? (
+            <p
+              role="alert"
+              className="m-3 rounded-xl bg-[#fff1ed] px-3 py-2 text-sm text-[#963b2d]"
+            >
+              {error}
+            </p>
+          ) : null}
           {loading ? (
             <p className="px-4 py-6 text-sm text-[#647066]">Loading…</p>
           ) : items.length === 0 ? (
@@ -148,8 +163,12 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
                     }}
                   >
                     <p className="text-sm font-semibold text-[#142016]">{note.title}</p>
-                    {note.body ? <p className="mt-0.5 text-xs leading-5 text-[#647066]">{note.body}</p> : null}
-                    <p className="mt-1 text-[11px] text-[#647066]">{formatTimeAgo(note.createdAt)}</p>
+                    {note.body ? (
+                      <p className="mt-0.5 text-xs leading-5 text-[#647066]">{note.body}</p>
+                    ) : null}
+                    <p className="mt-1 text-[11px] text-[#647066]">
+                      {formatTimeAgo(note.createdAt)}
+                    </p>
                   </Link>
                 </li>
               ))}
@@ -157,7 +176,11 @@ export function NotificationsPanel({ open, onClose, onUnreadChange }) {
           )}
         </div>
         <footer className="border-t border-[#173c2c]/8 px-4 py-2.5 text-center">
-          <Link href="/notifications" onClick={onClose} className="text-xs font-bold text-[#4b9f30] hover:text-[#2e7d32]">
+          <Link
+            href="/notifications"
+            onClick={onClose}
+            className="text-xs font-bold text-[#4b9f30] hover:text-[#2e7d32]"
+          >
             View all notifications
           </Link>
         </footer>

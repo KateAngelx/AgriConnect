@@ -130,7 +130,9 @@ function snapshot(store) {
       updated_at: review.updatedAt || review.createdAt,
     })),
     productReviewModeration: store.productReviews
-      .filter((review) => Array.isArray(review.moderationHistory) && review.moderationHistory.length)
+      .filter(
+        (review) => Array.isArray(review.moderationHistory) && review.moderationHistory.length,
+      )
       .map((review) => ({
         review_id: review.id,
         moderation_history: review.moderationHistory,
@@ -266,12 +268,17 @@ function snapshot(store) {
 }
 
 function rowKey(row, key) {
-  return key.split(',').map((field) => row[field] ?? '').join('\u0000')
+  return key
+    .split(',')
+    .map((field) => row[field] ?? '')
+    .join('\u0000')
 }
 
 function rowsChanged(previousRows, nextRows, key) {
   const previous = new Map((previousRows || []).map((row) => [rowKey(row, key), row]))
-  return nextRows.filter((row) => JSON.stringify(previous.get(rowKey(row, key))) !== JSON.stringify(row))
+  return nextRows.filter(
+    (row) => JSON.stringify(previous.get(rowKey(row, key))) !== JSON.stringify(row),
+  )
 }
 
 async function pushChanges(client, data) {
@@ -634,7 +641,9 @@ async function hydrate() {
     globalThis.__agriconnectPersistedSnapshot = snapshot(getStore())
     globalThis.__agriconnectStatus = {
       mode: 'supabase',
-      reason: probe.data?.length ? '' : 'Database has no profiles yet; new records can be persisted.',
+      reason: probe.data?.length
+        ? ''
+        : 'Database has no profiles yet; new records can be persisted.',
     }
   } catch (error) {
     globalThis.__agriconnectLoadedFromDb = false
@@ -672,7 +681,8 @@ export async function mutateBuyerCart(input) {
     p_cart_id: input.cartId || null,
   })
   if (error) throw new Error(`carts: ${error.message}`)
-  if (!data || !Array.isArray(data.items)) throw new Error('carts: The database returned an invalid cart.')
+  if (!data || !Array.isArray(data.items))
+    throw new Error('carts: The database returned an invalid cart.')
   const cart = {
     id: data.id,
     buyer: input.buyerId,
@@ -792,8 +802,28 @@ export async function signInWithSupabase(email, password) {
 }
 
 export async function describeIntegrations() {
-  await ready()
-  const status = globalThis.__agriconnectStatus || { mode: 'memory', reason: '' }
+  const { enabled, serviceKey } = supabaseEnv()
+  let status = { mode: 'memory', reason: '' }
+  if (enabled && serviceKey) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const probe = await client.from('profiles').select('id').limit(1)
+    if (probe.error) throw new Error(`Could not check Supabase integration: ${probe.error.message}`)
+    status = {
+      mode: 'supabase',
+      reason: probe.data?.length
+        ? ''
+        : 'Database has no profiles yet; new records can be persisted.',
+    }
+  } else if (enabled) {
+    status = {
+      mode: 'supabase',
+      reason: 'Configure SUPABASE_SERVICE_ROLE_KEY for server-side database access.',
+    }
+  } else {
+    status.reason =
+      'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY, then run supabase/schema.sql and supabase/seed.sql.'
+  }
   const { describeAiSetup } = await import('@/server/ai/ai-config')
   const ai = describeAiSetup()
   const aiMode = ai.mode
@@ -805,6 +835,6 @@ export async function describeIntegrations() {
     ai: true,
     aiMode,
     reason: status.reason || '',
-    serviceRole: Boolean(supabaseEnv().serviceKey),
+    serviceRole: Boolean(serviceKey),
   }
 }

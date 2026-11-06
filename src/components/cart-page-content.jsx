@@ -20,11 +20,9 @@ export function CartPageContent() {
   )
   const selectedSet = new Set(selectedIds)
   const selectedItems = eligibleItems.filter((item) => selectedSet.has(item.id))
-  const subtotal = selectedItems.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
-    0,
-  )
-  const sellerCount = new Set(selectedItems.map((item) => item.product.seller?.id).filter(Boolean)).size
+  const subtotal = selectedItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
+  const sellerCount = new Set(selectedItems.map((item) => item.product.seller?.id).filter(Boolean))
+    .size
   const deliveryEstimate = subtotal + sellerCount * 49
   const canCheckout = selectedItems.length > 0
   const selectableIds = eligibleItems.map((item) => item.id)
@@ -33,11 +31,12 @@ export function CartPageContent() {
   useEffect(() => {
     const eligibleIds = new Set(
       items
-        .filter((item) =>
-          item.product.status === 'active' &&
-          item.product.seller?.status === 'approved' &&
-          item.product.stock > 0 &&
-          item.quantity <= item.product.stock,
+        .filter(
+          (item) =>
+            item.product.status === 'active' &&
+            item.product.seller?.status === 'approved' &&
+            item.product.stock > 0 &&
+            item.quantity <= item.product.stock,
         )
         .map((item) => item.id),
     )
@@ -49,9 +48,7 @@ export function CartPageContent() {
 
   function toggleItem(itemId) {
     setSelectedIds((previous) =>
-      previous.includes(itemId)
-        ? previous.filter((id) => id !== itemId)
-        : [...previous, itemId],
+      previous.includes(itemId) ? previous.filter((id) => id !== itemId) : [...previous, itemId],
     )
   }
 
@@ -75,12 +72,19 @@ export function CartPageContent() {
   }
 
   if (cartLoading) {
-    return <p role="status" className="text-sm text-[#5c6f62]">Loading your cart…</p>
+    return (
+      <p role="status" className="text-sm text-[#5c6f62]">
+        Loading your cart…
+      </p>
+    )
   }
 
   if (cartError) {
     return (
-      <div role="alert" className="rounded-xl border border-red-200 bg-white p-5 text-sm text-[#963b2d]">
+      <div
+        role="alert"
+        className="rounded-xl border border-red-200 bg-white p-5 text-sm text-[#963b2d]"
+      >
         <p>{cartError}</p>
         <button type="button" onClick={refreshCart} className="btn btn-secondary mt-3">
           Try again
@@ -96,7 +100,7 @@ export function CartPageContent() {
           <input
             type="checkbox"
             checked={allSelected}
-            disabled={selectableIds.length === 0 || cartBusy}
+            disabled={selectableIds.length === 0}
             onChange={toggleAll}
             className="size-4 accent-[#2e7d32]"
           />
@@ -119,14 +123,20 @@ export function CartPageContent() {
               <input
                 type="checkbox"
                 checked={selectedSet.has(item.id)}
-                disabled={!selectable || cartBusy}
+                disabled={!selectable}
                 onChange={() => toggleItem(item.id)}
                 aria-label={`Select ${product.name}`}
                 className="size-4 shrink-0 accent-[#2e7d32]"
               />
               <div className="flex-1">
-                <p className={`text-xs font-bold uppercase ${inStock ? 'text-[#5dbb38]' : 'text-[#963b2d]'}`}>
-                  {!available ? 'Unavailable' : product.stock > 0 ? `${product.stock} available` : 'Out of stock'}
+                <p
+                  className={`text-xs font-bold uppercase ${inStock ? 'text-[#5dbb38]' : 'text-[#963b2d]'}`}
+                >
+                  {!available
+                    ? 'Unavailable'
+                    : product.stock > 0
+                      ? `${product.stock} available`
+                      : 'Out of stock'}
                 </p>
                 <h2 className="mt-2 text-xl font-bold">{product.name}</h2>
                 <p className="mt-1 text-sm text-[#647066]">
@@ -198,7 +208,9 @@ export function CartPageContent() {
             <strong>{peso(subtotal)}</strong>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#6e6e73]">Delivery estimate ({sellerCount} seller{sellerCount === 1 ? '' : 's'})</span>
+            <span className="text-[#6e6e73]">
+              Delivery estimate ({sellerCount} seller{sellerCount === 1 ? '' : 's'})
+            </span>
             <strong>{peso(deliveryEstimate)}</strong>
           </div>
         </div>
@@ -221,7 +233,10 @@ export function CartPageContent() {
             Continue to checkout
           </Link>
         ) : (
-          <span className="btn btn-primary mt-6 w-full cursor-not-allowed opacity-50" aria-disabled="true">
+          <span
+            className="btn btn-primary mt-6 w-full cursor-not-allowed opacity-50"
+            aria-disabled="true"
+          >
             Select products to continue
           </span>
         )}

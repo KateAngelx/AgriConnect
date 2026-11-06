@@ -29,11 +29,12 @@ export function CartDrawer({ open, onClose }) {
   }, [open, onClose])
 
   const cartItems = cart?.items?.filter((entry) => typeof entry.product === 'object') ?? []
-  const eligibleItems = cartItems.filter((entry) =>
-    entry.product.status === 'active' &&
-    entry.product.seller?.status === 'approved' &&
-    entry.product.stock > 0 &&
-    entry.quantity <= entry.product.stock,
+  const eligibleItems = cartItems.filter(
+    (entry) =>
+      entry.product.status === 'active' &&
+      entry.product.seller?.status === 'approved' &&
+      entry.product.stock > 0 &&
+      entry.quantity <= entry.product.stock,
   )
 
   useEffect(() => {
@@ -75,9 +76,7 @@ export function CartDrawer({ open, onClose }) {
 
   function toggleItem(itemId) {
     setSelectedIds((previous) =>
-      previous.includes(itemId)
-        ? previous.filter((id) => id !== itemId)
-        : [...previous, itemId],
+      previous.includes(itemId) ? previous.filter((id) => id !== itemId) : [...previous, itemId],
     )
   }
 
@@ -110,7 +109,9 @@ export function CartDrawer({ open, onClose }) {
 
         <div className="min-h-0 max-h-[min(28rem,55vh)] flex-1 overflow-y-auto overscroll-contain px-4 py-4">
           {cartLoading ? (
-            <p role="status" className="py-12 text-center text-sm text-[#647066]">Loading your cart…</p>
+            <p role="status" className="py-12 text-center text-sm text-[#647066]">
+              Loading your cart…
+            </p>
           ) : cartError ? (
             <div role="alert" className="rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">
               <p>{cartError}</p>
@@ -124,7 +125,9 @@ export function CartDrawer({ open, onClose }) {
             <div className="py-12 text-center">
               <DashboardIcon name="cart" className="mx-auto size-10 text-[#647066]" />
               <p className="mt-4 text-sm font-semibold text-[#142016]">Your cart is empty</p>
-              <p className="mt-1 text-sm text-[#647066]">Browse products and add items to check out.</p>
+              <p className="mt-1 text-sm text-[#647066]">
+                Browse products and add items to check out.
+              </p>
               <button
                 type="button"
                 onClick={() => {
@@ -142,7 +145,7 @@ export function CartDrawer({ open, onClose }) {
                 <input
                   type="checkbox"
                   checked={allSelected}
-                  disabled={selectableIds.length === 0 || cartBusy}
+                  disabled={selectableIds.length === 0}
                   onChange={toggleAll}
                   className="size-4 accent-[#2e7d32]"
                 />
@@ -152,77 +155,94 @@ export function CartDrawer({ open, onClose }) {
                 </span>
               </label>
               <ul className="space-y-4">
-              {cartItems.map((entry) => {
-                const product = entry.product
-                const image = product.images?.[0]
-                const selectable =
-                  product.status === 'active' &&
-                  product.seller?.status === 'approved' &&
-                  product.stock > 0 &&
-                  entry.quantity <= product.stock
-                return (
-                  <li key={entry.id} className="flex gap-3 rounded-xl border border-[#173c2c]/10 p-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedSet.has(entry.id)}
-                      disabled={!selectable || cartBusy}
-                      onChange={() => toggleItem(entry.id)}
-                      aria-label={`Select ${product.name}`}
-                      className="mt-1 size-4 shrink-0 accent-[#2e7d32]"
-                    />
-                    <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#eef0ea]">
-                      {image?.url ? (
-                        <img src={image.url} alt="" className="size-full object-cover" />
-                      ) : (
-                        <div className="grid size-full place-items-center text-[10px] text-[#647066]">No image</div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <p className="line-clamp-2 text-sm font-bold leading-snug text-[#142016]">{product.name}</p>
-                      <p className="text-xs text-[#647066]">
-                        {typeof product.seller === 'object' ? product.seller.farmName : 'Seller'}
-                      </p>
-                      <p className="mt-1 text-sm font-semibold">
-                        {peso(product.price)} <span className="font-normal text-[#647066]">/ {product.unit}</span>
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <label className="sr-only" htmlFor={`qty-${entry.id}`}>
-                          Quantity
-                        </label>
-                        <input
-                          id={`qty-${entry.id}`}
-                          type="number"
-                          min={1}
-                          max={product.stock}
-                          disabled={cartBusy}
-                          value={drafts[entry.id] ?? entry.quantity}
-                          onChange={(event) => {
-                            setDrafts((previous) => ({ ...previous, [entry.id]: event.target.value }))
-                          }}
-                          onBlur={(event) => {
-                            const quantity = Number(event.currentTarget.value)
-                            if (Number.isInteger(quantity) && quantity > 0 && quantity !== entry.quantity) {
-                              updateQuantity(entry, quantity)
-                            }
-                          }}
-                          className="w-16 rounded-lg border border-[#173c2c]/12 px-2 py-1 text-sm"
-                        />
-                        <button
-                          type="button"
-                          disabled={cartBusy}
-                          onClick={() => updateQuantity(entry, 0)}
-                          className="grid size-8 place-items-center rounded-lg border border-red-200 text-[#963b2d] hover:bg-red-50"
-                          aria-label={`Remove ${entry.product?.name || 'product'} from cart`}
-                          title="Remove from cart"
-                        >
-                          <DashboardIcon name="trash" className="size-4" />
-                        </button>
+                {cartItems.map((entry) => {
+                  const product = entry.product
+                  const image = product.images?.[0]
+                  const selectable =
+                    product.status === 'active' &&
+                    product.seller?.status === 'approved' &&
+                    product.stock > 0 &&
+                    entry.quantity <= product.stock
+                  return (
+                    <li
+                      key={entry.id}
+                      className="flex gap-3 rounded-xl border border-[#173c2c]/10 p-3"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(entry.id)}
+                        disabled={!selectable}
+                        onChange={() => toggleItem(entry.id)}
+                        aria-label={`Select ${product.name}`}
+                        className="mt-1 size-4 shrink-0 accent-[#2e7d32]"
+                      />
+                      <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#eef0ea]">
+                        {image?.url ? (
+                          <img src={image.url} alt="" className="size-full object-cover" />
+                        ) : (
+                          <div className="grid size-full place-items-center text-[10px] text-[#647066]">
+                            No image
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <p className="shrink-0 text-sm font-bold tabular-nums">{peso(product.price * entry.quantity)}</p>
-                  </li>
-                )
-              })}
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <p className="line-clamp-2 text-sm font-bold leading-snug text-[#142016]">
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-[#647066]">
+                          {typeof product.seller === 'object' ? product.seller.farmName : 'Seller'}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold">
+                          {peso(product.price)}{' '}
+                          <span className="font-normal text-[#647066]">/ {product.unit}</span>
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <label className="sr-only" htmlFor={`qty-${entry.id}`}>
+                            Quantity
+                          </label>
+                          <input
+                            id={`qty-${entry.id}`}
+                            type="number"
+                            min={1}
+                            max={product.stock}
+                            disabled={cartBusy}
+                            value={drafts[entry.id] ?? entry.quantity}
+                            onChange={(event) => {
+                              setDrafts((previous) => ({
+                                ...previous,
+                                [entry.id]: event.target.value,
+                              }))
+                            }}
+                            onBlur={(event) => {
+                              const quantity = Number(event.currentTarget.value)
+                              if (
+                                Number.isInteger(quantity) &&
+                                quantity > 0 &&
+                                quantity !== entry.quantity
+                              ) {
+                                updateQuantity(entry, quantity)
+                              }
+                            }}
+                            className="w-16 rounded-lg border border-[#173c2c]/12 px-2 py-1 text-sm"
+                          />
+                          <button
+                            type="button"
+                            disabled={cartBusy}
+                            onClick={() => updateQuantity(entry, 0)}
+                            className="grid size-8 place-items-center rounded-lg border border-red-200 text-[#963b2d] hover:bg-red-50"
+                            aria-label={`Remove ${entry.product?.name || 'product'} from cart`}
+                            title="Remove from cart"
+                          >
+                            <DashboardIcon name="trash" className="size-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="shrink-0 text-sm font-bold tabular-nums">
+                        {peso(product.price * entry.quantity)}
+                      </p>
+                    </li>
+                  )
+                })}
               </ul>
             </>
           )}
@@ -239,7 +259,7 @@ export function CartDrawer({ open, onClose }) {
             </p>
             <p className="mt-1 text-xs text-[#647066]">Delivery fees are calculated at checkout.</p>
             <div className="mt-4 grid gap-2">
-                <Link
+              <Link
                 href={checkoutHref}
                 onClick={onClose}
                 aria-disabled={selectedItems.length === 0}
@@ -247,11 +267,7 @@ export function CartDrawer({ open, onClose }) {
               >
                 Proceed to checkout
               </Link>
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn btn-secondary btn-block"
-              >
+              <button type="button" onClick={onClose} className="btn btn-secondary btn-block">
                 Continue shopping
               </button>
             </div>

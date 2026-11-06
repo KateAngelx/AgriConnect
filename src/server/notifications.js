@@ -61,8 +61,18 @@ export async function listNotifications(userId) {
 }
 
 export async function unreadCount(userId) {
-  const notes = await listNotifications(userId)
-  return notes.filter((note) => !note.read).length
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const { count, error } = await client
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('read', false)
+    if (error) throw new Error(`Could not count unread notifications: ${error.message}`)
+    return Number(count || 0)
+  }
+  const store = await readyStore()
+  return store.notifications.filter((note) => note.userId === userId && !note.read).length
 }
 
 export async function markNotificationRead(id, userId) {

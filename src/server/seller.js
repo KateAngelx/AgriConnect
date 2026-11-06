@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { isValidPin } from '@/lib/geo'
 import { lastDaySeries, localDayKey } from '@/lib/day-series'
 import { inPeriod } from '@/lib/report-period'
@@ -45,7 +46,9 @@ export function nextSellerAction(fulfillment, status) {
 }
 
 function cleanText(value, max) {
-  return String(value ?? '').trim().slice(0, max)
+  return String(value ?? '')
+    .trim()
+    .slice(0, max)
 }
 
 const DATA_IMAGE = /^data:image\/(jpeg|jpg|png|webp);base64,[a-z0-9+/=\r\n]+$/i
@@ -67,7 +70,10 @@ function imageUrl(value) {
 }
 
 export function sellerRecord(store, user) {
-  return store.sellers.find((seller) => seller.id === user.sellerId || seller.ownerId === user.id) || null
+  return (
+    store.sellers.find((seller) => seller.id === user.sellerId || seller.ownerId === user.id) ||
+    null
+  )
 }
 
 export function sellerIdForUser(store, user) {
@@ -104,16 +110,24 @@ async function sellerOrderRows(client, sellerId, columns, limit) {
     buildQuery({ product: { seller: { id: sellerId } } }),
     buildQuery({ product: { seller: sellerId } }),
   ])
-  if (sellerIdResult.error) throw new Error(`Could not load seller orders: ${sellerIdResult.error.message}`)
-  if (nestedSellerResult.error) throw new Error(`Could not load seller orders: ${nestedSellerResult.error.message}`)
-  if (sellerStringResult.error) throw new Error(`Could not load seller orders: ${sellerStringResult.error.message}`)
-  return [...new Map(
-    [...(sellerIdResult.data || []), ...(nestedSellerResult.data || []), ...(sellerStringResult.data || [])]
-      .map((row) => [row.id, row]),
-  ).values()]
+  if (sellerIdResult.error)
+    throw new Error(`Could not load seller orders: ${sellerIdResult.error.message}`)
+  if (nestedSellerResult.error)
+    throw new Error(`Could not load seller orders: ${nestedSellerResult.error.message}`)
+  if (sellerStringResult.error)
+    throw new Error(`Could not load seller orders: ${sellerStringResult.error.message}`)
+  return [
+    ...new Map(
+      [
+        ...(sellerIdResult.data || []),
+        ...(nestedSellerResult.data || []),
+        ...(sellerStringResult.data || []),
+      ].map((row) => [row.id, row]),
+    ).values(),
+  ]
 }
 
-export async function sellerSnapshot(user) {
+export const sellerSnapshot = cache(async function sellerSnapshot(user) {
   const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
   if (client) {
     const sellerId = await sellerIdFromDatabase(client, user)
@@ -133,32 +147,55 @@ export async function sellerSnapshot(user) {
       sellerOrderRows(client, sellerId, 'id,status,platform_fee,created_at,items'),
       client.from('products').select('status,stock').eq('seller_id', sellerId),
     ])
-    if (productResult.error) throw new Error(`Could not load seller products: ${productResult.error.message}`)
-    const orders = orderRows.map((row) => {
-      const order = orderFromDatabaseRow(row)
-      const items = order.items.filter((item) => itemSellerId(item) === sellerId)
-      return { ...order, items }
-    }).filter((order) => order.items.length > 0)
+    if (productResult.error)
+      throw new Error(`Could not load seller products: ${productResult.error.message}`)
+    const orders = orderRows
+      .map((row) => {
+        const order = orderFromDatabaseRow(row)
+        const items = order.items.filter((item) => itemSellerId(item) === sellerId)
+        return { ...order, items }
+      })
+      .filter((order) => order.items.length > 0)
     const completedOrders = orders.filter((order) =>
-      ['completed', 'delivered', 'picked-up'].includes(String(order.status || '').toLowerCase().replaceAll('_', '-')),
+      ['completed', 'delivered', 'picked-up'].includes(
+        String(order.status || '')
+          .toLowerCase()
+          .replaceAll('_', '-'),
+      ),
     )
-    const totalSales = completedOrders.reduce((sum, order) => sum + sellerOrderTotal(order, sellerId), 0)
-    const commission = completedOrders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0)
+    const totalSales = completedOrders.reduce(
+      (sum, order) => sum + sellerOrderTotal(order, sellerId),
+      0,
+    )
+    const commission = completedOrders.reduce(
+      (sum, order) => sum + Number(order.platformFee || 0),
+      0,
+    )
     const products = productResult.data || []
     return {
       products: products.length,
       activeProducts: products.filter((product) => product.status === 'active').length,
-      pendingOrders: orders.filter((order) =>
-        !['completed', 'delivered', 'picked-up', 'cancelled', 'delivery-failed'].includes(
-          String(order.status || '').toLowerCase().replaceAll('_', '-'),
-        ),
+      pendingOrders: orders.filter(
+        (order) =>
+          !['completed', 'delivered', 'picked-up', 'cancelled', 'delivery-failed'].includes(
+            String(order.status || '')
+              .toLowerCase()
+              .replaceAll('_', '-'),
+          ),
       ).length,
       completedOrders: completedOrders.length,
       totalSales,
       earnings: Math.max(0, totalSales - commission),
-      lowStock: products.filter((product) => product.status === 'active' && Number(product.stock) < 10).length,
-      openOrders: orders.filter((order) =>
-        !['completed', 'cancelled'].includes(String(order.status || '').toLowerCase().replaceAll('_', '-')),
+      lowStock: products.filter(
+        (product) => product.status === 'active' && Number(product.stock) < 10,
+      ).length,
+      openOrders: orders.filter(
+        (order) =>
+          !['completed', 'cancelled'].includes(
+            String(order.status || '')
+              .toLowerCase()
+              .replaceAll('_', '-'),
+          ),
       ).length,
     }
   }
@@ -169,23 +206,34 @@ export async function sellerSnapshot(user) {
     order.items.some((item) => itemSellerId(item) === sellerId),
   )
   const completedOrders = orders.filter((order) =>
-    ['completed', 'delivered', 'picked-up'].includes(String(order.status || '').toLowerCase().replaceAll('_', '-')),
+    ['completed', 'delivered', 'picked-up'].includes(
+      String(order.status || '')
+        .toLowerCase()
+        .replaceAll('_', '-'),
+    ),
   )
-  const totalSales = completedOrders.reduce((sum, order) => sum + sellerOrderTotal(order, sellerId), 0)
+  const totalSales = completedOrders.reduce(
+    (sum, order) => sum + sellerOrderTotal(order, sellerId),
+    0,
+  )
   const commission = completedOrders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0)
   return {
     products: products.length,
     activeProducts: products.filter((product) => product.status === 'active').length,
-    pendingOrders: orders.filter((order) =>
-      !['completed', 'delivered', 'picked-up', 'cancelled', 'delivery-failed'].includes(order.status),
+    pendingOrders: orders.filter(
+      (order) =>
+        !['completed', 'delivered', 'picked-up', 'cancelled', 'delivery-failed'].includes(
+          order.status,
+        ),
     ).length,
     completedOrders: completedOrders.length,
     totalSales,
     earnings: Math.max(0, totalSales - commission),
-    lowStock: products.filter((product) => product.status === 'active' && product.stock < 10).length,
+    lowStock: products.filter((product) => product.status === 'active' && product.stock < 10)
+      .length,
     openOrders: orders.filter((order) => !['completed', 'cancelled'].includes(order.status)).length,
   }
-}
+})
 
 export async function listOwnedProducts(user) {
   const store = await getCatalogSnapshot({
@@ -255,13 +303,22 @@ function sellerOrderTotal(order, sellerId) {
 export async function sellerFinancials(user, period = 'all') {
   const orders = (await listOwnedOrders(user)).filter((order) => inPeriod(order.createdAt, period))
   const sellerId = sellerIdForUser(await readyStore(), user)
-  const normalizedStatus = (order) => String(order.status ?? '').trim().toLowerCase().replaceAll('_', '-')
-  const completed = orders.filter((order) => ['completed', 'delivered', 'picked-up'].includes(normalizedStatus(order)))
+  const normalizedStatus = (order) =>
+    String(order.status ?? '')
+      .trim()
+      .toLowerCase()
+      .replaceAll('_', '-')
+  const completed = orders.filter((order) =>
+    ['completed', 'delivered', 'picked-up'].includes(normalizedStatus(order)),
+  )
   const gross = completed.reduce((sum, order) => sum + sellerOrderTotal(order, sellerId), 0)
   const commission = completed.reduce((sum, order) => sum + Number(order.platformFee || 0), 0)
   const net = Math.max(0, gross - commission)
   const pending = orders
-    .filter((order) => !['completed', 'cancelled', 'delivered', 'picked-up'].includes(normalizedStatus(order)))
+    .filter(
+      (order) =>
+        !['completed', 'cancelled', 'delivered', 'picked-up'].includes(normalizedStatus(order)),
+    )
     .reduce((sum, order) => sum + sellerOrderTotal(order, sellerId), 0)
   return {
     gross,
@@ -309,7 +366,8 @@ export async function sellerOrderReceipt(user, orderId) {
   const store = await readyStore()
   const order = store.orders.get(orderId)
   const sellerId = sellerIdForUser(store, user)
-  if (!order || !sellerId || !order.items?.some((item) => itemSellerId(item) === sellerId)) return null
+  if (!order || !sellerId || !order.items?.some((item) => itemSellerId(item) === sellerId))
+    return null
   const items = order.items.filter((item) => itemSellerId(item) === sellerId)
   const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
   const commission = Number(order.platformFee || 0)
@@ -373,19 +431,30 @@ export async function saveProduct(user, input) {
   const category = store.categories.find((item) => item.id === String(input.category ?? ''))
   const pickup = input.pickup === 'yes' || input.pickup === true
   const delivery = input.delivery === 'yes' || input.delivery === true
-  const status = ['active', 'unavailable', 'draft', 'archived'].includes(input.status) ? input.status : 'active'
+  const status = ['active', 'unavailable', 'draft', 'archived'].includes(input.status)
+    ? input.status
+    : 'active'
   const photo = imageUrl(input.imageUrl)
   if (name.length < 2) return { error: 'Enter a product name.' }
   if (!category) return { error: 'Choose a category.' }
   if (!units.includes(unit)) return { error: 'Choose a valid unit.' }
-  if (!Number.isFinite(price) || price <= 0 || price > 1000000) return { error: 'Enter a valid price.' }
-  if (!Number.isInteger(stock) || stock < 0 || stock > 100000) return { error: 'Enter a whole-number stock quantity.' }
+  if (!Number.isFinite(price) || price <= 0 || price > 1000000)
+    return { error: 'Enter a valid price.' }
+  if (!Number.isInteger(stock) || stock < 0 || stock > 100000)
+    return { error: 'Enter a whole-number stock quantity.' }
   if (location.length < 2) return { error: 'Enter the product location.' }
   if (!pickup && !delivery) return { error: 'Choose pickup, delivery, or both.' }
-  if (photo === null) return { error: 'Use a photo from your camera or library. Very large files need to be a smaller picture.' }
+  if (photo === null)
+    return {
+      error:
+        'Use a photo from your camera or library. Very large files need to be a smaller picture.',
+    }
   const seller = sellerRecord(store, user)
-  if (!seller || seller.status !== 'approved') return { error: 'Your seller profile is not approved.' }
-  const existing = input.productId ? store.products.find((product) => product.id === input.productId) : null
+  if (!seller || seller.status !== 'approved')
+    return { error: 'Your seller profile is not approved.' }
+  const existing = input.productId
+    ? store.products.find((product) => product.id === input.productId)
+    : null
   if (input.productId && (!existing || existing.seller?.id !== seller.id)) {
     return { error: 'Product not found.' }
   }
@@ -405,7 +474,9 @@ export async function saveProduct(user, input) {
   record.pickup = pickup
   record.delivery = delivery
   record.status = status
-  record.images = photo ? [{ id: record.images?.[0]?.id || crypto.randomUUID(), url: photo, alt: name }] : []
+  record.images = photo
+    ? [{ id: record.images?.[0]?.id || crypto.randomUUID(), url: photo, alt: name }]
+    : []
   if (!existing) store.products.unshift(record)
   await save()
   return { product: record }
@@ -421,11 +492,18 @@ export async function updateStock(user, productId, stockValue) {
   }
   const store = await readyStore()
   const sellerId = sellerIdForUser(store, user)
-  const product = store.products.find((item) => item.id === productId && item.seller?.id === sellerId)
+  const product = store.products.find(
+    (item) => item.id === productId && item.seller?.id === sellerId,
+  )
   if (!product) return { error: 'Product not found.' }
   product.stock = stock
   if (stock < 5) {
-    await notify(user.id, `${product.name} is low on stock`, `${stock} ${product.unit} remaining.`, '/seller/inventory')
+    await notify(
+      user.id,
+      `${product.name} is low on stock`,
+      `${stock} ${product.unit} remaining.`,
+      '/seller/inventory',
+    )
   }
   await save()
   return { ok: true }
@@ -435,7 +513,9 @@ export async function removeProduct(user, productId) {
   if (!isApprovedSeller(user)) return { error: 'Product tools are locked.' }
   const store = await readyStore()
   const sellerId = sellerIdForUser(store, user)
-  const product = store.products.find((item) => item.id === productId && item.seller?.id === sellerId)
+  const product = store.products.find(
+    (item) => item.id === productId && item.seller?.id === sellerId,
+  )
   if (!product) return { error: 'Product not found.' }
   const used = [...store.orders.values()].some((order) =>
     order.items.some((item) => item.product?.id === product.id),
@@ -461,7 +541,8 @@ export async function advanceOrder(user, orderId) {
   const next = sellerSteps[order.fulfillment]?.[order.status]
   if (!next) return { error: 'The courier updates this stage.' }
   order.status = next
-  if (next === 'completed') order.paymentStatus = order.paymentStatus === 'paid' ? 'paid' : order.paymentStatus
+  if (next === 'completed')
+    order.paymentStatus = order.paymentStatus === 'paid' ? 'paid' : order.paymentStatus
   await notify(
     order.buyer,
     `${order.reference} is ${next.replaceAll('-', ' ')}`,
@@ -482,11 +563,13 @@ export async function advanceOrder(user, orderId) {
         commission: 49,
         commissionStatus: 'pending',
         note: '',
-        updates: [{
-          at: new Date().toISOString(),
-          status: 'open',
-          note: 'Seller confirmed the order. Waiting for a courier.',
-        }],
+        updates: [
+          {
+            at: new Date().toISOString(),
+            status: 'open',
+            note: 'Seller confirmed the order. Waiting for a courier.',
+          },
+        ],
         updatedAt: new Date().toISOString(),
       })
     }

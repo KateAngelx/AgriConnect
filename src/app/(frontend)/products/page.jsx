@@ -9,7 +9,7 @@ export default async function ProductsPage({ searchParams }) {
   const search = (typeof query.q === 'string' ? query.q : typeof query.search === 'string' ? query.search : '').trim()
   const categoryValue = typeof query.category === 'string' ? query.category.trim().toLowerCase() : ''
   const category = categoryValue === '' || categoryValue === 'all' ? '' : categoryValue
-  const sort = typeof query.sort === 'string' ? query.sort : '-createdAt'
+  const sort = typeof query.sort === 'string' ? query.sort : 'all'
   const page = Math.max(1, Number(query.page) || 1)
   const filterParams = new URLSearchParams()
   if (search) filterParams.set('q', search)
@@ -23,7 +23,7 @@ export default async function ProductsPage({ searchParams }) {
       category,
       sort: sort === 'price' || sort === '-price' ? sort : '-createdAt',
       page,
-      limit: 5,
+      limit: 12,
       fulfillment: query.fulfillment,
       available: query.available === 'true',
     }),

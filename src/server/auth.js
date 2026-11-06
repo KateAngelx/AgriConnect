@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { cookies } from 'next/headers'
 import { isEmailIdentifier, isPhoneIdentifier, normalizePhilippinePhone } from '@/lib/phone'
 import { hashPassword, verifyPassword } from './passwords'
@@ -18,7 +19,7 @@ async function cookieStore() {
 
 export { homeForRole }
 
-export async function currentUser() {
+export const currentUser = cache(async function currentUser() {
   const token = (await cookieStore()).get(SESSION_COOKIE)?.value
   if (!token) return null
 
@@ -36,7 +37,9 @@ export async function currentUser() {
 
     const { data: profile, error: profileError } = await client
       .from('profiles')
-      .select('id,name,email,phone,phone_verified,password_hash,role,roles,status,seller_id,service_area,delivery_addresses,created_at')
+      .select(
+        'id,name,email,phone,phone_verified,password_hash,role,roles,status,seller_id,service_area,delivery_addresses,created_at',
+      )
       .eq('id', session.user_id)
       .maybeSingle()
     if (profileError) {
@@ -57,7 +60,7 @@ export async function currentUser() {
     return null
   }
   return publicUser(store.users.get(userId))
-}
+})
 
 export async function startSession(user) {
   const store = await readyStore()
@@ -86,9 +89,14 @@ export async function startSession(user) {
 function findUserByEmail(store, email) {
   if (!email) return null
   const normalized = String(email).trim().toLowerCase()
-  return [...store.users.values()].find(
-    (user) => String(user.email || '').trim().toLowerCase() === normalized,
-  ) || null
+  return (
+    [...store.users.values()].find(
+      (user) =>
+        String(user.email || '')
+          .trim()
+          .toLowerCase() === normalized,
+    ) || null
+  )
 }
 
 function findUserByPhone(store, phone) {
@@ -99,7 +107,9 @@ function findUserByPhone(store, phone) {
 export async function registerAccount(input) {
   const name = String(input.name ?? '').trim()
   const authMethod = String(input.authMethod ?? 'email') === 'phone' ? 'phone' : 'email'
-  const emailRaw = String(input.email ?? '').trim().toLowerCase()
+  const emailRaw = String(input.email ?? '')
+    .trim()
+    .toLowerCase()
   const phoneRaw = String(input.phone ?? input.contactNumber ?? '').trim()
   const password = String(input.password ?? '')
   const confirmation = String(input.confirmation ?? '')
@@ -123,9 +133,11 @@ export async function registerAccount(input) {
     email = emailRaw && isEmailIdentifier(emailRaw) ? emailRaw : ''
   } else {
     email = emailRaw
-    if (!isEmailIdentifier(email)) return { error: 'Enter a valid email address or switch to phone registration.' }
+    if (!isEmailIdentifier(email))
+      return { error: 'Enter a valid email address or switch to phone registration.' }
     phone = phoneRaw ? normalizePhilippinePhone(phoneRaw) : ''
-    if (phoneRaw && !phone) return { error: 'Optional phone number is not a valid Philippine mobile number.' }
+    if (phoneRaw && !phone)
+      return { error: 'Optional phone number is not a valid Philippine mobile number.' }
   }
 
   if (!email && !phone) {
@@ -186,11 +198,14 @@ export async function loginAccount(input) {
     const supabaseMatch = await signInWithSupabase(email, password)
     if (!user && supabaseMatch) {
       const client = getSupabaseAdmin()
-      const { data: profile } = await client
-        ?.from('profiles')
-        .select('id,name,email,phone,phone_verified,password_hash,role,roles,status,seller_id,service_area,delivery_addresses,created_at')
-        .eq('email', email)
-        .maybeSingle() || {}
+      const { data: profile } =
+        (await client
+          ?.from('profiles')
+          .select(
+            'id,name,email,phone,phone_verified,password_hash,role,roles,status,seller_id,service_area,delivery_addresses,created_at',
+          )
+          .eq('email', email)
+          .maybeSingle()) || {}
       if (profile?.id) {
         user = userFromProfileRow(profile)
         store.users.set(user.id, user)

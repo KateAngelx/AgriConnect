@@ -5,12 +5,7 @@ import { ProductCard } from '@/components/product-card'
 import { SiteShell } from '@/components/site-shell'
 import { currentUser } from '@/server/auth'
 import { isApprovedBuyer, isApprovedSeller } from '@/server/roles'
-import {
-  getCatalogSnapshot,
-  getProduct,
-  listProductReviews,
-  listRelatedProducts,
-} from '@/server/catalog'
+import { getProduct, listProductReviews, listRelatedProducts } from '@/server/catalog'
 import { ProductPurchaseActions } from '@/components/product-purchase-actions'
 import { WishlistButton } from '@/components/wishlist-button'
 import { PagedRows } from '@/components/paged-rows'
@@ -18,35 +13,46 @@ import { peso } from '@/lib/dashboard-format'
 import { authHref } from '@/lib/auth-links'
 import { buyerReviewForProduct } from '@/server/reviews'
 import { AlertBanner } from '@/components/dashboard-ui'
-import { deleteProductReviewAction, saveProductReviewAction } from '@/app/(frontend)/products/actions'
+import {
+  deleteProductReviewAction,
+  saveProductReviewAction,
+} from '@/app/(frontend)/products/actions'
 import { StarRating } from '@/components/star-rating'
 import { StarRatingInput } from '@/components/star-rating-input'
 
 export default async function ProductDetailsPage({ params, searchParams }) {
   const { productId } = await params
   const query = await searchParams
-  const [catalog, user] = await Promise.all([getCatalogSnapshot(), currentUser()])
-  const product = await getProduct(productId, catalog)
+  const [product, user] = await Promise.all([getProduct(productId), currentUser()])
   if (!product || product.status !== 'active') notFound()
   const seller = typeof product.seller === 'object' ? product.seller : null
   const category = typeof product.category === 'object' ? product.category : null
   const [related, reviews] = await Promise.all([
-    listRelatedProducts(product, catalog),
-    listProductReviews(product.id, catalog),
+    listRelatedProducts(product),
+    listProductReviews(product.id),
   ])
-  const reviewAccess = user && isApprovedBuyer(user) && !isApprovedSeller(user)
-    ? await buyerReviewForProduct(user, product.id)
-    : { eligible: false, review: null }
+  const reviewAccess =
+    user && isApprovedBuyer(user) && !isApprovedSeller(user)
+      ? await buyerReviewForProduct(user, product.id)
+      : { eligible: false, review: null }
   const images = product.images?.filter((image) => typeof image === 'object' && image.url) ?? []
   return (
-    <SiteShell>
+    <SiteShell user={user}>
       <main className="page-container page-section page-open">
-        <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-2 text-sm text-brand-muted">
-          <a href="/products" className="font-semibold text-brand-700">Products</a>
+        <nav
+          aria-label="Breadcrumb"
+          className="mb-6 flex flex-wrap items-center gap-2 text-sm text-brand-muted"
+        >
+          <a href="/products" className="font-semibold text-brand-700">
+            Products
+          </a>
           {category ? (
             <>
               <span aria-hidden="true">/</span>
-              <a href={`/products?category=${encodeURIComponent(category.id)}`} className="font-semibold text-brand-700">
+              <a
+                href={`/products?category=${encodeURIComponent(category.id)}`}
+                className="font-semibold text-brand-700"
+              >
                 {category.name}
               </a>
             </>
@@ -88,7 +94,9 @@ export default async function ProductDetailsPage({ params, searchParams }) {
             )}
           </section>
           <section>
-            <p className="page-eyebrow text-[#4f8d3b]">{category?.name ?? 'Agricultural product'}</p>
+            <p className="page-eyebrow text-[#4f8d3b]">
+              {category?.name ?? 'Agricultural product'}
+            </p>
             <h1 className="page-title mt-2 text-3xl text-brand-900 sm:text-4xl">{product.name}</h1>
             <p className="mt-4 text-3xl font-semibold text-brand-900">
               {peso(product.price)}{' '}
@@ -128,10 +136,7 @@ export default async function ProductDetailsPage({ params, searchParams }) {
               </div>
             </div>
             {seller && (
-              <a
-                href={`/sellers/${seller.id}`}
-                className="ui-card mt-6 block p-5"
-              >
+              <a href={`/sellers/${seller.id}`} className="ui-card mt-6 block p-5">
                 <span className="text-xs font-bold uppercase tracking-wide text-[#4f8d3b]">
                   Approved seller
                 </span>
@@ -154,10 +159,10 @@ export default async function ProductDetailsPage({ params, searchParams }) {
             ) : null}
             {user && isApprovedBuyer(user) ? (
               <>
-              <ProductPurchaseActions product={product} />
-              <div className="mt-3">
-                <WishlistButton product={product} />
-              </div>
+                <ProductPurchaseActions product={product} />
+                <div className="mt-3">
+                  <WishlistButton product={product} />
+                </div>
               </>
             ) : (
               <div className="ui-card mt-6 p-5">
@@ -167,10 +172,16 @@ export default async function ProductDetailsPage({ params, searchParams }) {
                   check out securely.
                 </p>
                 <div className="mt-5 flex gap-3">
-                  <a href={authHref('login', `/products/${product.id}`)} className="btn btn-primary">
+                  <a
+                    href={authHref('login', `/products/${product.id}`)}
+                    className="btn btn-primary"
+                  >
                     Sign in
                   </a>
-                  <a href={authHref('register', `/products/${product.id}`)} className="btn btn-secondary">
+                  <a
+                    href={authHref('register', `/products/${product.id}`)}
+                    className="btn btn-secondary"
+                  >
                     Create account
                   </a>
                 </div>
@@ -187,17 +198,28 @@ export default async function ProductDetailsPage({ params, searchParams }) {
         <section className="mt-12">
           <MarketplaceAssistant compact />
         </section>
-        <section id="reviews" className="mt-12 scroll-mt-24" aria-labelledby="product-reviews-heading">
+        <section
+          id="reviews"
+          className="mt-12 scroll-mt-24"
+          aria-labelledby="product-reviews-heading"
+        >
           {typeof query.error === 'string' ? (
-            <div className="mb-4"><AlertBanner tone="error">{query.error}</AlertBanner></div>
+            <div className="mb-4">
+              <AlertBanner tone="error">{query.error}</AlertBanner>
+            </div>
           ) : null}
           {typeof query.success === 'string' ? (
-            <div className="mb-4"><AlertBanner tone="success">{query.success}</AlertBanner></div>
+            <div className="mb-4">
+              <AlertBanner tone="success">{query.success}</AlertBanner>
+            </div>
           ) : null}
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="page-eyebrow">Customer feedback</p>
-              <h2 id="product-reviews-heading" className="page-section-title mt-2 text-2xl text-brand-900">
+              <h2
+                id="product-reviews-heading"
+                className="page-section-title mt-2 text-2xl text-brand-900"
+              >
                 Product reviews
               </h2>
             </div>
@@ -232,10 +254,15 @@ export default async function ProductDetailsPage({ params, searchParams }) {
                         </time>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-sm font-medium" aria-label={`${review.rating} out of 5 stars`}>
+                    <p
+                      className="mt-1 text-sm font-medium"
+                      aria-label={`${review.rating} out of 5 stars`}
+                    >
                       <StarRating rating={review.rating} size="sm" />
                     </p>
-                    {review.body ? <p className="mt-3 leading-6 text-brand-muted">{review.body}</p> : null}
+                    {review.body ? (
+                      <p className="mt-3 leading-6 text-brand-muted">{review.body}</p>
+                    ) : null}
                   </article>
                 )
               })}
@@ -255,10 +282,7 @@ export default async function ProductDetailsPage({ params, searchParams }) {
                 <input type="hidden" name="productId" value={product.id} />
                 <label className="grid gap-1 text-sm font-medium text-brand-900">
                   Rating
-                  <StarRatingInput
-                    name="rating"
-                    defaultValue={reviewAccess.review?.rating || 5}
-                  />
+                  <StarRatingInput name="rating" defaultValue={reviewAccess.review?.rating || 5} />
                 </label>
                 <label className="grid gap-1 text-sm font-medium text-brand-900">
                   Comment <span className="font-normal text-brand-muted">(optional)</span>
@@ -278,17 +302,23 @@ export default async function ProductDetailsPage({ params, searchParams }) {
                 <form action={deleteProductReviewAction} className="mt-3">
                   <input type="hidden" name="productId" value={product.id} />
                   <input type="hidden" name="reviewId" value={reviewAccess.review.id} />
-                  <button type="submit" className="btn btn-secondary">Delete review</button>
+                  <button type="submit" className="btn btn-secondary">
+                    Delete review
+                  </button>
                 </form>
               ) : null}
             </div>
           ) : user && isApprovedBuyer(user) && !isApprovedSeller(user) ? (
             <p className="mt-5 text-sm text-brand-muted">
-              You can review this product after an order containing it has been delivered or completed.
+              You can review this product after an order containing it has been delivered or
+              completed.
             </p>
           ) : (
             <p className="mt-5 text-sm text-brand-muted">
-              <a href={authHref('login', `/products/${product.id}`)} className="font-semibold text-brand-700">
+              <a
+                href={authHref('login', `/products/${product.id}`)}
+                className="font-semibold text-brand-700"
+              >
                 Sign in as an approved buyer
               </a>{' '}
               to review this product after a completed purchase.

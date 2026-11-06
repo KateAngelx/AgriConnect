@@ -1,14 +1,8 @@
-import {
-  getCatalogSnapshot,
-  getProduct,
-  listProductReviews,
-  listRelatedProducts,
-} from '@/server/catalog'
+import { getProduct, listProductReviews, listRelatedProducts } from '@/server/catalog'
 
 export async function GET(_request, { params }) {
   const { productId } = await params
-  const catalog = await getCatalogSnapshot()
-  const product = await getProduct(productId, catalog)
+  const product = await getProduct(productId)
   if (!product) {
     return Response.json(
       { error: 'Product not found.' },
@@ -16,8 +10,8 @@ export async function GET(_request, { params }) {
     )
   }
   const [related, reviews] = await Promise.all([
-    listRelatedProducts(product, catalog),
-    listProductReviews(product.id, catalog),
+    listRelatedProducts(product),
+    listProductReviews(product.id),
   ])
   return Response.json(
     { product, related: related.docs, reviews: reviews.docs },

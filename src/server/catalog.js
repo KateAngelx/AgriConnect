@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { readyStore } from './store'
 import {
@@ -32,6 +33,98 @@ function optionalReviewRows(result) {
     return []
   }
   throw new Error(`Could not load marketplace reviews: ${result.error.message}`)
+}
+
+async function publicProductsFromRows(client, rows) {
+  if (!rows.length) return []
+  const sellerIds = [...new Set(rows.map((row) => row.seller_id).filter(Boolean))]
+  const categoryIds = [...new Set(rows.map((row) => row.category_id).filter(Boolean))]
+  const productIds = rows.map((row) => row.id)
+  const [sellersResult, categoriesResult, reviewsResult] = await Promise.all([
+    sellerIds.length
+      ? client
+          .from('sellers')
+          .select(
+            'id,farm_name,location,landmark,status,description,owner_id,image,pickup_lat,pickup_lng',
+          )
+          .in('id', sellerIds)
+      : Promise.resolve({ data: [], error: null }),
+    categoryIds.length
+      ? client.from('categories').select('id,name,description,image').in('id', categoryIds)
+      : Promise.resolve({ data: [], error: null }),
+    client
+      .from('product_reviews')
+      .select('product_id,rating,moderation_status')
+      .in('product_id', productIds),
+  ])
+  if (sellersResult.error)
+    throw new Error(`Could not load marketplace sellers: ${sellersResult.error.message}`)
+  if (categoriesResult.error)
+    throw new Error(`Could not load marketplace categories: ${categoriesResult.error.message}`)
+  const sellers = requiredRows(sellersResult, 'sellers').filter(
+    (row) => !isRemovedBenguetSeller(row) && !isRemovedNuevaEcijaSeller(row),
+  )
+  const categories = requiredRows(categoriesResult, 'categories')
+  const ratingsByProduct = new Map()
+  for (const review of optionalReviewRows(reviewsResult)) {
+    if (review.moderation_status && review.moderation_status !== 'published') continue
+    const ratings = ratingsByProduct.get(review.product_id) || []
+    ratings.push({ rating: review.rating })
+    ratingsByProduct.set(review.product_id, ratings)
+  }
+  return rows
+    .map((row) => {
+      const sellerRow = sellers.find((seller) => seller.id === row.seller_id)
+      const categoryRow = categories.find((category) => category.id === row.category_id)
+      if (!sellerRow || sellerRow.status !== 'approved') return null
+      const product = {
+        id: row.id,
+        name: row.name,
+        description: row.description || '',
+        price: Number(row.price),
+        unit: row.unit,
+        stock: Number(row.stock),
+        location: row.location || '',
+        status: row.status,
+        pickup: row.pickup,
+        delivery: row.delivery,
+        createdAt: row.created_at,
+        images: row.images || [],
+        category: categoryRow
+          ? {
+              id: categoryRow.id,
+              name: categoryRow.name,
+              description: categoryRow.description || '',
+              image: categoryRow.image || {},
+            }
+          : null,
+        seller: {
+          id: sellerRow.id,
+          farmName: sellerRow.farm_name,
+          location: sellerRow.location || '',
+          landmark: sellerRow.landmark || '',
+          pickupLat: sellerRow.pickup_lat ?? null,
+          pickupLng: sellerRow.pickup_lng ?? null,
+          status: sellerRow.status,
+          description: sellerRow.description || '',
+          ownerId: sellerRow.owner_id || '',
+          image: sellerRow.image || {},
+        },
+      }
+      if (
+        isRemovedBenguetProduct(row) ||
+        isRemovedNuevaEcijaProduct(row) ||
+        isRemovedBenguetSeller(sellerRow) ||
+        isRemovedNuevaEcijaSeller(sellerRow)
+      )
+        return null
+      return {
+        ...product,
+        imageSrc: `/api/products/${encodeURIComponent(product.id)}/image`,
+        ...summarizeRatings(ratingsByProduct.get(product.id)),
+      }
+    })
+    .filter(Boolean)
 }
 
 export async function getCatalogSnapshot({
@@ -69,9 +162,7 @@ export async function getCatalogSnapshot({
 
   const [categoriesResult, sellersResult, productsResult, reviewsResult] = await Promise.all([
     client.from('categories').select(includeImages ? '*' : 'id,name'),
-    client
-      .from('sellers')
-      .select(includeImages ? '*' : 'id,farm_name,location,status,owner_id'),
+    client.from('sellers').select(includeImages ? '*' : 'id,farm_name,location,status,owner_id'),
     productsQuery,
     includeReviews
       ? client.from('product_reviews').select('*')
@@ -169,7 +260,9 @@ function withRating(store, product) {
 
 function matchesProduct(product, filters) {
   if (!isPublicProduct(product)) return false
-  const categoryValue = String(filters.category || '').trim().toLowerCase()
+  const categoryValue = String(filters.category || '')
+    .trim()
+    .toLowerCase()
   const category = categoryValue === 'all' ? '' : categoryValue
   if (category && product.category?.id !== category) return false
   if (filters.fulfillment === 'pickup' && !product.pickup) return false
@@ -208,7 +301,9 @@ export async function listProducts(filters = {}, store = null) {
 export async function listProductsPage(filters = {}, store = null) {
   const useSupabase = supabaseEnv().enabled
   const client = getSupabaseAdmin()
-  const categoryValue = String(filters.category || '').trim().toLowerCase()
+  const categoryValue = String(filters.category || '')
+    .trim()
+    .toLowerCase()
   const normalizedCategory = categoryValue === 'all' ? '' : categoryValue
   const pageCacheKey = JSON.stringify({
     search: String(filters.search || ''),
@@ -244,7 +339,10 @@ export async function listProductsPage(filters = {}, store = null) {
   const to = from + limit - 1
   let productQuery = client
     .from('products')
-    .select('*', { count: 'exact' })
+    .select(
+      'id,name,description,price,unit,stock,location,status,pickup,delivery,created_at,category_id,seller_id',
+      { count: 'exact' },
+    )
     .eq('status', 'active')
   if (normalizedCategory) productQuery = productQuery.eq('category_id', normalizedCategory)
   if (filters.fulfillment === 'pickup') productQuery = productQuery.eq('pickup', true)
@@ -252,16 +350,20 @@ export async function listProductsPage(filters = {}, store = null) {
   if (filters.available) productQuery = productQuery.gt('stock', 0)
   if (filters.search) {
     const search = String(filters.search).trim().replaceAll(',', ' ')
-    if (search) productQuery = productQuery.or(`name.ilike.%${search}%,description.ilike.%${search}%,location.ilike.%${search}%`)
+    if (search)
+      productQuery = productQuery.or(
+        `name.ilike.%${search}%,description.ilike.%${search}%,location.ilike.%${search}%`,
+      )
   }
   if (filters.sort === 'price') productQuery = productQuery.order('price', { ascending: true })
-  else if (filters.sort === '-price') productQuery = productQuery.order('price', { ascending: false })
+  else if (filters.sort === '-price')
+    productQuery = productQuery.order('price', { ascending: false })
   else productQuery = productQuery.order('created_at', { ascending: false })
 
   const { data: productRows, count, error: productError } = await productQuery.range(from, to)
   if (productError) throw new Error(`Could not load marketplace products: ${productError.message}`)
-  const filteredRows = (productRows || []).filter((row) =>
-    !isRemovedBenguetProduct(row) && !isRemovedNuevaEcijaProduct(row),
+  const filteredRows = (productRows || []).filter(
+    (row) => !isRemovedBenguetProduct(row) && !isRemovedNuevaEcijaProduct(row),
   )
   if (filteredRows.length === 0) {
     return cacheProductPage(pageCacheKey, {
@@ -277,7 +379,12 @@ export async function listProductsPage(filters = {}, store = null) {
   const productIds = filteredRows.map((row) => row.id)
   const [sellersResult, categoriesResult, reviewsResult] = await Promise.all([
     sellerIds.length
-      ? client.from('sellers').select('*').in('id', sellerIds)
+      ? client
+          .from('sellers')
+          .select(
+            'id,farm_name,location,landmark,status,description,owner_id,image,pickup_lat,pickup_lng',
+          )
+          .in('id', sellerIds)
       : Promise.resolve({ data: [], error: null }),
     categoryIds.length
       ? client.from('categories').select('id,name,description,image').in('id', categoryIds)
@@ -287,10 +394,13 @@ export async function listProductsPage(filters = {}, store = null) {
       .select('product_id,rating,moderation_status')
       .in('product_id', productIds),
   ])
-  if (sellersResult.error) throw new Error(`Could not load marketplace sellers: ${sellersResult.error.message}`)
-  if (categoriesResult.error) throw new Error(`Could not load marketplace categories: ${categoriesResult.error.message}`)
-  const sellers = requiredRows(sellersResult, 'sellers')
-    .filter((row) => !isRemovedBenguetSeller(row) && !isRemovedNuevaEcijaSeller(row))
+  if (sellersResult.error)
+    throw new Error(`Could not load marketplace sellers: ${sellersResult.error.message}`)
+  if (categoriesResult.error)
+    throw new Error(`Could not load marketplace categories: ${categoriesResult.error.message}`)
+  const sellers = requiredRows(sellersResult, 'sellers').filter(
+    (row) => !isRemovedBenguetSeller(row) && !isRemovedNuevaEcijaSeller(row),
+  )
   const categories = requiredRows(categoriesResult, 'categories')
   const ratingsByProduct = new Map()
   for (const review of optionalReviewRows(reviewsResult)) {
@@ -301,43 +411,52 @@ export async function listProductsPage(filters = {}, store = null) {
   }
 
   return cacheProductPage(pageCacheKey, {
-    docs: filteredRows.map((row) => {
-      const seller = sellers.find((item) => item.id === row.seller_id)
-      const category = categories.find((item) => item.id === row.category_id)
-      if (!seller || seller.status !== 'approved') return null
-      const product = {
-        id: row.id,
-        name: row.name,
-        description: row.description || '',
-        price: Number(row.price),
-        unit: row.unit,
-        stock: Number(row.stock),
-        location: row.location || '',
-        status: row.status,
-        pickup: row.pickup,
-        delivery: row.delivery,
-        createdAt: row.created_at,
-        images: [],
-        category: category ? { id: category.id, name: category.name, description: category.description || '', image: category.image || {} } : null,
-        seller: {
-          id: seller.id,
-          farmName: seller.farm_name,
-          location: seller.location || '',
-          landmark: seller.landmark || '',
-          pickupLat: seller.pickup_lat ?? null,
-          pickupLng: seller.pickup_lng ?? null,
-          status: seller.status,
-          description: seller.description || '',
-          ownerId: seller.owner_id || '',
-          image: seller.image || {},
-        },
-      }
-      return {
-        ...product,
-        imageSrc: `/api/products/${encodeURIComponent(product.id)}/image`,
-        ...summarizeRatings(ratingsByProduct.get(product.id)),
-      }
-    }).filter(Boolean),
+    docs: filteredRows
+      .map((row) => {
+        const seller = sellers.find((item) => item.id === row.seller_id)
+        const category = categories.find((item) => item.id === row.category_id)
+        if (!seller || seller.status !== 'approved') return null
+        const product = {
+          id: row.id,
+          name: row.name,
+          description: row.description || '',
+          price: Number(row.price),
+          unit: row.unit,
+          stock: Number(row.stock),
+          location: row.location || '',
+          status: row.status,
+          pickup: row.pickup,
+          delivery: row.delivery,
+          createdAt: row.created_at,
+          images: [],
+          category: category
+            ? {
+                id: category.id,
+                name: category.name,
+                description: category.description || '',
+                image: category.image || {},
+              }
+            : null,
+          seller: {
+            id: seller.id,
+            farmName: seller.farm_name,
+            location: seller.location || '',
+            landmark: seller.landmark || '',
+            pickupLat: seller.pickup_lat ?? null,
+            pickupLng: seller.pickup_lng ?? null,
+            status: seller.status,
+            description: seller.description || '',
+            ownerId: seller.owner_id || '',
+            image: seller.image || {},
+          },
+        }
+        return {
+          ...product,
+          imageSrc: `/api/products/${encodeURIComponent(product.id)}/image`,
+          ...summarizeRatings(ratingsByProduct.get(product.id)),
+        }
+      })
+      .filter(Boolean),
     totalDocs: count || 0,
     totalPages: Math.ceil((count || 0) / limit),
     page,
@@ -349,13 +468,60 @@ export async function listProductsPage(filters = {}, store = null) {
    */
 }
 
-export async function getProduct(id, store = null) {
+export const getProduct = cache(async function getProduct(id, store = null) {
+  if (!store && supabaseEnv().enabled) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const { data, error } = await client
+      .from('products')
+      .select(
+        'id,name,description,price,unit,stock,location,status,pickup,delivery,created_at,category_id,seller_id,images',
+      )
+      .eq('id', id)
+      .eq('status', 'active')
+      .maybeSingle()
+    if (error) throw new Error(`Could not load marketplace product: ${error.message}`)
+    if (!data) return null
+    return (await publicProductsFromRows(client, [data]))[0] || null
+  }
   store ||= await getCatalogSnapshot()
   const product = store.products.find((item) => item.id === id && isPublicProduct(item))
   return product ? withRating(store, product) : null
-}
+})
 
 export async function listProductReviews(productId, store = null) {
+  if (!store && supabaseEnv().enabled) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const product = await getProduct(productId)
+    if (!product) return pageResult([], 1, 50)
+    const { data, error } = await client
+      .from('product_reviews')
+      .select('id,reviewer_name,rating,body,moderation_status,created_at')
+      .eq('product_id', productId)
+      .eq('moderation_status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    const reviews = optionalReviewRows({ data, error })
+    return pageResult(
+      reviews
+        .filter(
+          (review) =>
+            Number.isInteger(Number(review.rating)) &&
+            Number(review.rating) >= 1 &&
+            Number(review.rating) <= 5,
+        )
+        .map((review) => ({
+          id: review.id,
+          reviewerName: review.reviewer_name || 'Marketplace customer',
+          rating: Number(review.rating),
+          body: review.body || '',
+          createdAt: review.created_at || '',
+        })),
+      1,
+      50,
+    )
+  }
   store ||= await getCatalogSnapshot()
   const product = store.products.find((item) => item.id === productId && isPublicProduct(item))
   if (!product) return pageResult([], 1, 50)
@@ -378,6 +544,25 @@ export async function listProductReviews(productId, store = null) {
 }
 
 export async function listRelatedProducts(product, store = null) {
+  if (!store && supabaseEnv().enabled) {
+    const categoryId = product?.category?.id
+    if (!categoryId) return pageResult([], 1, 3)
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const { data, error } = await client
+      .from('products')
+      .select(
+        'id,name,description,price,unit,stock,location,status,pickup,delivery,created_at,category_id,seller_id,images',
+      )
+      .eq('status', 'active')
+      .eq('category_id', categoryId)
+      .neq('id', product.id)
+      .order('created_at', { ascending: false })
+      .limit(24)
+    if (error) throw new Error(`Could not load related marketplace products: ${error.message}`)
+    const docs = (await publicProductsFromRows(client, data || [])).slice(0, 3)
+    return { ...pageResult(docs, 1, 3), docs }
+  }
   store ||= await getCatalogSnapshot()
   const docs = store.products
     .filter(
@@ -411,12 +596,16 @@ export async function listCategories(store = null) {
         .order('name', { ascending: true })
         .limit(100)
       if (error) throw new Error(`Could not load marketplace categories: ${error.message}`)
-      return pageResult((data || []).map((row) => ({
-        id: row.id,
-        name: row.name,
-        description: row.description || '',
-        image: row.image || {},
-      })), 1, 100)
+      return pageResult(
+        (data || []).map((row) => ({
+          id: row.id,
+          name: row.name,
+          description: row.description || '',
+          image: row.image || {},
+        })),
+        1,
+        100,
+      )
     }
   }
   store ||= await getCatalogSnapshot()
@@ -425,6 +614,49 @@ export async function listCategories(store = null) {
 }
 
 export async function listCategoriesWithCounts(store = null) {
+  if (!store && supabaseEnv().enabled) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const [categoriesResult, productsResult, sellersResult] = await Promise.all([
+      client
+        .from('categories')
+        .select('id,name,description,image')
+        .order('name', { ascending: true })
+        .limit(100),
+      client
+        .from('products')
+        .select('id,name,location,category_id,seller_id')
+        .eq('status', 'active'),
+      client.from('sellers').select('id,farm_name,location').eq('status', 'approved'),
+    ])
+    const categories = requiredRows(categoriesResult, 'categories')
+    const products = requiredRows(productsResult, 'products')
+    const sellers = requiredRows(sellersResult, 'sellers').filter(
+      (seller) => !isRemovedBenguetSeller(seller) && !isRemovedNuevaEcijaSeller(seller),
+    )
+    const visibleSellerIds = new Set(sellers.map((seller) => seller.id))
+    const counts = new Map()
+    for (const product of products) {
+      if (
+        !visibleSellerIds.has(product.seller_id) ||
+        isRemovedBenguetProduct(product) ||
+        isRemovedNuevaEcijaProduct(product)
+      )
+        continue
+      counts.set(product.category_id, (counts.get(product.category_id) || 0) + 1)
+    }
+    return pageResult(
+      categories.map((category) => ({
+        id: category.id,
+        name: category.name,
+        description: category.description || '',
+        image: category.image || {},
+        productCount: counts.get(category.id) || 0,
+      })),
+      1,
+      100,
+    )
+  }
   store ||= await getCatalogSnapshot()
   const counts = activeProductCounts(store)
   const docs = [...store.categories]
@@ -437,6 +669,46 @@ export async function listCategoriesWithCounts(store = null) {
 }
 
 export async function listSellers(filters = {}, store = null) {
+  if (!store && supabaseEnv().enabled) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const page = Math.max(1, Number(filters.page) || 1)
+    const limit = Math.max(1, Number(filters.limit) || 12)
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+    let query = client
+      .from('sellers')
+      .select(
+        'id,farm_name,location,landmark,status,description,owner_id,image,pickup_lat,pickup_lng',
+        { count: 'exact' },
+      )
+      .eq('status', 'approved')
+      .neq('id', 'benguet-growers')
+      .neq('id', 'nueva-ecija-rice')
+      .not('farm_name', 'ilike', '%benguet%')
+      .not('farm_name', 'ilike', '%nueva ecija%')
+      .order('farm_name', { ascending: true })
+    const { data, count, error } = await query.range(from, to)
+    if (error) throw new Error(`Could not load marketplace sellers: ${error.message}`)
+    const totalDocs = count || 0
+    return {
+      docs: (data || []).map((row) => ({
+        id: row.id,
+        farmName: row.farm_name,
+        location: row.location || '',
+        landmark: row.landmark || '',
+        pickupLat: row.pickup_lat ?? null,
+        pickupLng: row.pickup_lng ?? null,
+        status: row.status,
+        description: row.description || '',
+        ownerId: row.owner_id || '',
+        image: row.image || {},
+      })),
+      totalDocs,
+      totalPages: Math.ceil(totalDocs / limit),
+      page,
+    }
+  }
   store ||= await getCatalogSnapshot()
   const page = Math.max(1, Number(filters.page) || 1)
   const limit = Math.max(1, Number(filters.limit) || 12)
@@ -447,11 +719,52 @@ export async function listSellers(filters = {}, store = null) {
 }
 
 export async function getSeller(id, store = null) {
+  if (!store && supabaseEnv().enabled) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const { data, error } = await client
+      .from('sellers')
+      .select(
+        'id,farm_name,location,landmark,pickup_lat,pickup_lng,status,description,owner_id,image',
+      )
+      .eq('id', id)
+      .eq('status', 'approved')
+      .maybeSingle()
+    if (error) throw new Error(`Could not load marketplace seller: ${error.message}`)
+    if (!data || isRemovedBenguetSeller(data) || isRemovedNuevaEcijaSeller(data)) return null
+    return {
+      id: data.id,
+      farmName: data.farm_name,
+      location: data.location || '',
+      landmark: data.landmark || '',
+      pickupLat: data.pickup_lat ?? null,
+      pickupLng: data.pickup_lng ?? null,
+      status: data.status,
+      description: data.description || '',
+      ownerId: data.owner_id || '',
+      image: data.image || {},
+    }
+  }
   store ||= await getCatalogSnapshot()
   return store.sellers.find((seller) => seller.id === id && seller.status === 'approved') ?? null
 }
 
 export async function listSellerProducts(sellerId, store = null) {
+  if (!store && supabaseEnv().enabled) {
+    const client = getSupabaseAdmin()
+    if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
+    const { data, error } = await client
+      .from('products')
+      .select(
+        'id,name,description,price,unit,stock,location,status,pickup,delivery,created_at,category_id,seller_id,images',
+      )
+      .eq('seller_id', sellerId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+    if (error) throw new Error(`Could not load seller products: ${error.message}`)
+    const docs = await publicProductsFromRows(client, data || [])
+    return pageResult(docs, 1, 24)
+  }
   store ||= await getCatalogSnapshot()
   const seller = store.sellers.find((item) => item.id === sellerId && item.status === 'approved')
   if (!seller) return pageResult([], 1, 24)

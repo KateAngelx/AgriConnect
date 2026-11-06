@@ -2,26 +2,27 @@ import { notFound } from 'next/navigation'
 import { ProductCard } from '@/components/product-card'
 import { PagedRows } from '@/components/paged-rows'
 import { SiteShell } from '@/components/site-shell'
-import { getCatalogSnapshot, getSeller, listSellerProducts } from '@/server/catalog'
+import { getSeller, listSellerProducts } from '@/server/catalog'
 import { StarRating } from '@/components/star-rating'
 export default async function SellerPage({ params }) {
   const { sellerId } = await params
-  const catalog = await getCatalogSnapshot()
-  const seller = await getSeller(sellerId, catalog)
+  const [seller, products] = await Promise.all([getSeller(sellerId), listSellerProducts(sellerId)])
   if (!seller || seller.status !== 'approved') notFound()
-  const products = await listSellerProducts(seller.id, catalog)
   const image = typeof seller.image === 'object' ? seller.image : null
-  const productIds = new Set(products.docs.map((product) => product.id))
-  const sellerReviews = (catalog.productReviews || []).filter(
-    (review) =>
-      productIds.has(review.productId) &&
-      (review.moderationStatus || 'published') === 'published',
+  const reviewCount = products.docs.reduce(
+    (total, product) => total + Number(product.reviewCount || 0),
+    0,
   )
-  const ratings = sellerReviews
-    .map((review) => Number(review.rating))
-    .filter((rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5)
-  const sellerRating = ratings.length
-    ? Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10) / 10
+  const sellerRating = reviewCount
+    ? Math.round(
+        (products.docs.reduce(
+          (total, product) =>
+            total + Number(product.rating || 0) * Number(product.reviewCount || 0),
+          0,
+        ) /
+          reviewCount) *
+          10,
+      ) / 10
     : 0
   return (
     <SiteShell>
@@ -39,12 +40,14 @@ export default async function SellerPage({ params }) {
               <span className="rounded-md bg-[#e8f5e3] px-2 py-0.5 text-[12px] font-semibold text-[#248a3d]">
                 Approved seller
               </span>
-              <h1 className="page-title mt-2 text-3xl text-brand-900 sm:text-4xl">{seller.farmName}</h1>
+              <h1 className="page-title mt-2 text-3xl text-brand-900 sm:text-4xl">
+                {seller.farmName}
+              </h1>
               <p className="mt-1 text-[#6e6e73]">{seller.location}</p>
-              {ratings.length ? (
+              {reviewCount ? (
                 <StarRating
                   rating={sellerRating}
-                  reviewCount={ratings.length}
+                  reviewCount={reviewCount}
                   size="md"
                   showValue
                   className="mt-2 text-sm font-medium text-brand-muted"
@@ -67,9 +70,7 @@ export default async function SellerPage({ params }) {
               ))}
             </PagedRows>
           ) : (
-            <div className="page-empty mt-6">
-              This shop has no active products right now.
-            </div>
+            <div className="page-empty mt-6">This shop has no active products right now.</div>
           )}
         </section>
       </main>
