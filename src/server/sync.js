@@ -1,38 +1,12 @@
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { normalizeUserRoles, rolesFromLegacy } from './roles'
 import { getStore } from './store'
-
-function isRemovedBenguetSeller(item) {
-  return (
-    item?.id === 'benguet-growers' ||
-    /benguet/i.test(item?.farmName || item?.farm_name || item?.location || '')
-  )
-}
-
-function isRemovedBenguetProduct(item) {
-  return (
-    item?.seller === 'benguet-growers' ||
-    item?.seller_id === 'benguet-growers' ||
-    item?.seller?.id === 'benguet-growers' ||
-    /highland\s+(strawberries|potatoes)/i.test(item?.name || '')
-  )
-}
-
-function isRemovedNuevaEcijaSeller(item) {
-  return (
-    item?.id === 'nueva-ecija-rice' ||
-    /nueva ecija/i.test(item?.farmName || item?.farm_name || item?.location || '')
-  )
-}
-
-function isRemovedNuevaEcijaProduct(item) {
-  return (
-    item?.seller === 'nueva-ecija-rice' ||
-    item?.seller_id === 'nueva-ecija-rice' ||
-    item?.seller?.id === 'nueva-ecija-rice' ||
-    (/nueva ecija/i.test(item?.location || '') && /rice/i.test(item?.name || ''))
-  )
-}
+import {
+  isRemovedBenguetProduct,
+  isRemovedBenguetSeller,
+  isRemovedNuevaEcijaProduct,
+  isRemovedNuevaEcijaSeller,
+} from './catalog-visibility'
 
 const coreDemoEmails = new Set([
   'admin@agriconnect.ph',

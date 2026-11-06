@@ -186,7 +186,7 @@ export function parseMarketplaceQuery(rawQuery, categories = []) {
   const newestOnly = /\b(newest|latest|recent|recently listed|newly listed)\b/.test(query)
 
   const priceFilterOnly =
-    (maxPricePhp != null || minPricePhp != null) && categoryIds.length === 0 && tokens.length === 0
+    (maxPricePhp != null || minPricePhp != null) && categoryIds.size === 0 && tokens.length === 0
 
   return {
     query,
@@ -199,7 +199,7 @@ export function parseMarketplaceQuery(rawQuery, categories = []) {
     inStockOnly,
     newestOnly,
     browseAll:
-      (tokens.length === 0 && categoryIds.length === 0 && BROWSE_INTENT.test(query)) || priceFilterOnly,
+      (tokens.length === 0 && categoryIds.size === 0 && BROWSE_INTENT.test(query)) || priceFilterOnly,
   }
 }
 

@@ -2,12 +2,13 @@ import { notFound } from 'next/navigation'
 import { ProductCard } from '@/components/product-card'
 import { PagedRows } from '@/components/paged-rows'
 import { SiteShell } from '@/components/site-shell'
-import { getSeller, listSellerProducts } from '@/server/catalog'
+import { getCatalogSnapshot, getSeller, listSellerProducts } from '@/server/catalog'
 export default async function SellerPage({ params }) {
   const { sellerId } = await params
-  const seller = await getSeller(sellerId)
+  const catalog = await getCatalogSnapshot()
+  const seller = await getSeller(sellerId, catalog)
   if (!seller || seller.status !== 'approved') notFound()
-  const products = await listSellerProducts(seller.id)
+  const products = await listSellerProducts(seller.id, catalog)
   const image = typeof seller.image === 'object' ? seller.image : null
   return (
     <SiteShell>

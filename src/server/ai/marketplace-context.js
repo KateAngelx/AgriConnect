@@ -1,5 +1,5 @@
 import { DELIVERY_FEE } from '../payments'
-import { readyStore } from '../store'
+import { getCatalogSnapshot } from '../catalog'
 import { parseMarketplaceQuery, productMatchesSearch } from '@/server/ai/marketplace-search'
 
 function mapProduct(product) {
@@ -46,7 +46,7 @@ function catalogSummary(activeProducts, categories) {
 }
 
 export async function marketplaceProductFacts({ query, limit = 48 }) {
-  const store = await readyStore()
+  const store = await getCatalogSnapshot({ includeImages: false, includeReviews: false })
   const parsed = parseMarketplaceQuery(query, store.categories)
   const active = store.products.filter(
     (product) => product.status === 'active' && product.seller?.status === 'approved',

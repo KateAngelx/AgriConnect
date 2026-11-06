@@ -1,4 +1,5 @@
 import { isValidPin, parseCoord } from '@/lib/geo'
+import { formatDateTime } from '@/lib/date-time'
 
 const AVG_SPEED_KMH = 28
 const PREP_MINUTES = 25
@@ -71,7 +72,7 @@ export function formatEstimatedArrival(iso) {
   if (!iso) return null
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleString(undefined, {
+  return formatDateTime(date, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',

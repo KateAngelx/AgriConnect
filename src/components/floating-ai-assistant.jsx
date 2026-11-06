@@ -229,10 +229,10 @@ export function FloatingAiAssistant({ user }) {
           onClick={() => setOpen(false)}
         />
       ) : null}
-      <div className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[100] flex w-[min(26rem,calc(100vw-2.5rem))] flex-col items-end gap-3">
+      <div className="pointer-events-none fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[100] flex w-[min(26rem,calc(100vw-2.5rem))] flex-col items-end gap-3">
         {open ? (
           <div
-            className="flex max-h-[min(34rem,calc(100dvh-7.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] w-full min-h-0 flex-col overflow-hidden rounded-xl border border-[#d5e4d4] bg-white shadow-[0_12px_40px_rgb(20_32_22/0.16)]"
+            className="pointer-events-auto flex max-h-[min(34rem,calc(100dvh-7.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] w-full min-h-0 flex-col overflow-hidden rounded-xl border border-[#d5e4d4] bg-white shadow-[0_12px_40px_rgb(20_32_22/0.16)]"
             role="dialog"
             aria-label={assistantTitle(mode)}
           >
@@ -369,7 +369,7 @@ export function FloatingAiAssistant({ user }) {
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="grid size-14 shrink-0 place-items-center rounded-full bg-[#2e7d32] text-white shadow-lg hover:bg-[#1b5e20]"
+          className="pointer-events-auto grid size-14 shrink-0 place-items-center rounded-full bg-[#2e7d32] text-white shadow-lg hover:bg-[#1b5e20]"
           aria-label={open ? 'Close AI assistant' : 'Open AI assistant'}
         >
           {open ? (

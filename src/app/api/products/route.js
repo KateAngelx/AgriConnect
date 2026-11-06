@@ -10,5 +10,7 @@ export async function GET(request) {
     fulfillment: query.get('fulfillment') ?? '',
     available: query.get('available') === 'true',
   })
-  return Response.json(products)
+  return Response.json(products, {
+    headers: { 'Cache-Control': 'no-store' },
+  })
 }

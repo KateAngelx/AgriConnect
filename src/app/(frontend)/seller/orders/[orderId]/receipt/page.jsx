@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { ReceiptActions } from '@/components/receipt-actions'
 import { peso } from '@/lib/dashboard-format'
+import { formatDateTime } from '@/lib/date-time'
 import { requireApprovedSeller } from '@/server/guards'
 import { sellerOrderReceipt } from '@/server/seller'
 
@@ -19,10 +20,7 @@ export default async function SellerOrderReceiptPage({ params }) {
   const user = await requireApprovedSeller(`/seller/orders/${encodeURIComponent(orderId)}/receipt`)
   const receipt = await sellerOrderReceipt(user, orderId)
   if (!receipt) notFound()
-  const date = new Date(receipt.createdAt)
-  const dateLabel = Number.isNaN(date.getTime())
-    ? 'Date not available'
-    : date.toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
+  const dateLabel = formatDateTime(receipt.createdAt) || 'Date not available'
 
   return (
     <main className="receipt-page mx-auto my-8 w-full max-w-3xl rounded-xl border border-brand-line bg-white p-6 shadow-sm sm:p-10">

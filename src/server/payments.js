@@ -370,13 +370,27 @@ export async function markXenditInvoicePaid({ invoiceId = '', externalId = '', o
     if (!(payment.providerReference === invoiceId || payment.providerReference === externalId || ids.has(payment.orderId))) continue
     const order = store.orders.get(payment.orderId)
     const paymentChanged = payment.status !== 'paid'
-    const orderChanged = Boolean(order && order.paymentStatus !== 'paid')
+    const confirmedOrderPaymentStatus = order?.status === 'cancelled' ? 'refund-pending' : 'paid'
+    const orderChanged = Boolean(order && order.paymentStatus !== confirmedOrderPaymentStatus)
     if (!paymentChanged && !orderChanged) continue
     if (paymentChanged) payment.status = 'paid'
-    if (orderChanged) order.paymentStatus = 'paid'
+    if (orderChanged) order.paymentStatus = confirmedOrderPaymentStatus
     changed = true
-    await notify(order?.buyer, `Payment received for ${order?.reference || payment.orderId}`, 'Xendit confirmed your electronic payment.', order?.id ? `/buyer/orders/${order.id}` : '/buyer/orders')
-    await notifyOrderSellers(order, `Payment received for ${order?.reference || payment.orderId}`, 'Xendit confirmed payment for this order.')
+    const message =
+      order?.status === 'cancelled'
+        ? 'Xendit confirmed payment after this order was cancelled. A refund is pending.'
+        : 'Xendit confirmed your electronic payment.'
+    await notify(
+      order?.buyer,
+      `Payment received for ${order?.reference || payment.orderId}`,
+      message,
+      order?.id ? `/buyer/orders/${order.id}` : '/buyer/orders',
+    )
+    await notifyOrderSellers(
+      order,
+      `Payment received for ${order?.reference || payment.orderId}`,
+      message,
+    )
   }
   if (changed) await save()
   return { ok: changed }
@@ -394,10 +408,19 @@ export async function confirmXenditPayments(userId) {
     const invoice = await response.json().catch(() => ({}))
     if (!response.ok || invoice.status !== 'PAID') continue
     payment.status = 'paid'
-    order.paymentStatus = 'paid'
+    order.paymentStatus = order.status === 'cancelled' ? 'refund-pending' : 'paid'
     changed = true
-    await notify(userId, `Payment received for ${order.reference}`, 'Xendit confirmed this payment.', `/buyer/orders/${order.id}`)
-    await notifyOrderSellers(order, `Payment received for ${order.reference}`, 'Xendit confirmed payment for this order.')
+    const message =
+      order.status === 'cancelled'
+        ? 'Xendit confirmed payment after this order was cancelled. A refund is pending.'
+        : 'Xendit confirmed this payment.'
+    await notify(
+      userId,
+      `Payment received for ${order.reference}`,
+      message,
+      `/buyer/orders/${order.id}`,
+    )
+    await notifyOrderSellers(order, `Payment received for ${order.reference}`, message)
   }
   if (changed) await save()
   return { ok: true }
@@ -413,13 +436,27 @@ export async function markPaymongoCheckoutPaid({ sessionId = '', orderIds = [] }
     if (!(payment.providerReference === sessionId || ids.has(payment.orderId))) continue
     const paymentChanged = payment.status !== 'paid'
     const order = store.orders.get(payment.orderId)
-    const orderChanged = Boolean(order && order.paymentStatus !== 'paid')
+    const confirmedOrderPaymentStatus = order?.status === 'cancelled' ? 'refund-pending' : 'paid'
+    const orderChanged = Boolean(order && order.paymentStatus !== confirmedOrderPaymentStatus)
     if (!paymentChanged && !orderChanged) continue
     if (paymentChanged) payment.status = 'paid'
-    if (orderChanged) order.paymentStatus = 'paid'
+    if (orderChanged) order.paymentStatus = confirmedOrderPaymentStatus
     changed = true
-    await notify(order?.buyer, `Payment received for ${order?.reference || payment.orderId}`, 'PayMongo confirmed your electronic payment.', order?.id ? `/buyer/orders/${order.id}` : '/buyer/orders')
-    await notifyOrderSellers(order, `Payment received for ${order?.reference || payment.orderId}`, 'PayMongo confirmed payment for this order.')
+    const message =
+      order?.status === 'cancelled'
+        ? 'PayMongo confirmed payment after this order was cancelled. A refund is pending.'
+        : 'PayMongo confirmed your electronic payment.'
+    await notify(
+      order?.buyer,
+      `Payment received for ${order?.reference || payment.orderId}`,
+      message,
+      order?.id ? `/buyer/orders/${order.id}` : '/buyer/orders',
+    )
+    await notifyOrderSellers(
+      order,
+      `Payment received for ${order?.reference || payment.orderId}`,
+      message,
+    )
   }
   if (changed) await save()
   return { ok: changed }
@@ -435,10 +472,19 @@ export async function confirmBuyerPayments(userId) {
     }
     if (!(await paymongoPaid(payment.providerReference))) continue
     payment.status = 'paid'
-    order.paymentStatus = 'paid'
+    order.paymentStatus = order.status === 'cancelled' ? 'refund-pending' : 'paid'
     changed = true
-    await notify(userId, `Payment received for ${order.reference}`, 'PayMongo confirmed this payment.', `/buyer/orders/${order.id}`)
-    await notifyOrderSellers(order, `Payment received for ${order.reference}`, 'PayMongo confirmed payment for this order.')
+    const message =
+      order.status === 'cancelled'
+        ? 'PayMongo confirmed payment after this order was cancelled. A refund is pending.'
+        : 'PayMongo confirmed this payment.'
+    await notify(
+      userId,
+      `Payment received for ${order.reference}`,
+      message,
+      `/buyer/orders/${order.id}`,
+    )
+    await notifyOrderSellers(order, `Payment received for ${order.reference}`, message)
   }
   if (changed) await save()
   return { ok: true }

@@ -4,6 +4,7 @@ import { etaMinutesFromNow, formatEstimatedArrival } from '@/lib/delivery-eta'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
 import { peso } from '@/lib/dashboard-format'
 import { orderStatusLabel, stageIndex, stagesForFulfillment } from '@/lib/order-status'
+import { formatDateTime } from '@/lib/date-time'
 import { cancelBuyerOrderAction } from '@/app/(frontend)/buyer/actions'
 import { ConfirmButton } from '@/components/confirm-button'
 import Link from 'next/link'
@@ -139,7 +140,7 @@ export function BuyerOrderDetail({ order, delivery, payment, error = '', success
             <ul className="mt-2 space-y-1 text-sm text-[#5c6f62]">
               {(delivery.updates || []).map((update) => (
                 <li key={`${update.at}-${update.status}`}>
-                  {new Date(update.at).toLocaleString()} — {orderStatusLabel(update.status)}
+                  {formatDateTime(update.at)} — {orderStatusLabel(update.status)}
                   {update.note ? ` · ${update.note}` : ''}
                 </li>
               ))}

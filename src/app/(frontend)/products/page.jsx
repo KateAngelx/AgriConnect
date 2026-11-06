@@ -3,7 +3,7 @@ import { MarketplaceAssistant } from '@/components/marketplace-assistant'
 import { ProductCard } from '@/components/product-card'
 import { ProductSort } from '@/components/product-sort'
 import { SiteShell } from '@/components/site-shell'
-import { listCategories, listProducts } from '@/server/catalog'
+import { getCatalogSnapshot, listCategories, listProducts } from '@/server/catalog'
 
 export default async function ProductsPage({ searchParams }) {
   const query = await searchParams
@@ -27,6 +27,7 @@ export default async function ProductsPage({ searchParams }) {
     return queryString ? `/products?${queryString}` : '/products'
   }
 
+  const catalog = await getCatalogSnapshot()
   const [products, categories] = await Promise.all([
     listProducts({
       search,
@@ -36,8 +37,8 @@ export default async function ProductsPage({ searchParams }) {
       limit: 5,
       fulfillment: query.fulfillment,
       available: query.available === 'true',
-    }),
-    listCategories(),
+    }, catalog),
+    listCategories(catalog),
   ])
 
   return (

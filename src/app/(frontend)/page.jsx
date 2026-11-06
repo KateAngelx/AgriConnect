@@ -1,14 +1,17 @@
 import MarketplaceHome from './marketplace-home'
 import { SiteShell } from '@/components/site-shell'
 import { currentUser } from '@/server/auth'
-import { listCategories, listProducts, listSellers } from '@/server/catalog'
+import { getCatalogSnapshot, listCategories, listProducts, listSellers } from '@/server/catalog'
 
 export default async function HomePage() {
-  const [products, sellers, categories, user] = await Promise.all([
-    listProducts({ limit: 6 }),
-    listSellers({ limit: 4 }),
-    listCategories(),
+  const [catalog, user] = await Promise.all([
+    getCatalogSnapshot(),
     currentUser(),
+  ])
+  const [products, sellers, categories] = await Promise.all([
+    listProducts({ limit: 6 }, catalog),
+    listSellers({ limit: 4 }, catalog),
+    listCategories(catalog),
   ])
   return (
     <SiteShell>

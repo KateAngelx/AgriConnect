@@ -21,6 +21,7 @@ import { readyStore } from './store'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { orderFromDatabaseRow } from './order-record'
 import { listBuyerOrders } from './order-listing'
+import { cancelOrderAndReleaseReservations } from './order-cancellation'
 
 export { itemSellerId }
 
@@ -61,15 +62,14 @@ export async function cancelBuyerOrder(user, orderId) {
   if (!order || order.buyer !== user.id) return { error: 'Order not found.' }
   if (order.status !== 'placed') return { error: 'This order can only be cancelled before the seller confirms it.' }
 
-  for (const item of order.items) {
-    const product = store.products.find((entry) => entry.id === item.product?.id)
-    if (product) product.stock += item.quantity
-  }
-  order.status = 'cancelled'
-  const delivery = store.deliveries.find((item) => item.orderId === order.id)
-  if (delivery && delivery.status === 'open') delivery.status = 'cancelled'
+  cancelOrderAndReleaseReservations(store, order, 'the buyer')
 
-  await notify(order.buyer, `${order.reference} was cancelled`, 'Your order was cancelled and reserved stock was returned.', `/buyer/orders/${order.id}`)
+  await notify(
+    order.buyer,
+    `${order.reference} was cancelled`,
+    'Your order was cancelled, reserved stock was returned, and any unpaid transaction was closed.',
+    `/buyer/orders/${order.id}`,
+  )
   await save()
   return { ok: true }
 }

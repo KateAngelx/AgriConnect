@@ -178,7 +178,7 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
                 required
                 minLength={3}
                 maxLength={120}
-                className="min-h-11 rounded-xl border border-brand-line bg-white px-3"
+                className="ui-field"
               />
             </label>
             <label className="grid gap-1 text-sm font-medium text-brand-900">
@@ -186,7 +186,7 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
               <select
                 name="category"
                 required
-                className="min-h-11 rounded-xl border border-brand-line bg-white px-3"
+                className="ui-field"
               >
                 <option value="">Choose a category</option>
                 <option value="general-feedback">General Feedback</option>
@@ -204,10 +204,10 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
                 minLength={10}
                 maxLength={5000}
                 rows={4}
-                className="rounded-xl border border-brand-line bg-white px-3 py-2"
+                className="ui-field min-h-28"
               />
             </label>
-            <FeedbackSubmitButton>Submit platform feedback</FeedbackSubmitButton>
+            <FeedbackSubmitButton className="w-full sm:w-fit">Submit platform feedback</FeedbackSubmitButton>
           </form>
         </div>
       </section>

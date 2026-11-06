@@ -1,10 +1,11 @@
 import { DELIVERY_FEE } from './payments'
+import { getCart } from './cart'
 import { readyStore } from './store'
 import { commissionForItems, commissionRateFrom } from './payments'
 
 export async function checkoutSummaryForBuyer(userId) {
   const store = await readyStore()
-  const cart = store.carts.get(userId)
+  const cart = await getCart(userId)
   if (!cart?.items?.length) {
     return { items: [], sellerGroups: [], subtotal: 0, deliveryFee: DELIVERY_FEE, unavailableItems: [] }
   }

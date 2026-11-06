@@ -9,6 +9,8 @@ import { save } from './sync'
 import { readyStore } from './store'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { orderFromDatabaseRow } from './order-record'
+import { cancelOrderAndReleaseReservations } from './order-cancellation'
+import { getCatalogSnapshot } from './catalog'
 
 const units = ['kilogram', 'bundle', 'tray', 'sack', 'piece']
 const sellerSteps = {
@@ -186,7 +188,11 @@ export async function sellerSnapshot(user) {
 }
 
 export async function listOwnedProducts(user) {
-  const store = await readyStore()
+  const store = await getCatalogSnapshot({
+    includeInactive: true,
+    includeReviews: false,
+    sellerId: user.sellerId || '',
+  })
   const sellerId = sellerIdForUser(store, user)
   return store.products
     .filter((product) => product.seller?.id === sellerId)
@@ -492,19 +498,8 @@ async function closeOrder(user, orderId, rejection = false) {
   if (['completed', 'delivered', 'picked-up', 'cancelled'].includes(order.status)) {
     return { error: 'This order can no longer be cancelled.' }
   }
-  for (const item of order.items) {
-    const product = store.products.find((entry) => entry.id === item.product?.id)
-    if (product) product.stock += item.quantity
-  }
-  order.status = 'cancelled'
-  order.platformFee = 0
-  order.platformFeeStatus = 'cancelled'
-  const delivery = store.deliveries.find((item) => item.orderId === order.id)
+  const { delivery } = cancelOrderAndReleaseReservations(store, order, 'the seller')
   if (delivery) {
-    delivery.status = 'cancelled'
-    delivery.updatedAt = new Date().toISOString()
-    delivery.updates ??= []
-    delivery.updates.push({ at: delivery.updatedAt, status: 'cancelled', note: 'Order cancelled by seller.' })
     if (delivery.courierId) {
       await notify(
         delivery.courierId,
@@ -513,10 +508,6 @@ async function closeOrder(user, orderId, rejection = false) {
         '/delivery/history',
       )
     }
-  }
-  if (['paid', 'captured', 'held-online'].includes(order.paymentStatus) ||
-      ['paymongo', 'xendit'].includes(order.paymentMethod)) {
-    order.paymentStatus = 'refund-pending'
   }
   await notify(
     order.buyer,

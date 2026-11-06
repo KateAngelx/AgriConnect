@@ -2,7 +2,7 @@ import { currentUser } from './auth'
 import { getProduct } from './catalog'
 import { isApprovedBuyer } from './roles'
 import { mutateBuyerCart, readBuyerCart, saveCart } from './sync'
-import { readyStore } from './store'
+import { getStore, readyStore } from './store'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 
 async function requireBuyer(nextPath = '/cart') {
@@ -95,6 +95,9 @@ export async function getCart(userId) {
   const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
   if (client) {
     const cart = await readBuyerCart(buyerId)
+    const store = getStore()
+    if (cart) store.carts.set(buyerId, cart)
+    else store.carts.delete(buyerId)
     return cart ? presentDatabaseCart(client, cart) : null
   }
   const store = await readyStore()

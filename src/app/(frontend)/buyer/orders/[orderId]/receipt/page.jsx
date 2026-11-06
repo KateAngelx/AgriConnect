@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { ReceiptActions } from '@/components/receipt-actions'
 import { peso } from '@/lib/dashboard-format'
+import { formatDateTime } from '@/lib/date-time'
 import { requireApprovedBuyer } from '@/server/guards'
 import { getOrder } from '@/server/orders'
 import { paymentFor } from '@/server/payments'
@@ -21,13 +22,7 @@ export default async function OrderReceiptPage({ params }) {
   const order = await getOrder(orderId, user.id)
   if (!order) notFound()
   const payment = await paymentFor(order.id)
-  const createdAt = new Date(order.createdAt)
-  const dateLabel = Number.isNaN(createdAt.getTime())
-    ? 'Date not available'
-    : createdAt.toLocaleString('en-PH', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      })
+  const dateLabel = formatDateTime(order.createdAt) || 'Date not available'
   const total = order.subtotal + order.deliveryFee
 
   return (

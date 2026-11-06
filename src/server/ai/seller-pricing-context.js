@@ -1,6 +1,6 @@
 import { DELIVERY_FEE } from '@/server/payments'
+import { getCatalogSnapshot } from '@/server/catalog'
 import { listOwnedProducts } from '@/server/seller'
-import { readyStore } from '@/server/store'
 
 function tokens(name) {
   return String(name ?? '')
@@ -20,8 +20,10 @@ function overlapScore(a, b) {
 }
 
 export async function sellerPricingFacts(user) {
-  const store = await readyStore()
-  const mine = await listOwnedProducts(user)
+  const [store, mine] = await Promise.all([
+    getCatalogSnapshot({ includeImages: false, includeReviews: false }),
+    listOwnedProducts(user),
+  ])
   const marketplace = store.products.filter(
     (product) => product.status === 'active' && product.seller?.status === 'approved',
   )

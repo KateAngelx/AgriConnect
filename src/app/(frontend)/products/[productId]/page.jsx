@@ -5,7 +5,12 @@ import { ProductCard } from '@/components/product-card'
 import { SiteShell } from '@/components/site-shell'
 import { currentUser } from '@/server/auth'
 import { isApprovedBuyer, isApprovedSeller } from '@/server/roles'
-import { getProduct, listProductReviews, listRelatedProducts } from '@/server/catalog'
+import {
+  getCatalogSnapshot,
+  getProduct,
+  listProductReviews,
+  listRelatedProducts,
+} from '@/server/catalog'
 import { ProductPurchaseActions } from '@/components/product-purchase-actions'
 import { WishlistButton } from '@/components/wishlist-button'
 import { PagedRows } from '@/components/paged-rows'
@@ -18,14 +23,14 @@ import { deleteProductReviewAction, saveProductReviewAction } from '@/app/(front
 export default async function ProductDetailsPage({ params, searchParams }) {
   const { productId } = await params
   const query = await searchParams
-  const user = await currentUser()
-  const product = await getProduct(productId)
+  const [catalog, user] = await Promise.all([getCatalogSnapshot(), currentUser()])
+  const product = await getProduct(productId, catalog)
   if (!product || product.status !== 'active') notFound()
   const seller = typeof product.seller === 'object' ? product.seller : null
   const category = typeof product.category === 'object' ? product.category : null
   const [related, reviews] = await Promise.all([
-    listRelatedProducts(product),
-    listProductReviews(product.id),
+    listRelatedProducts(product, catalog),
+    listProductReviews(product.id, catalog),
   ])
   const reviewAccess = user && isApprovedBuyer(user) && !isApprovedSeller(user)
     ? await buyerReviewForProduct(user, product.id)
