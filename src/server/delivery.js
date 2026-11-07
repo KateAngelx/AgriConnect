@@ -347,7 +347,7 @@ export async function updateAssignment(user, deliveryId, note) {
         })
         .eq('id', deliveryId)
         .eq('status', 'open')
-        .is('courier_id', null)
+        .or('courier_id.is.null,courier_id.eq.""')
         .select('id')
         .maybeSingle()
       if (claim.error) return { error: `Could not accept assignment: ${claim.error.message}` }
