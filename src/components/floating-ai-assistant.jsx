@@ -39,17 +39,20 @@ const MODE_META = {
   seller: {
     title: 'Seller assistant',
     subtitle: 'Your inventory and pricing vs the market',
-    empty: 'Ask how your prices compare, what to restock, or what to discount. Answers use your seller data.',
+    empty:
+      'Ask how your prices compare, what to restock, or what to discount. Answers use your seller data.',
   },
   delivery: {
     title: 'Courier assistant',
     subtitle: 'Routes, jobs, and arrival estimates',
-    empty: 'Ask which jobs to take first and estimated arrival times. Share location for nearby open jobs.',
+    empty:
+      'Ask which jobs to take first and estimated arrival times. Share location for nearby open jobs.',
   },
   admin: {
     title: 'Admin assistant',
     subtitle: 'Applications and eligibility screening',
-    empty: 'Ask about pending seller or delivery applications. I never approve or reject — only summarize facts.',
+    empty:
+      'Ask about pending seller or delivery applications. I never approve or reject — only summarize facts.',
   },
 }
 
@@ -88,7 +91,8 @@ function autoModeFromUser(user) {
 function modesForUser(user) {
   const modes = new Set(['buyer'])
   if (!user) return ['buyer']
-  if (user.roles?.includes('seller') && user.status === 'approved' && user.sellerId) modes.add('seller')
+  if (user.roles?.includes('seller') && user.status === 'approved' && user.sellerId)
+    modes.add('seller')
   if (user.roles?.includes('delivery') && user.status === 'approved') modes.add('delivery')
   if (user.roles?.includes('admin')) modes.add('admin')
   return ['buyer', 'seller', 'delivery', 'admin'].filter((m) => modes.has(m))
@@ -113,8 +117,8 @@ function safeProviderNotice(notice) {
   return text
 }
 
-export function FloatingAiAssistant({ user }) {
-  const [open, setOpen] = useState(false)
+export function FloatingAiAssistant({ user, initialOpen = false }) {
+  const [open, setOpen] = useState(initialOpen)
   const [question, setQuestion] = useState('')
   const [threads, setThreads] = useState({})
   const [threadsReady, setThreadsReady] = useState(false)
@@ -175,7 +179,9 @@ export function FloatingAiAssistant({ user }) {
       },
       () => {
         setLocating(false)
-        setError('Could not read your location. Allow location access or type your question anyway.')
+        setError(
+          'Could not read your location. Allow location access or type your question anyway.',
+        )
       },
       { enableHighAccuracy: false, timeout: 12_000, maximumAge: 120_000 },
     )
@@ -207,7 +213,9 @@ export function FloatingAiAssistant({ user }) {
         const answerText = providerNotice
           ? `${payload.answer}\n\n(${providerNotice})`
           : payload.answer
-        const withAssistant = [...withUser, { role: 'assistant', text: answerText }].slice(-MAX_MESSAGES_PER_THREAD)
+        const withAssistant = [...withUser, { role: 'assistant', text: answerText }].slice(
+          -MAX_MESSAGES_PER_THREAD,
+        )
         persistThread(sessionKey, withAssistant)
         if (!payload.answer && payload.error) setError(String(payload.error))
       } else {
@@ -238,7 +246,11 @@ export function FloatingAiAssistant({ user }) {
           >
             <header className="flex shrink-0 items-center gap-3 border-b border-[#d5e4d4] px-4 py-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-[#2e7d32] text-white">
-                <svg viewBox="0 0 24 24" className="size-5 fill-none stroke-current stroke-2" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-5 fill-none stroke-current stroke-2"
+                  aria-hidden="true"
+                >
                   <path d="M7 18 4 21V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7Z" />
                 </svg>
               </span>
@@ -265,7 +277,11 @@ export function FloatingAiAssistant({ user }) {
                   className="grid size-9 place-items-center rounded-lg text-[#142016] hover:bg-[#e8f5e3]"
                   aria-label="Close assistant"
                 >
-                  <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current stroke-2" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="size-4 fill-none stroke-current stroke-2"
+                    aria-hidden="true"
+                  >
                     <path d="M6 6l12 12M18 6 6 18" />
                   </svg>
                 </button>
@@ -282,7 +298,9 @@ export function FloatingAiAssistant({ user }) {
                       setError('')
                     }}
                     className={`rounded-lg px-3 py-1.5 text-[13px] font-medium ${
-                      mode === m ? 'bg-[#e3f3d8] text-[#1b5e20]' : 'text-[#142016] hover:bg-[#e3f3d8]'
+                      mode === m
+                        ? 'bg-[#e3f3d8] text-[#1b5e20]'
+                        : 'text-[#142016] hover:bg-[#e3f3d8]'
                     }`}
                   >
                     {modeLabel(m)}
@@ -355,7 +373,11 @@ export function FloatingAiAssistant({ user }) {
                 placeholder="Ask anything…"
                 className="ui-field min-w-0 flex-1"
               />
-              <button type="submit" disabled={pending || question.trim().length < 2} className="btn btn-primary shrink-0">
+              <button
+                type="submit"
+                disabled={pending || question.trim().length < 2}
+                className="btn btn-primary shrink-0"
+              >
                 {pending ? '…' : 'Send'}
               </button>
             </form>
@@ -373,11 +395,19 @@ export function FloatingAiAssistant({ user }) {
           aria-label={open ? 'Close AI assistant' : 'Open AI assistant'}
         >
           {open ? (
-            <svg viewBox="0 0 24 24" className="size-6 fill-none stroke-current stroke-2" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              className="size-6 fill-none stroke-current stroke-2"
+              aria-hidden="true"
+            >
               <path d="M6 6l12 12M18 6 6 18" />
             </svg>
           ) : (
-            <svg viewBox="0 0 24 24" className="size-6 fill-none stroke-current stroke-2" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              className="size-6 fill-none stroke-current stroke-2"
+              aria-hidden="true"
+            >
               <path d="M7 18 4 21V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7Z" />
             </svg>
           )}

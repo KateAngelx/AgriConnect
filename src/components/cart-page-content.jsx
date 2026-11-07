@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useMarketplaceState } from './marketplace-state'
+import { useCartState } from './marketplace-state'
 import { peso } from '@/lib/dashboard-format'
 import { DashboardIcon } from './dashboard-icons'
 
 export function CartPageContent() {
-  const { cart, cartBusy, cartLoading, cartError, refreshCart, updateCart } = useMarketplaceState()
+  const { cart, cartBusy, cartLoading, cartError, refreshCart, updateCart } = useCartState()
   const [quantities, setQuantities] = useState({})
   const [selectedIds, setSelectedIds] = useState([])
   const items = cart?.items?.filter((item) => typeof item.product === 'object') ?? []

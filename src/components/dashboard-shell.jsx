@@ -30,9 +30,10 @@ export async function DashboardShell({
   children,
   variant = 'default',
   navBadges,
+  unread: providedUnread,
 }) {
   const [unread, badges] = await Promise.all([
-    unreadCount(user.id),
+    providedUnread === undefined ? unreadCount(user.id) : providedUnread,
     resolveNavBadges(user, navBadges),
   ])
   return (

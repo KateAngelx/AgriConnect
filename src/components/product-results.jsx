@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ProductCard } from '@/components/product-card'
+import { visibleProductPageNumbers } from '@/lib/product-pagination'
 
 const PAGE_SIZE = 12
 const CACHE_TTL_MS = 30_000
@@ -22,69 +23,81 @@ export function ProductResults({
   const cache = useRef(new Map([[initialPage, { products: initialProducts, savedAt: Date.now() }]]))
   const requests = useRef(new Map())
 
-  const hrefFor = useCallback((target) => {
-    const params = new URLSearchParams(baseParams)
-    if (target > 1) params.set('page', String(target))
-    else params.delete('page')
-    const query = params.toString()
-    return query ? `/products?${query}` : '/products'
-  }, [baseParams])
+  const hrefFor = useCallback(
+    (target) => {
+      const params = new URLSearchParams(baseParams)
+      if (target > 1) params.set('page', String(target))
+      else params.delete('page')
+      const query = params.toString()
+      return query ? `/products?${query}` : '/products'
+    },
+    [baseParams],
+  )
 
-  const loadPage = useCallback(async (target) => {
-    const cached = cache.current.get(target)
-    if (cached && Date.now() - cached.savedAt < CACHE_TTL_MS) return cached.products
-    const existing = requests.current.get(target)
-    if (existing) return existing
+  const loadPage = useCallback(
+    async (target) => {
+      const cached = cache.current.get(target)
+      if (cached && Date.now() - cached.savedAt < CACHE_TTL_MS) return cached.products
+      const existing = requests.current.get(target)
+      if (existing) return existing
 
-    const params = new URLSearchParams(baseParams)
-    params.set('page', String(target))
-    params.set('limit', String(PAGE_SIZE))
-    const request = fetch(`/api/products?${params}`, { cache: 'default' }).then(async (response) => {
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || 'Could not load this product page.')
-      if (!Array.isArray(payload.docs)) throw new Error('The product page response was invalid.')
-      cache.current.set(target, { products: payload.docs, savedAt: Date.now() })
-      return payload.docs
-    })
-    requests.current.set(target, request)
-    try {
-      return await request
-    } finally {
-      requests.current.delete(target)
-    }
-  }, [baseParams])
+      const params = new URLSearchParams(baseParams)
+      params.set('page', String(target))
+      params.set('limit', String(PAGE_SIZE))
+      const request = fetch(`/api/products?${params}`, { cache: 'default' }).then(
+        async (response) => {
+          const payload = await response.json()
+          if (!response.ok) throw new Error(payload.error || 'Could not load this product page.')
+          if (!Array.isArray(payload.docs))
+            throw new Error('The product page response was invalid.')
+          cache.current.set(target, { products: payload.docs, savedAt: Date.now() })
+          return payload.docs
+        },
+      )
+      requests.current.set(target, request)
+      try {
+        return await request
+      } finally {
+        requests.current.delete(target)
+      }
+    },
+    [baseParams],
+  )
 
-  const navigate = useCallback((target, updateHistory = true) => {
-    if (target < 1 || target > totalPages || target === pageRef.current) return
-    pageRef.current = target
-    setPage(target)
-    setError('')
-    if (updateHistory) window.history.pushState(null, '', hrefFor(target))
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-    requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }))
-    window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 100)
+  const navigate = useCallback(
+    (target, updateHistory = true) => {
+      if (target < 1 || target > totalPages || target === pageRef.current) return
+      pageRef.current = target
+      setPage(target)
+      setError('')
+      if (updateHistory) window.history.pushState(null, '', hrefFor(target))
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }))
+      window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 100)
 
-    const cached = cache.current.get(target)
-    if (cached && Date.now() - cached.savedAt < CACHE_TTL_MS) {
-      setProducts(cached.products)
-      setLoading(false)
-      return
-    }
+      const cached = cache.current.get(target)
+      if (cached && Date.now() - cached.savedAt < CACHE_TTL_MS) {
+        setProducts(cached.products)
+        setLoading(false)
+        return
+      }
 
-    setLoading(true)
-    loadPage(target)
-      .then((nextProducts) => {
-        if (pageRef.current === target) setProducts(nextProducts)
-      })
-      .catch((loadError) => {
-        if (pageRef.current === target) {
-          setError(loadError.message || 'Could not load products. Please try again.')
-        }
-      })
-      .finally(() => {
-        if (pageRef.current === target) setLoading(false)
-      })
-  }, [hrefFor, loadPage, totalPages])
+      setLoading(true)
+      loadPage(target)
+        .then((nextProducts) => {
+          if (pageRef.current === target) setProducts(nextProducts)
+        })
+        .catch((loadError) => {
+          if (pageRef.current === target) {
+            setError(loadError.message || 'Could not load products. Please try again.')
+          }
+        })
+        .finally(() => {
+          if (pageRef.current === target) setLoading(false)
+        })
+    },
+    [hrefFor, loadPage, totalPages],
+  )
 
   useEffect(() => {
     const handlePopState = () => {
@@ -106,7 +119,8 @@ export function ProductResults({
       event.ctrlKey ||
       event.shiftKey ||
       event.altKey
-    ) return
+    )
+      return
     event.preventDefault()
     navigate(target)
   }
@@ -117,6 +131,8 @@ export function ProductResults({
     }
   }
 
+  const pageNumbers = visibleProductPageNumbers(page, totalPages)
+
   return (
     <section id="product-results" aria-busy={loading}>
       <div className="mb-4 flex min-h-9 flex-wrap items-center justify-between gap-4">
@@ -124,11 +140,16 @@ export function ProductResults({
           {totalDocs === 1 ? '1 product' : `${totalDocs} products`}
           {search ? ` for “${search}”` : ''}
         </p>
-        {loading ? <p className="text-sm font-medium text-brand-700">Loading page {page}…</p> : null}
+        {loading ? (
+          <p className="text-sm font-medium text-brand-700">Loading page {page}…</p>
+        ) : null}
       </div>
 
       {error ? (
-        <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-brand-error px-4 py-3 text-sm text-red-800">
+        <p
+          role="alert"
+          className="mb-4 rounded-xl border border-red-200 bg-brand-error px-4 py-3 text-sm text-red-800"
+        >
           {error}
         </p>
       ) : null}
@@ -142,13 +163,20 @@ export function ProductResults({
       ) : (
         <div className="page-empty">
           <h2 className="text-xl font-semibold text-brand-900">No products match these filters</h2>
-          <p className="mt-2 text-brand-muted">Try another category, or clear the search to see every active listing.</p>
-          <a href="/products" className="btn btn-secondary mt-5">Clear filters</a>
+          <p className="mt-2 text-brand-muted">
+            Try another category, or clear the search to see every active listing.
+          </p>
+          <a href="/products" className="btn btn-secondary mt-5">
+            Clear filters
+          </a>
         </div>
       )}
 
       {totalPages > 1 ? (
-        <nav className="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="Pagination">
+        <nav
+          className="mt-8 flex flex-wrap items-center justify-center gap-2"
+          aria-label="Pagination"
+        >
           {page > 1 ? (
             <a
               href={hrefFor(page - 1)}
@@ -163,8 +191,14 @@ export function ProductResults({
           ) : (
             <span className="btn btn-secondary opacity-40">Previous</span>
           )}
-          {Array.from({ length: totalPages }, (_, index) => {
-            const number = index + 1
+          {pageNumbers.map((number) => {
+            if (typeof number !== 'number') {
+              return (
+                <span key={number} aria-hidden="true" className="px-1 text-brand-muted">
+                  …
+                </span>
+              )
+            }
             const current = page === number
             return current ? (
               <span

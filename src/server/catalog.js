@@ -35,6 +35,21 @@ function optionalReviewRows(result) {
   throw new Error(`Could not load marketplace reviews: ${result.error.message}`)
 }
 
+function publicSeller(row) {
+  return {
+    id: row.id,
+    farmName: row.farmName ?? row.farm_name,
+    location: row.location || '',
+    landmark: row.landmark || '',
+    pickupLat: row.pickupLat ?? row.pickup_lat ?? null,
+    pickupLng: row.pickupLng ?? row.pickup_lng ?? null,
+    status: row.status,
+    description: row.description || '',
+    ownerId: row.ownerId ?? row.owner_id ?? '',
+    image: row.image || {},
+  }
+}
+
 async function publicProductsFromRows(client, rows) {
   if (!rows.length) return []
   const sellerIds = [...new Set(rows.map((row) => row.seller_id).filter(Boolean))]
@@ -298,9 +313,14 @@ export async function listProducts(filters = {}, store = null) {
   return productsPage(store || (await getCatalogSnapshot()), filters)
 }
 
-export async function listProductsPage(filters = {}, store = null) {
-  const useSupabase = supabaseEnv().enabled
-  const client = getSupabaseAdmin()
+async function catalogDocs(value) {
+  const resolved = await value
+  return Array.isArray(resolved) ? resolved : resolved?.docs || []
+}
+
+export async function listProductsPage(filters = {}, store = null, catalogData = {}) {
+  const client = catalogData.client || getSupabaseAdmin()
+  const useSupabase = Boolean(catalogData.client) || supabaseEnv().enabled
   const categoryValue = String(filters.category || '')
     .trim()
     .toLowerCase()
@@ -377,17 +397,29 @@ export async function listProductsPage(filters = {}, store = null) {
   const sellerIds = [...new Set(filteredRows.map((row) => row.seller_id).filter(Boolean))]
   const categoryIds = [...new Set(filteredRows.map((row) => row.category_id).filter(Boolean))]
   const productIds = filteredRows.map((row) => row.id)
+  const [knownSellers, knownCategories] = await Promise.all([
+    catalogDocs(catalogData.sellers),
+    catalogDocs(catalogData.categories),
+  ])
+  const sellersById = new Map(
+    knownSellers
+      .filter((seller) => !isRemovedBenguetSeller(seller) && !isRemovedNuevaEcijaSeller(seller))
+      .map((seller) => [seller.id, publicSeller(seller)]),
+  )
+  const categoriesById = new Map(knownCategories.map((category) => [category.id, category]))
+  const missingSellerIds = sellerIds.filter((id) => !sellersById.has(id))
+  const missingCategoryIds = categoryIds.filter((id) => !categoriesById.has(id))
   const [sellersResult, categoriesResult, reviewsResult] = await Promise.all([
-    sellerIds.length
+    missingSellerIds.length
       ? client
           .from('sellers')
           .select(
             'id,farm_name,location,landmark,status,description,owner_id,image,pickup_lat,pickup_lng',
           )
-          .in('id', sellerIds)
+          .in('id', missingSellerIds)
       : Promise.resolve({ data: [], error: null }),
-    categoryIds.length
-      ? client.from('categories').select('id,name,description,image').in('id', categoryIds)
+    missingCategoryIds.length
+      ? client.from('categories').select('id,name,description,image').in('id', missingCategoryIds)
       : Promise.resolve({ data: [], error: null }),
     client
       .from('product_reviews')
@@ -398,10 +430,14 @@ export async function listProductsPage(filters = {}, store = null) {
     throw new Error(`Could not load marketplace sellers: ${sellersResult.error.message}`)
   if (categoriesResult.error)
     throw new Error(`Could not load marketplace categories: ${categoriesResult.error.message}`)
-  const sellers = requiredRows(sellersResult, 'sellers').filter(
-    (row) => !isRemovedBenguetSeller(row) && !isRemovedNuevaEcijaSeller(row),
-  )
-  const categories = requiredRows(categoriesResult, 'categories')
+  for (const row of requiredRows(sellersResult, 'sellers')) {
+    if (!isRemovedBenguetSeller(row) && !isRemovedNuevaEcijaSeller(row)) {
+      sellersById.set(row.id, publicSeller(row))
+    }
+  }
+  for (const row of requiredRows(categoriesResult, 'categories')) {
+    categoriesById.set(row.id, row)
+  }
   const ratingsByProduct = new Map()
   for (const review of optionalReviewRows(reviewsResult)) {
     if (review.moderation_status && review.moderation_status !== 'published') continue
@@ -413,8 +449,8 @@ export async function listProductsPage(filters = {}, store = null) {
   return cacheProductPage(pageCacheKey, {
     docs: filteredRows
       .map((row) => {
-        const seller = sellers.find((item) => item.id === row.seller_id)
-        const category = categories.find((item) => item.id === row.category_id)
+        const seller = sellersById.get(row.seller_id)
+        const category = categoriesById.get(row.category_id)
         if (!seller || seller.status !== 'approved') return null
         const product = {
           id: row.id,
@@ -438,16 +474,7 @@ export async function listProductsPage(filters = {}, store = null) {
               }
             : null,
           seller: {
-            id: seller.id,
-            farmName: seller.farm_name,
-            location: seller.location || '',
-            landmark: seller.landmark || '',
-            pickupLat: seller.pickup_lat ?? null,
-            pickupLng: seller.pickup_lng ?? null,
-            status: seller.status,
-            description: seller.description || '',
-            ownerId: seller.owner_id || '',
-            image: seller.image || {},
+            ...seller,
           },
         }
         return {
@@ -623,10 +650,7 @@ export async function listCategoriesWithCounts(store = null) {
         .select('id,name,description,image')
         .order('name', { ascending: true })
         .limit(100),
-      client
-        .from('products')
-        .select('id,name,location,category_id,seller_id')
-        .eq('status', 'active'),
+      client.from('products').select('name,location,category_id,seller_id').eq('status', 'active'),
       client.from('sellers').select('id,farm_name,location').eq('status', 'approved'),
     ])
     const categories = requiredRows(categoriesResult, 'categories')
@@ -693,16 +717,7 @@ export async function listSellers(filters = {}, store = null) {
     const totalDocs = count || 0
     return {
       docs: (data || []).map((row) => ({
-        id: row.id,
-        farmName: row.farm_name,
-        location: row.location || '',
-        landmark: row.landmark || '',
-        pickupLat: row.pickup_lat ?? null,
-        pickupLng: row.pickup_lng ?? null,
-        status: row.status,
-        description: row.description || '',
-        ownerId: row.owner_id || '',
-        image: row.image || {},
+        ...publicSeller(row),
       })),
       totalDocs,
       totalPages: Math.ceil(totalDocs / limit),

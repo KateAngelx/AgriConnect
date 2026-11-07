@@ -1,22 +1,25 @@
 'use client'
 
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export function Modal({ title, subtitle, closeHref, children, size = 'lg' }) {
   const router = useRouter()
-  const [mounted, setMounted] = useState(false)
+  const [open, setOpen] = useState(true)
+
+  const close = useCallback(() => {
+    setOpen(false)
+    const target = new URL(closeHref, window.location.href)
+    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    if (`${target.pathname}${target.search}${target.hash}` !== current) {
+      router.replace(closeHref, { scroll: false })
+    }
+  }, [closeHref, router])
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!mounted) return
+    if (!open) return
     const onKey = (event) => {
-      if (event.key === 'Escape') router.replace(closeHref, { scroll: false })
+      if (event.key === 'Escape') close()
     }
     document.addEventListener('keydown', onKey)
     const previous = document.body.style.overflow
@@ -25,18 +28,18 @@ export function Modal({ title, subtitle, closeHref, children, size = 'lg' }) {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = previous
     }
-  }, [closeHref, mounted, router])
+  }, [close, open])
 
   const width = size === 'xl' ? 'max-w-4xl' : 'max-w-2xl'
 
-  if (!mounted) return null
+  if (!open) return null
 
-  return createPortal(
+  return (
     <div
       className="fixed inset-0 z-[1400] flex items-end justify-center bg-[#142016]/40 p-0 sm:items-center sm:p-4"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) router.replace(closeHref, { scroll: false })
+        if (event.target === event.currentTarget) close()
       }}
     >
       <div
@@ -47,21 +50,24 @@ export function Modal({ title, subtitle, closeHref, children, size = 'lg' }) {
       >
         <div className="flex items-start justify-between gap-3 border-b border-[#d5e4d4] px-5 py-4">
           <div className="min-w-0">
-            <h2 id="app-modal-title" className="truncate text-[17px] font-bold text-[#142016]">{title}</h2>
-            {subtitle ? <p className="mt-0.5 text-[13px] leading-5 text-[#5c6f62]">{subtitle}</p> : null}
+            <h2 id="app-modal-title" className="truncate text-[17px] font-bold text-[#142016]">
+              {title}
+            </h2>
+            {subtitle ? (
+              <p className="mt-0.5 text-[13px] leading-5 text-[#5c6f62]">{subtitle}</p>
+            ) : null}
           </div>
-          <Link
-            href={closeHref}
-            replace
+          <button
+            type="button"
+            onClick={close}
             className="grid size-9 shrink-0 place-items-center rounded-lg text-xl leading-none text-[#5c6f62] hover:bg-[#e7f3e4]"
             aria-label="Close"
           >
             ×
-          </Link>
+          </button>
         </div>
         <div className="overflow-y-auto px-5 py-5">{children}</div>
       </div>
-    </div>,
-    document.body,
+    </div>
   )
 }

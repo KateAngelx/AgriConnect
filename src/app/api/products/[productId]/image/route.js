@@ -5,6 +5,7 @@ import {
   isRemovedNuevaEcijaProduct,
   isRemovedNuevaEcijaSeller,
 } from '@/server/catalog-visibility'
+import { loadPublicProductImage } from '@/server/product-image'
 import { readyStore } from '@/server/store'
 
 const PLACEHOLDER_IMAGE = `
@@ -31,7 +32,13 @@ function imageResponse(images) {
   if (!url) return missingImage()
 
   if (/^https?:\/\//i.test(url)) {
-    return Response.redirect(url, 302)
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: url,
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=900',
+      },
+    })
   }
 
   const match = /^data:(image\/(?:jpeg|png|webp|gif|avif));base64,([A-Za-z0-9+/=\r\n]+)$/i.exec(url)
@@ -54,25 +61,9 @@ export async function GET(_request, { params }) {
   if (supabaseEnv().enabled) {
     const client = getSupabaseAdmin()
     if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
-
-    const [productResult] = await Promise.all([
-      client
-        .from('products')
-        .select('id,name,location,status,seller_id,images')
-        .eq('id', productId)
-        .maybeSingle(),
-    ])
-    if (productResult.error) throw new Error(`Could not load product image: ${productResult.error.message}`)
-    product = productResult.data
-    if (product?.seller_id) {
-      const sellerResult = await client
-        .from('sellers')
-        .select('id,farm_name,location,status')
-        .eq('id', product.seller_id)
-        .maybeSingle()
-      if (sellerResult.error) throw new Error(`Could not verify product seller: ${sellerResult.error.message}`)
-      seller = sellerResult.data
-    }
+    const imageRecord = await loadPublicProductImage(productId, client)
+    product = imageRecord?.product ?? null
+    seller = imageRecord?.seller ?? null
   } else {
     const store = await readyStore()
     product = store.products.find((item) => item.id === productId) || null

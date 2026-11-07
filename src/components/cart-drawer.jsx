@@ -5,11 +5,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardIcon } from './dashboard-icons'
 import { peso } from '@/lib/dashboard-format'
-import { useMarketplaceState } from './marketplace-state'
+import { useCartState } from './marketplace-state'
 
 export function CartDrawer({ open, onClose }) {
   const router = useRouter()
-  const { cart, cartBusy, cartLoading, cartError, refreshCart, updateCart } = useMarketplaceState()
+  const { cart, cartBusy, cartLoading, cartError, refreshCart, updateCart } = useCartState()
   const [drafts, setDrafts] = useState({})
   const [error, setError] = useState('')
   const [selectedIds, setSelectedIds] = useState([])

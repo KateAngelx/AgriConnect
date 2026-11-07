@@ -1,14 +1,38 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import { logoutAction } from '@/app/(frontend)/account/actions'
 import { activeNavHref, homeForNav } from '@/components/dashboard-nav'
 import { DashboardIcon } from './dashboard-icons'
-import { CartDrawer } from './cart-drawer'
-import { NotificationsPanel } from './notifications-panel'
 import { SignOutButton } from './sign-out-button'
-import { useMarketplaceState } from './marketplace-state'
+import { useCartState, useWishlistState } from './marketplace-state'
+
+const CartDrawer = dynamic(() => import('./cart-drawer').then((module) => module.CartDrawer), {
+  loading: () => (
+    <div
+      role="status"
+      className="fixed right-2 top-[4.25rem] z-[200] rounded-xl border border-[#173c2c]/10 bg-white px-5 py-4 text-sm text-[#647066] shadow-xl sm:right-6"
+    >
+      Loading your cart…
+    </div>
+  ),
+})
+
+const NotificationsPanel = dynamic(
+  () => import('./notifications-panel').then((module) => module.NotificationsPanel),
+  {
+    loading: () => (
+      <div
+        role="status"
+        className="fixed right-4 top-[4.25rem] z-[100] rounded-xl border border-[#173c2c]/10 bg-white px-5 py-4 text-sm text-[#647066] shadow-xl sm:right-6"
+      >
+        Loading notifications…
+      </div>
+    ),
+  },
+)
 
 function iconButtonClass(active) {
   return `relative grid size-9 place-items-center rounded-lg text-[#1d1d1f] hover:bg-[#e8e8ed] ${active ? 'bg-[#e8e8ed]' : ''}`
@@ -16,7 +40,13 @@ function iconButtonClass(active) {
 
 function HeaderIconButton({ label, icon, badge = 0, active = false, busy = false, onClick }) {
   return (
-    <button type="button" aria-label={label} aria-busy={busy || undefined} onClick={onClick} className={iconButtonClass(active)}>
+    <button
+      type="button"
+      aria-label={label}
+      aria-busy={busy || undefined}
+      onClick={onClick}
+      className={iconButtonClass(active)}
+    >
       <DashboardIcon name={icon} className="size-5" />
       {badge > 0 ? (
         <span className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-[#2e7d32] px-1 text-[10px] font-bold text-white">
@@ -29,7 +59,12 @@ function HeaderIconButton({ label, icon, badge = 0, active = false, busy = false
 
 function HeaderIconLink({ href, label, icon, badge = 0, active = false, busy = false }) {
   return (
-    <Link href={href} aria-label={label} aria-busy={busy || undefined} className={iconButtonClass(active)}>
+    <Link
+      href={href}
+      aria-label={label}
+      aria-busy={busy || undefined}
+      className={iconButtonClass(active)}
+    >
       <DashboardIcon name={icon} className="size-5" />
       {badge > 0 ? (
         <span className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-[#2e7d32] px-1 text-[10px] font-bold text-white">
@@ -51,19 +86,39 @@ function canUseBuyerTools(user) {
 function profileLinks(user) {
   const partner = []
   if (hasUserRole(user, 'seller') && user.sellerId && user.status === 'approved') {
-    partner.push({ href: '/seller/dashboard', label: 'Seller dashboard', icon: 'store', group: 'Account' })
+    partner.push({
+      href: '/seller/dashboard',
+      label: 'Seller dashboard',
+      icon: 'store',
+      group: 'Account',
+    })
   }
   if (hasUserRole(user, 'delivery') && user.status === 'approved') {
-    partner.push({ href: '/delivery/dashboard', label: 'Delivery dashboard', icon: 'truck', group: 'Account' })
+    partner.push({
+      href: '/delivery/dashboard',
+      label: 'Delivery dashboard',
+      icon: 'truck',
+      group: 'Account',
+    })
   }
   if (hasUserRole(user, 'admin') && user.status === 'approved') {
-    partner.push({ href: '/admin/dashboard', label: 'Administration', icon: 'grid', group: 'Account' })
+    partner.push({
+      href: '/admin/dashboard',
+      label: 'Administration',
+      icon: 'grid',
+      group: 'Account',
+    })
   }
   if (partner.length) {
     const links = [...partner]
     if (canUseBuyerTools(user)) {
       links.push({ href: '/account', label: 'Shop as a customer', icon: 'cart', group: 'Account' })
-      links.push({ href: '/account/settings', label: 'Account settings', icon: 'user', group: 'Account' })
+      links.push({
+        href: '/account/settings',
+        label: 'Account settings',
+        icon: 'user',
+        group: 'Account',
+      })
     } else if (hasUserRole(user, 'admin')) {
       links.push({ href: '/admin/settings', label: 'Settings', icon: 'user', group: 'Account' })
     }
@@ -96,11 +151,7 @@ export function RoleDashboardLinks({ user }) {
   return (
     <div className="hidden shrink-0 items-center gap-2 lg:flex">
       {links.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          className="btn btn-secondary"
-        >
+        <Link key={link.href} href={link.href} className="btn btn-secondary">
           {link.label}
         </Link>
       ))}
@@ -168,24 +219,31 @@ export function UserProfileMenu({ user, pathname = '' }) {
           {groups.map((group) => (
             <div key={group} className="py-1">
               {groups.length > 1 ? (
-                <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">{group}</p>
+                <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">
+                  {group}
+                </p>
               ) : null}
               {links
                 .filter((link) => link.group === group)
                 .map((link) => {
-                  const active = link.href === activeNavHref(pathname, links.map((item) => item.href))
+                  const active =
+                    link.href ===
+                    activeNavHref(
+                      pathname,
+                      links.map((item) => item.href),
+                    )
                   return (
-                  <Link
-                    key={`${link.href}-${link.label}`}
-                    role="menuitem"
-                    href={link.href}
-                    aria-current={active ? 'page' : undefined}
-                    className={`flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-[#f4f6f8] ${active ? 'bg-brand-50 font-semibold text-brand-800' : 'text-brand-900'}`}
-                    onClick={() => setOpen(false)}
-                  >
-                    <DashboardIcon name={link.icon} className="size-4 text-[#65766d]" />
-                    {link.label}
-                  </Link>
+                    <Link
+                      key={`${link.href}-${link.label}`}
+                      role="menuitem"
+                      href={link.href}
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-[#f4f6f8] ${active ? 'bg-brand-50 font-semibold text-brand-800' : 'text-brand-900'}`}
+                      onClick={() => setOpen(false)}
+                    >
+                      <DashboardIcon name={link.icon} className="size-4 text-[#65766d]" />
+                      {link.label}
+                    </Link>
                   )
                 })}
             </div>
@@ -199,18 +257,53 @@ export function UserProfileMenu({ user, pathname = '' }) {
   )
 }
 
+function WishlistHeaderAction({ pathname, mobileAccountInMenu }) {
+  const { wishlistCount, wishlistLoading } = useWishlistState()
+  return (
+    <span className={mobileAccountInMenu ? 'hidden lg:contents' : 'contents'}>
+      <HeaderIconLink
+        href="/wishlist"
+        label="Wishlist"
+        icon="heart"
+        badge={wishlistLoading ? 0 : wishlistCount}
+        active={pathname.startsWith('/wishlist')}
+        busy={wishlistLoading}
+      />
+    </span>
+  )
+}
+
+function CartHeaderAction({ pathname, onClick }) {
+  const { cartCount, cartLoading } = useCartState()
+  return (
+    <HeaderIconButton
+      label="Shopping cart"
+      icon="cart"
+      badge={cartLoading ? 0 : cartCount}
+      active={pathname.startsWith('/checkout')}
+      busy={cartLoading}
+      onClick={onClick}
+    />
+  )
+}
+
 export function AuthenticatedHeaderActions({
   user,
   unread = 0,
   pathname = '',
   mobileAccountInMenu = false,
 }) {
-  const { cartCount, wishlistCount, cartLoading, wishlistLoading } = useMarketplaceState()
   const [cartOpen, setCartOpen] = useState(false)
+  const [cartLoaded, setCartLoaded] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [notifLoaded, setNotifLoaded] = useState(false)
   const [unreadCount, setUnreadCount] = useState(unread)
   useEffect(() => setUnreadCount(unread), [unread, user?.id])
-  const isBuyer = canUseBuyerTools(user) && !pathname.startsWith('/admin/') && !pathname.startsWith('/seller/') && !pathname.startsWith('/delivery/')
+  const isBuyer =
+    canUseBuyerTools(user) &&
+    !pathname.startsWith('/admin/') &&
+    !pathname.startsWith('/seller/') &&
+    !pathname.startsWith('/delivery/')
   const inWorkspace =
     pathname.startsWith('/admin') ||
     pathname.startsWith('/seller') ||
@@ -230,30 +323,23 @@ export function AuthenticatedHeaderActions({
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         {isBuyer ? (
           <>
-            <span className={mobileAccountInMenu ? 'hidden lg:contents' : 'contents'}>
-              <HeaderIconLink
-                href="/wishlist"
-                label="Wishlist"
-                icon="heart"
-                badge={wishlistLoading ? 0 : wishlistCount}
-                active={pathname.startsWith('/wishlist')}
-                busy={wishlistLoading}
-              />
-            </span>
-            <HeaderIconButton
-              label="Shopping cart"
-              icon="cart"
-              badge={cartLoading ? 0 : cartCount}
-              active={pathname.startsWith('/checkout')}
-              busy={cartLoading}
-              onClick={() => setCartOpen(true)}
+            <WishlistHeaderAction pathname={pathname} mobileAccountInMenu={mobileAccountInMenu} />
+            <CartHeaderAction
+              pathname={pathname}
+              onClick={() => {
+                setCartLoaded(true)
+                setCartOpen(true)
+              }}
             />
             <HeaderIconButton
               label="Notifications"
               icon="bell"
-            badge={unreadCount}
+              badge={unreadCount}
               active={pathname.startsWith('/notifications')}
-              onClick={() => setNotifOpen(true)}
+              onClick={() => {
+                setNotifLoaded(true)
+                setNotifOpen(true)
+              }}
             />
           </>
         ) : (
@@ -262,14 +348,17 @@ export function AuthenticatedHeaderActions({
             icon="bell"
             badge={unreadCount}
             active={pathname.startsWith('/notifications')}
-            onClick={() => setNotifOpen(true)}
+            onClick={() => {
+              setNotifLoaded(true)
+              setNotifOpen(true)
+            }}
           />
         )}
         <div className={mobileAccountInMenu ? 'hidden lg:block' : undefined}>
           <UserProfileMenu user={user} pathname={pathname} />
         </div>
       </div>
-      {isBuyer ? (
+      {isBuyer && cartLoaded ? (
         <CartDrawer
           open={cartOpen}
           onClose={() => {
@@ -277,12 +366,14 @@ export function AuthenticatedHeaderActions({
           }}
         />
       ) : null}
-      <NotificationsPanel
-        key={user.id}
-        open={notifOpen}
-        onClose={() => setNotifOpen(false)}
-        onUnreadChange={setUnreadCount}
-      />
+      {notifLoaded ? (
+        <NotificationsPanel
+          key={user.id}
+          open={notifOpen}
+          onClose={() => setNotifOpen(false)}
+          onUnreadChange={setUnreadCount}
+        />
+      ) : null}
     </>
   )
 }

@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { FloatingAiAssistant } from '@/components/floating-ai-assistant'
+import { FloatingAiAssistantLoader } from '@/components/floating-ai-assistant-loader'
 import { InstallAppToast } from '@/components/install-app-toast'
 import { RouteFeedbackToast } from '@/components/ui-feedback'
 import { BrowserNotifications } from '@/components/browser-notifications'
@@ -46,21 +46,24 @@ export default async function RootLayout({ children }) {
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
-      <body className="min-h-screen bg-[#f3f8ef] text-[#142016] antialiased" suppressHydrationWarning>
+      <body
+        className="min-h-screen bg-[#f3f8ef] text-[#142016] antialiased"
+        suppressHydrationWarning
+      >
         <a className="skip-link" href="#root">
           Skip to content
         </a>
         <div id="root" tabIndex={-1}>
-          <MarketplaceStateProvider
-            userId={buyerEnabled ? user.id : null}
-          >
+          <MarketplaceStateProvider userId={buyerEnabled ? user.id : null}>
             {children}
           </MarketplaceStateProvider>
           <RefreshOnFocus />
-          <Suspense fallback={null}><RouteFeedbackToast /></Suspense>
+          <Suspense fallback={null}>
+            <RouteFeedbackToast />
+          </Suspense>
           <InstallAppToast />
           <BrowserNotifications enabled={Boolean(user)} />
-          <FloatingAiAssistant user={user} />
+          <FloatingAiAssistantLoader user={user} />
         </div>
       </body>
     </html>

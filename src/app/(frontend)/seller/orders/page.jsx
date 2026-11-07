@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
 import {
   AlertBanner,
@@ -16,13 +17,26 @@ import { LocationRouteMap } from '@/components/location-route-map'
 import { listOwnedOrders, nextSellerAction } from '@/server/seller'
 import { orderStatusLabel } from '@/lib/order-status'
 import { groupBySection, sellerOrderSection } from '@/lib/work-sections'
-import { advanceOrderAction, cancelOrderAction, collectOrderAction, rejectOrderAction } from '@/app/(frontend)/seller/actions'
+import {
+  advanceOrderAction,
+  cancelOrderAction,
+  collectOrderAction,
+  rejectOrderAction,
+} from '@/app/(frontend)/seller/actions'
 
 const sections = [
   ['needs-you', 'Needs your action', 'Confirm, prepare, hand off, or finish these orders.'],
-  ['active', 'Active orders', 'The courier is handling these. You will be asked again when it is your turn.'],
+  [
+    'active',
+    'Active orders',
+    'The courier is handling these. You will be asked again when it is your turn.',
+  ],
   ['completed', 'Completed', 'Finished orders, including any pickup cash still to record.'],
-  ['cancelled', 'Cancelled', 'These orders are closed and stock was returned when it was reserved.'],
+  [
+    'cancelled',
+    'Cancelled',
+    'These orders are closed and stock was returned when it was reserved.',
+  ],
 ]
 
 export default async function SellerOrdersPage({ searchParams }) {
@@ -36,9 +50,21 @@ export default async function SellerOrdersPage({ searchParams }) {
   const selected = orders.find((order) => order.id === orderId) || null
 
   return (
-    <DashboardShell user={user} title="Orders" subtitle="Orders that need you, ones still moving, and finished orders.">
-      {error ? <div className="mb-6"><AlertBanner tone="error">{error}</AlertBanner></div> : null}
-      {success ? <div className="mb-6"><AlertBanner tone="success">{success}</AlertBanner></div> : null}
+    <DashboardShell
+      user={user}
+      title="Orders"
+      subtitle="Orders that need you, ones still moving, and finished orders."
+    >
+      {error ? (
+        <div className="mb-6">
+          <AlertBanner tone="error">{error}</AlertBanner>
+        </div>
+      ) : null}
+      {success ? (
+        <div className="mb-6">
+          <AlertBanner tone="success">{success}</AlertBanner>
+        </div>
+      ) : null}
 
       <div className={workGridClass}>
         {sections.map(([key, title, description]) => {
@@ -58,14 +84,20 @@ export default async function SellerOrdersPage({ searchParams }) {
                     <div className="min-w-0">
                       <p className="font-semibold text-[#142016]">{order.reference}</p>
                       <p className="text-[13px] text-[#5c6f62]">
-                        {order.buyerName} · {order.fulfillment} · {peso(order.subtotal)} product sales
+                        {order.buyerName} · {order.fulfillment} · {peso(order.subtotal)} product
+                        sales
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
                       <StatusBadge status={pretty(order.status)} />
-                      <a href={`/seller/orders?order=${encodeURIComponent(order.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${order.reference}`} title="View details">
+                      <Link
+                        href={`/seller/orders?order=${encodeURIComponent(order.id)}`}
+                        className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]"
+                        aria-label={`View details for ${order.reference}`}
+                        title="View details"
+                      >
                         <DashboardIcon name="eye" className="size-4" />
-                      </a>
+                      </Link>
                     </div>
                   </li>
                 ))}
@@ -76,12 +108,21 @@ export default async function SellerOrdersPage({ searchParams }) {
       </div>
       {orderId ? (
         <Modal
+          key={orderId}
           title={selected?.reference || 'Order'}
-          subtitle={selected ? `${selected.buyerName} · ${selected.fulfillment}` : 'This order is not in your shop.'}
+          subtitle={
+            selected
+              ? `${selected.buyerName} · ${selected.fulfillment}`
+              : 'This order is not in your shop.'
+          }
           closeHref="/seller/orders"
           size="xl"
         >
-          {selected ? <SellerOrderDetail order={selected} /> : <p className="text-sm text-[#5c6f62]">This order is not in your shop.</p>}
+          {selected ? (
+            <SellerOrderDetail order={selected} />
+          ) : (
+            <p className="text-sm text-[#5c6f62]">This order is not in your shop.</p>
+          )}
         </Modal>
       ) : null}
     </DashboardShell>
@@ -93,8 +134,12 @@ function OrderRoute({ order }) {
   if (order.fulfillment === 'delivery') {
     return (
       <div className="mt-4 space-y-2">
-        <p className="text-sm text-[#142016]">Buyer drop-off: {order.deliveryAddress || 'Address not saved'}</p>
-        <p className="text-sm text-[#5c6f62]">Seller pickup: {pickup?.farmName || 'Farm'} · {pickup?.location || 'Location not saved'}</p>
+        <p className="text-sm text-[#142016]">
+          Buyer drop-off: {order.deliveryAddress || 'Address not saved'}
+        </p>
+        <p className="text-sm text-[#5c6f62]">
+          Seller pickup: {pickup?.farmName || 'Farm'} · {pickup?.location || 'Location not saved'}
+        </p>
         <LocationRouteMap
           pickupLat={pickup?.pickupLat}
           pickupLng={pickup?.pickupLng}
@@ -107,8 +152,16 @@ function OrderRoute({ order }) {
   }
   return (
     <div className="mt-4 space-y-2">
-      <p className="text-sm text-[#142016]">Buyer pickup: {pickup?.farmName || 'Farm'} · {pickup?.location || 'Location not saved'}</p>
-      <LocationMap lat={pickup?.pickupLat} lng={pickup?.pickupLng} height={200} label="Seller pickup" kind="pickup" />
+      <p className="text-sm text-[#142016]">
+        Buyer pickup: {pickup?.farmName || 'Farm'} · {pickup?.location || 'Location not saved'}
+      </p>
+      <LocationMap
+        lat={pickup?.pickupLat}
+        lng={pickup?.pickupLng}
+        height={200}
+        label="Seller pickup"
+        kind="pickup"
+      />
     </div>
   )
 }
@@ -124,7 +177,9 @@ function SellerOrderDetail({ order }) {
         <div className="text-right">
           <StatusBadge status={pretty(order.status)} />
           <p className="mt-2 text-xl font-bold">{peso(order.subtotal)} product sales</p>
-          <p className="text-xs text-[#5c6f62]">{peso(commission)} commission · {peso(earnings)} net earnings</p>
+          <p className="text-xs text-[#5c6f62]">
+            {peso(commission)} commission · {peso(earnings)} net earnings
+          </p>
         </div>
       </div>
       <ul className="space-y-1 text-sm text-[#647066]">
@@ -171,7 +226,14 @@ function SellerOrderDetail({ order }) {
             </ConfirmButton>
           </form>
         ) : null}
-        {!['placed', 'completed', 'delivered', 'picked-up', 'out-for-delivery', 'cancelled'].includes(order.status) && (
+        {![
+          'placed',
+          'completed',
+          'delivered',
+          'picked-up',
+          'out-for-delivery',
+          'cancelled',
+        ].includes(order.status) && (
           <form action={cancelOrderAction}>
             <input type="hidden" name="orderId" value={order.id} />
             <ConfirmButton
@@ -185,9 +247,12 @@ function SellerOrderDetail({ order }) {
             </ConfirmButton>
           </form>
         )}
-        <a href={`/seller/orders/${encodeURIComponent(order.id)}/receipt`} className="btn btn-secondary">
+        <Link
+          href={`/seller/orders/${encodeURIComponent(order.id)}/receipt`}
+          className="btn btn-secondary"
+        >
           View transaction receipt
-        </a>
+        </Link>
       </div>
     </div>
   )

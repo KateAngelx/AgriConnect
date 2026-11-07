@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 import { AppHeader } from './app-header'
 
@@ -9,7 +7,11 @@ function FooterColumn({ title, links }) {
       <p className="text-[13px] font-semibold">{title}</p>
       <div className="mt-1">
         {links.map(([label, href]) => (
-          <Link key={`${title}-${href}`} href={href} className="block py-2 text-[14px] leading-5 text-white/75 hover:text-white">
+          <Link
+            key={`${title}-${href}`}
+            href={href}
+            className="block py-2 text-[14px] leading-5 text-white/75 hover:text-white"
+          >
             {label}
           </Link>
         ))}
@@ -25,14 +27,24 @@ export function PublicFooter() {
         <div className="col-span-2 lg:col-span-1">
           <div className="flex items-center gap-2 text-[15px] font-semibold">
             <span className="grid size-8 place-items-center rounded-[10px] bg-[#5dbb38]">
-              <svg viewBox="0 0 24 24" className="size-5 fill-none stroke-white stroke-2" aria-hidden="true"><path d="M5 20c8 0 13-5 14-15C9 6 4 11 5 20Z"/><path d="M5 20c2-5 6-8 11-11"/></svg>
+              <svg
+                viewBox="0 0 24 24"
+                className="size-5 fill-none stroke-white stroke-2"
+                aria-hidden="true"
+              >
+                <path d="M5 20c8 0 13-5 14-15C9 6 4 11 5 20Z" />
+                <path d="M5 20c2-5 6-8 11-11" />
+              </svg>
             </span>
             AgriConnect
           </div>
           <p className="mt-3 max-w-sm text-[13px] leading-5 text-white/70">
             A direct agricultural marketplace for Filipino farmers and households.
           </p>
-          <a href="mailto:support@agriconnect.ph" className="mt-3 inline-block py-1 text-[14px] text-[#b7ebc1]">
+          <a
+            href="mailto:support@agriconnect.ph"
+            className="mt-3 inline-block py-1 text-[14px] text-[#b7ebc1]"
+          >
             support@agriconnect.ph
           </a>
         </div>
@@ -51,8 +63,8 @@ export function PublicFooter() {
             ['FAQ', '/contact#faq'],
             ['Shipping and delivery', '/how-it-works'],
             ['Orders and issues', '/contact#orders'],
-          ['Platform feedback', '/#platform-feedback'],
-        ]}
+            ['Platform feedback', '/#platform-feedback'],
+          ]}
         />
         <FooterColumn
           title="My account"

@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useMarketplaceState } from './marketplace-state'
+import { useCartState } from './marketplace-state'
 
 export function ProductPurchaseActions({ product }) {
   const router = useRouter()
-  const { addToCart, cartBusy } = useMarketplaceState()
+  const { addToCart, cartBusy } = useCartState()
   const [quantity, setQuantity] = useState('1')
   const unavailable = product.stock < 1
   const validQuantity = Number.isInteger(Number(quantity)) && Number(quantity) > 0
@@ -18,7 +18,9 @@ export function ProductPurchaseActions({ product }) {
 
   return (
     <div className="ui-card mt-8 p-5">
-      <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{unavailable ? 'Currently unavailable' : 'Add to your order'}</h2>
+      <h2 className="text-[17px] font-semibold text-[#1d1d1f]">
+        {unavailable ? 'Currently unavailable' : 'Add to your order'}
+      </h2>
       <p className="mt-2 text-[13px] text-[#6e6e73]">
         {unavailable
           ? 'This listing is sold out. Check back when the seller restocks.'

@@ -1,24 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { useMarketplaceState } from './marketplace-state'
+import { useWishlistState } from './marketplace-state'
 import { WishlistButton } from './wishlist-button'
 import { DashboardIcon } from './dashboard-icons'
 import { peso } from '@/lib/dashboard-format'
 import { PagedRows } from './paged-rows'
 
 export function WishlistItems() {
-  const {
-    wishlist,
-    wishlistLoading,
-    wishlistError,
-    refreshWishlist,
-    addToCart,
-    cartBusy,
-  } = useMarketplaceState()
+  const { wishlist, wishlistLoading, wishlistError, refreshWishlist, addToCart, cartBusy } =
+    useWishlistState()
 
   if (wishlistLoading) {
-    return <p role="status" className="text-sm text-[#5c6f62]">Loading saved products…</p>
+    return (
+      <p role="status" className="text-sm text-[#5c6f62]">
+        Loading saved products…
+      </p>
+    )
   }
 
   if (wishlistError) {
@@ -48,15 +46,26 @@ export function WishlistItems() {
               <>
                 <div className="min-w-0 flex-1">
                   {available ? (
-                    <Link href={`/products/${product.id}`} className="font-semibold text-[#142016] hover:text-[#4b9f30]">
+                    <Link
+                      href={`/products/${product.id}`}
+                      className="font-semibold text-[#142016] hover:text-[#4b9f30]"
+                    >
                       {product.name}
                     </Link>
                   ) : (
                     <p className="font-semibold text-[#142016]">{product.name}</p>
                   )}
-                  <p className="text-[13px] text-[#5c6f62]">{peso(product.price)} per {product.unit}</p>
-                  <p className={`text-xs font-semibold ${inStock ? 'text-[#248a3d]' : 'text-[#963b2d]'}`}>
-                    {!available ? 'Unavailable' : inStock ? `${product.stock} in stock` : 'Out of stock'}
+                  <p className="text-[13px] text-[#5c6f62]">
+                    {peso(product.price)} per {product.unit}
+                  </p>
+                  <p
+                    className={`text-xs font-semibold ${inStock ? 'text-[#248a3d]' : 'text-[#963b2d]'}`}
+                  >
+                    {!available
+                      ? 'Unavailable'
+                      : inStock
+                        ? `${product.stock} in stock`
+                        : 'Out of stock'}
                   </p>
                 </div>
                 {inStock ? (

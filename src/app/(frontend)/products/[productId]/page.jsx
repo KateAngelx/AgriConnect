@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { MarketplaceAssistant } from '@/components/marketplace-assistant'
 import { LocationMap } from '@/components/location-map'
 import { ProductCard } from '@/components/product-card'
@@ -21,20 +22,18 @@ import { StarRating } from '@/components/star-rating'
 import { StarRatingInput } from '@/components/star-rating-input'
 
 export default async function ProductDetailsPage({ params, searchParams }) {
-  const { productId } = await params
-  const query = await searchParams
+  const [{ productId }, query] = await Promise.all([params, searchParams])
   const [product, user] = await Promise.all([getProduct(productId), currentUser()])
   if (!product || product.status !== 'active') notFound()
   const seller = typeof product.seller === 'object' ? product.seller : null
   const category = typeof product.category === 'object' ? product.category : null
-  const [related, reviews] = await Promise.all([
+  const [related, reviews, reviewAccess] = await Promise.all([
     listRelatedProducts(product),
     listProductReviews(product.id),
-  ])
-  const reviewAccess =
     user && isApprovedBuyer(user) && !isApprovedSeller(user)
-      ? await buyerReviewForProduct(user, product.id)
-      : { eligible: false, review: null }
+      ? buyerReviewForProduct(user, product.id)
+      : Promise.resolve({ eligible: false, review: null }),
+  ])
   const images = product.images?.filter((image) => typeof image === 'object' && image.url) ?? []
   return (
     <SiteShell user={user}>
@@ -43,18 +42,18 @@ export default async function ProductDetailsPage({ params, searchParams }) {
           aria-label="Breadcrumb"
           className="mb-6 flex flex-wrap items-center gap-2 text-sm text-brand-muted"
         >
-          <a href="/products" className="font-semibold text-brand-700">
+          <Link href="/products" className="font-semibold text-brand-700">
             Products
-          </a>
+          </Link>
           {category ? (
             <>
               <span aria-hidden="true">/</span>
-              <a
+              <Link
                 href={`/products?category=${encodeURIComponent(category.id)}`}
                 className="font-semibold text-brand-700"
               >
                 {category.name}
-              </a>
+              </Link>
             </>
           ) : null}
           <span aria-hidden="true">/</span>

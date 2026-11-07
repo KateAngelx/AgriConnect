@@ -13,7 +13,9 @@ export default async function DeliveryAssignmentsPage({ searchParams }) {
   const selected = work.find((item) => item.id === jobId) || null
   const available = work.filter((item) => item.status === 'open' && item.canAccept)
   const assigned = work.filter((item) => item.isMine && item.status === 'accepted')
-  const active = work.filter((item) => item.isMine && ['picked-up', 'in-transit'].includes(item.status))
+  const active = work.filter(
+    (item) => item.isMine && ['picked-up', 'in-transit'].includes(item.status),
+  )
 
   return (
     <DashboardShell
@@ -28,7 +30,12 @@ export default async function DeliveryAssignmentsPage({ searchParams }) {
           count={available.length}
           empty={<p className="text-sm text-[#5c6f62]">No open delivery jobs right now.</p>}
         >
-          <DeliveryWorkPanel bare work={available} userId={user.id} emptyMessage="No open delivery jobs right now." />
+          <DeliveryWorkPanel
+            bare
+            work={available}
+            userId={user.id}
+            emptyMessage="No open delivery jobs right now."
+          />
         </WorkSection>
         <WorkSection
           title="Assigned"
@@ -36,7 +43,12 @@ export default async function DeliveryAssignmentsPage({ searchParams }) {
           count={assigned.length}
           empty={<p className="text-sm text-[#5c6f62]">No assignments are waiting for pickup.</p>}
         >
-          <DeliveryWorkPanel bare work={assigned} userId={user.id} emptyMessage="No assignments are waiting for pickup." />
+          <DeliveryWorkPanel
+            bare
+            work={assigned}
+            userId={user.id}
+            emptyMessage="No assignments are waiting for pickup."
+          />
         </WorkSection>
         <WorkSection
           title="Active deliveries"
@@ -46,11 +58,17 @@ export default async function DeliveryAssignmentsPage({ searchParams }) {
           linkLabel="View delivered"
           empty={<p className="text-sm text-[#5c6f62]">Nothing is in progress.</p>}
         >
-          <DeliveryWorkPanel bare work={active} userId={user.id} emptyMessage="Nothing is in progress." />
+          <DeliveryWorkPanel
+            bare
+            work={active}
+            userId={user.id}
+            emptyMessage="Nothing is in progress."
+          />
         </WorkSection>
       </div>
       {jobId ? (
         <Modal
+          key={jobId}
           title={selected?.reference || 'Delivery'}
           subtitle={
             !selected
@@ -66,7 +84,11 @@ export default async function DeliveryAssignmentsPage({ searchParams }) {
           closeHref="/delivery/deliveries"
           size="xl"
         >
-          {selected ? <DeliveryAssignmentDetail assignment={selected} /> : <p className="text-sm text-[#5c6f62]">This job is not in your list.</p>}
+          {selected ? (
+            <DeliveryAssignmentDetail assignment={selected} />
+          ) : (
+            <p className="text-sm text-[#5c6f62]">This job is not in your list.</p>
+          )}
         </Modal>
       ) : null}
     </DashboardShell>

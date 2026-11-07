@@ -21,10 +21,7 @@ export function BrowserNotifications({ enabled }) {
     let stopped = false
 
     async function poll() {
-      if (stopped || document.visibilityState === 'hidden' && document.hidden) {
-        // The browser may throttle hidden tabs; short polling resumes when visible.
-        if (!document.hidden) return
-      }
+      if (stopped || document.hidden) return
       try {
         const response = await fetch('/api/notifications/latest', { cache: 'no-store' })
         if (!response.ok) return
@@ -72,7 +69,10 @@ export function BrowserNotifications({ enabled }) {
       const registration = await navigator.serviceWorker.ready
       const existing = await registration.pushManager.getSubscription()
       if (existing) return
-      const key = Uint8Array.from(atob(publicKey.replace(/-/g, '+').replace(/_/g, '/')), (character) => character.charCodeAt(0))
+      const key = Uint8Array.from(
+        atob(publicKey.replace(/-/g, '+').replace(/_/g, '/')),
+        (character) => character.charCodeAt(0),
+      )
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: key,
@@ -87,7 +87,15 @@ export function BrowserNotifications({ enabled }) {
     }
   }
 
-  if (!mounted || !enabled || dismissed || typeof window === 'undefined' || !('Notification' in window) || permission === 'granted') return null
+  if (
+    !mounted ||
+    !enabled ||
+    dismissed ||
+    typeof window === 'undefined' ||
+    !('Notification' in window) ||
+    permission === 'granted'
+  )
+    return null
   if (permission === 'denied') return null
 
   return (
@@ -97,7 +105,10 @@ export function BrowserNotifications({ enabled }) {
       className="fixed inset-x-3 top-[calc(.75rem+env(safe-area-inset-top))] z-[110] mx-auto max-w-md rounded-2xl border border-[#d5e4d4] bg-white p-3 shadow-[0_16px_40px_rgba(20,32,22,0.18)] sm:left-auto sm:right-5 sm:mx-0 sm:w-[25rem] sm:p-4"
     >
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-[#e9f5e8] text-[#2e7d32]" aria-hidden="true">
+        <span
+          className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-[#e9f5e8] text-[#2e7d32]"
+          aria-hidden="true"
+        >
           <Bell className="size-5" strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">

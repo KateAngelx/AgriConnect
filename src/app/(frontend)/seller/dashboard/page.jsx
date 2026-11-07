@@ -1,6 +1,12 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { DashboardShell, peso, pretty } from '@/components/dashboard-shell'
-import { MetricBoard, MetricTile, NotificationFeed, QuickActions } from '@/components/dashboard-overview-ui'
+import {
+  MetricBoard,
+  MetricTile,
+  NotificationFeed,
+  QuickActions,
+} from '@/components/dashboard-overview-ui'
 import { StatusBadge, WorkSection, workGridClass } from '@/components/dashboard-ui'
 import { PagedRows } from '@/components/paged-rows'
 import { groupBySection, sellerOrderSection } from '@/lib/work-sections'
@@ -37,12 +43,32 @@ export default async function SellerDashboardPage() {
           <QuickActions
             columns={1}
             actions={[
-              { section: 'Shop', label: 'Add product', href: '/seller/products?new=1', icon: 'plus' },
+              {
+                section: 'Shop',
+                label: 'Add product',
+                href: '/seller/products?new=1',
+                icon: 'plus',
+              },
               { section: 'Shop', label: 'Inventory', href: '/seller/inventory', icon: 'boxes' },
-              { section: 'Shop', label: 'Product reviews', href: '/seller/reviews', icon: 'clipboard' },
+              {
+                section: 'Shop',
+                label: 'Product reviews',
+                href: '/seller/reviews',
+                icon: 'clipboard',
+              },
               { section: 'Orders', label: 'Orders', href: '/seller/orders', icon: 'clipboard' },
-              { section: 'Account', label: 'Feedback', href: '/seller/feedback', icon: 'clipboard' },
-              { section: 'Account', label: 'Report an issue', href: '/seller/issues', icon: 'clipboard' },
+              {
+                section: 'Account',
+                label: 'Feedback',
+                href: '/seller/feedback',
+                icon: 'clipboard',
+              },
+              {
+                section: 'Account',
+                label: 'Report an issue',
+                href: '/seller/issues',
+                icon: 'clipboard',
+              },
               { section: 'Account', label: 'My shop', href: '/seller/shop', icon: 'user' },
             ]}
           />
@@ -53,24 +79,73 @@ export default async function SellerDashboardPage() {
 }
 
 async function SellerMetrics({ user }) {
-  const [summary, currentCommissionRate] = await Promise.all([sellerSnapshot(user), commissionRate()])
+  const [summary, currentCommissionRate] = await Promise.all([
+    sellerSnapshot(user),
+    commissionRate(),
+  ])
 
   return (
     <>
       <div className="mb-4">
         <AlertBanner tone="info">
-          Platform commission: ₱{currentCommissionRate} per item is charged for eligible delivered orders. This commission is
-          deducted from payouts and is not added to the buyer&apos;s checkout price.
+          Platform commission: ₱{currentCommissionRate} per item is charged for eligible delivered
+          orders. This commission is deducted from payouts and is not added to the buyer&apos;s
+          checkout price.
         </AlertBanner>
       </div>
       <MetricBoard>
-        <MetricTile section="Shop" label="Total products" value={summary.products} icon="package" tone="teal" />
-        <MetricTile section="Shop" label="Active products" value={summary.activeProducts} icon="store" tone="green" />
-        <MetricTile section="Orders" label="Pending orders" value={summary.pendingOrders} icon="clipboard" tone="amber" />
-        <MetricTile section="Orders" label="Completed orders" value={summary.completedOrders} icon="package" tone="blue" />
-        <MetricTile section="Sales" label="Total sales" value={peso(summary.totalSales)} hint="Completed product sales" icon="coin" tone="green" />
-        <MetricTile section="Sales" label="Earnings" value={peso(summary.earnings)} hint="After platform commission" icon="wallet" tone="teal" />
-        <MetricTile section="Inventory" label="Low stock" value={summary.lowStock} hint={`${summary.activeProducts} active listings`} icon="boxes" tone="amber" />
+        <MetricTile
+          section="Shop"
+          label="Total products"
+          value={summary.products}
+          icon="package"
+          tone="teal"
+        />
+        <MetricTile
+          section="Shop"
+          label="Active products"
+          value={summary.activeProducts}
+          icon="store"
+          tone="green"
+        />
+        <MetricTile
+          section="Orders"
+          label="Pending orders"
+          value={summary.pendingOrders}
+          icon="clipboard"
+          tone="amber"
+        />
+        <MetricTile
+          section="Orders"
+          label="Completed orders"
+          value={summary.completedOrders}
+          icon="package"
+          tone="blue"
+        />
+        <MetricTile
+          section="Sales"
+          label="Total sales"
+          value={peso(summary.totalSales)}
+          hint="Completed product sales"
+          icon="coin"
+          tone="green"
+        />
+        <MetricTile
+          section="Sales"
+          label="Earnings"
+          value={peso(summary.earnings)}
+          hint="After platform commission"
+          icon="wallet"
+          tone="teal"
+        />
+        <MetricTile
+          section="Inventory"
+          label="Low stock"
+          value={summary.lowStock}
+          hint={`${summary.activeProducts} active listings`}
+          icon="boxes"
+          tone="amber"
+        />
       </MetricBoard>
     </>
   )
@@ -138,7 +213,10 @@ function NotificationsLoading() {
 
 function LoadingPanel({ label }) {
   return (
-    <div role="status" className="ui-card mb-4 flex min-h-20 items-center gap-3 p-5 text-sm text-[#5c6f62]">
+    <div
+      role="status"
+      className="ui-card mb-4 flex min-h-20 items-center gap-3 p-5 text-sm text-[#5c6f62]"
+    >
       <span className="size-4 animate-spin rounded-full border-2 border-[#b8d2af] border-t-[#2e7d32]" />
       {label}
     </div>
@@ -158,9 +236,14 @@ function OrderPreview({ rows }) {
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <StatusBadge status={pretty(order.status)} />
-            <a href={`/seller/orders?order=${encodeURIComponent(order.id)}`} className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]" aria-label={`View details for ${order.reference}`} title="View details">
+            <Link
+              href={`/seller/orders?order=${encodeURIComponent(order.id)}`}
+              className="grid size-9 place-items-center rounded-lg border border-[#d5e4d4] text-[#2e7d32] hover:bg-[#eef8e8]"
+              aria-label={`View details for ${order.reference}`}
+              title="View details"
+            >
               <DashboardIcon name="eye" className="size-4" />
-            </a>
+            </Link>
           </div>
         </li>
       ))}
