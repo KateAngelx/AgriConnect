@@ -1,15 +1,36 @@
-// Placeholder for the page content only. The real header (with the page title) and the
-// sidebar stay on screen while a page loads, so the skeleton draws no header of its own.
+'use client'
+
+import { usePathname } from 'next/navigation'
+import {
+  AuthSkeleton,
+  CardGridSkeleton,
+  CartSkeleton,
+  ContentPageSkeleton,
+  DashboardListSkeleton,
+  DashboardOverviewSkeleton,
+  HomeSkeleton,
+  ProductDetailSkeleton,
+  ProductListSkeleton,
+} from '@/components/route-skeletons'
+import { chromeMode, headingForPath } from '@/lib/page-meta'
+
+// One loading screen for the whole site that takes the shape of the page being opened,
+// so the placeholder matches where that page's sections will appear.
 export default function Loading() {
-  return (
-    <div className="page-container py-8" aria-busy="true">
-      <div className="animate-pulse space-y-4" role="status" aria-label="Loading page">
-        <div className="h-24 rounded-xl bg-[#e7f3e4]" />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="h-28 rounded-xl bg-[#e7f3e4]" />
-          <div className="h-28 rounded-xl bg-[#e7f3e4]" />
-        </div>
-      </div>
-    </div>
-  )
+  const pathname = usePathname() || '/'
+  const mode = chromeMode(pathname)
+
+  if (mode === 'auth') return <AuthSkeleton />
+
+  if (mode === 'dashboard') {
+    if (pathname.startsWith('/cart') || pathname.startsWith('/checkout')) return <CartSkeleton />
+    if (headingForPath(pathname).variant === 'overview') return <DashboardOverviewSkeleton />
+    return <DashboardListSkeleton />
+  }
+
+  if (pathname === '/') return <HomeSkeleton />
+  if (pathname === '/products') return <ProductListSkeleton />
+  if (pathname.startsWith('/products/')) return <ProductDetailSkeleton />
+  if (pathname.startsWith('/sellers') || pathname.startsWith('/categories')) return <CardGridSkeleton />
+  return <ContentPageSkeleton />
 }
