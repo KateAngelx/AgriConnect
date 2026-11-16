@@ -2,6 +2,7 @@ import { isApprovedAdmin, isApprovedBuyer, isApprovedSeller } from './roles'
 import { notify } from './notifications'
 import { save } from './sync'
 import { freshStore } from './store'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 
 export const FEEDBACK_CATEGORIES = [
   ['general-feedback', 'General Feedback'],
@@ -106,6 +107,7 @@ export async function feedbackForAdmin(user) {
       buyerName: store.users.get(entry.userId)?.name || 'Buyer',
       submitterRole: entry.submitterRole || 'buyer',
       buyerEmail: store.users.get(entry.userId)?.email || '',
+      featured: featuredIds(store).includes(entry.id),
     }))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 }
@@ -163,4 +165,82 @@ export async function respondToFeedback(user, { feedbackId, response, status }) 
     )
   }
   return { ok: true }
+}
+
+
+/* ── Featured feedback shown on the public home page ─────────────────────────
+ * Feedback is private by default. An administrator picks which messages to feature;
+ * the ids are kept in platform_settings under 'featuredFeedback'. Only the sender's
+ * first name and role are shown publicly.
+ */
+const FEATURED_KEY = 'featuredFeedback'
+const FEATURED_LIMIT = 30
+
+function featuredIds(store) {
+  const ids = store.settings?.[FEATURED_KEY]
+  return Array.isArray(ids) ? ids : []
+}
+
+export async function setFeedbackFeatured(user, feedbackId, featured) {
+  if (!isApprovedAdmin(user)) return { error: 'Only administrators can feature feedback.' }
+  const store = await freshStore()
+  const id = String(feedbackId || '')
+  if (!(store.feedback || []).some((entry) => entry.id === id)) return { error: 'Feedback submission not found.' }
+  const current = featuredIds(store).filter((item) => item !== id)
+  if (featured && current.length >= FEATURED_LIMIT) {
+    return { error: `You can feature up to ${FEATURED_LIMIT} messages. Remove one first.` }
+  }
+  store.settings ??= {}
+  store.settings[FEATURED_KEY] = featured ? [id, ...current] : current
+  await save()
+  return { ok: true }
+}
+
+function firstName(name) {
+  return String(name || '').trim().split(/\s+/)[0] || 'AgriConnect user'
+}
+
+/** Featured feedback for the home page, newest featured first. Reads the database directly. */
+export async function publicFeedback() {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const { data: setting } = await client.from('platform_settings').select('value').eq('key', FEATURED_KEY).maybeSingle()
+    const ids = Array.isArray(setting?.value) ? setting.value : []
+    if (!ids.length) return []
+    const { data: rows, error } = await client
+      .from('buyer_feedback')
+      .select('id,user_id,submitter_role,category,message,created_at')
+      .in('id', ids)
+    if (error) return []
+    const userIds = [...new Set((rows || []).map((row) => row.user_id))]
+    const { data: people } = userIds.length
+      ? await client.from('profiles').select('id,name').in('id', userIds)
+      : { data: [] }
+    const names = new Map((people || []).map((person) => [person.id, person.name]))
+    const byId = new Map((rows || []).map((row) => [row.id, row]))
+    return ids
+      .map((id) => byId.get(id))
+      .filter(Boolean)
+      .map((row) => ({
+        id: row.id,
+        name: firstName(names.get(row.user_id)),
+        role: row.submitter_role === 'seller' ? 'Seller' : 'Buyer',
+        category: row.category,
+        message: row.message,
+        createdAt: row.created_at,
+      }))
+  }
+  const store = await freshStore()
+  const entries = new Map((store.feedback || []).map((entry) => [entry.id, entry]))
+  return featuredIds(store)
+    .map((id) => entries.get(id))
+    .filter(Boolean)
+    .map((entry) => ({
+      id: entry.id,
+      name: firstName(store.users.get(entry.userId)?.name),
+      role: entry.submitterRole === 'seller' ? 'Seller' : 'Buyer',
+      category: entry.category,
+      message: entry.message,
+      createdAt: entry.createdAt,
+    }))
 }

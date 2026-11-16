@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { StarRating } from '@/components/star-rating'
 
 function sellerInitial(name) {
   return String(name || 'Farm')
@@ -7,7 +8,7 @@ function sellerInitial(name) {
     .toUpperCase()
 }
 
-export function SellerCard({ seller }) {
+export function SellerCard({ seller, rating = null }) {
   const image = typeof seller.image === 'object' ? seller.image : null
   return (
     <article className="ui-card flex h-full flex-col overflow-hidden">
@@ -32,6 +33,11 @@ export function SellerCard({ seller }) {
               {seller.farmName}
             </h2>
             <p className="mt-1 text-sm text-brand-muted">{seller.location || 'Philippines'}</p>
+            {rating?.reviewCount ? (
+              <StarRating rating={rating.rating} reviewCount={rating.reviewCount} showValue className="mt-1 text-[13px] text-brand-muted" />
+            ) : (
+              <p className="mt-1 text-[13px] text-brand-muted">No reviews yet</p>
+            )}
           </div>
         </div>
         <p className="mt-auto px-5 pb-5 text-sm leading-6 text-brand-muted">

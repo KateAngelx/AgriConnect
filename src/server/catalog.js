@@ -797,3 +797,58 @@ export async function listSellerProducts(sellerId, store = null) {
   )
   return { ...pageResult(docs, 1, 24), docs: docs.map((item) => withRating(store, item)) }
 }
+
+/**
+ * Overall star rating per seller, across all of their products' published reviews.
+ * Returns { [sellerId]: { rating, reviewCount, ratedProducts, breakdown: { 5: n, 4: n, ... } } }.
+ */
+export async function sellerRatingSummaries() {
+  let products = []
+  let reviews = []
+  const client = supabaseEnv().enabled ? getSupabaseAdmin() : null
+  if (client) {
+    const [productsResult, reviewsResult] = await Promise.all([
+      client.from('products').select('id,seller_id'),
+      client.from('product_reviews').select('product_id,rating,moderation_status'),
+    ])
+    if (productsResult.error) throw new Error(`Could not load products for ratings: ${productsResult.error.message}`)
+    products = (productsResult.data || []).map((row) => ({ id: row.id, sellerId: row.seller_id }))
+    reviews = optionalReviewRows(reviewsResult).map((row) => ({
+      productId: row.product_id,
+      rating: Number(row.rating),
+      moderationStatus: row.moderation_status || 'published',
+    }))
+  } else {
+    const store = await getCatalogSnapshot()
+    products = store.products.map((product) => ({ id: product.id, sellerId: product.seller?.id }))
+    reviews = (store.productReviews || []).map((review) => ({
+      productId: review.productId,
+      rating: Number(review.rating),
+      moderationStatus: review.moderationStatus || 'published',
+    }))
+  }
+  const sellerOf = new Map(products.map((product) => [product.id, product.sellerId]))
+  const summaries = {}
+  for (const review of reviews) {
+    if (review.moderationStatus !== 'published') continue
+    if (!Number.isInteger(review.rating) || review.rating < 1 || review.rating > 5) continue
+    const sellerId = sellerOf.get(review.productId)
+    if (!sellerId) continue
+    const entry = (summaries[sellerId] ||= { total: 0, reviewCount: 0, products: new Set(), breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } })
+    entry.total += review.rating
+    entry.reviewCount += 1
+    entry.products.add(review.productId)
+    entry.breakdown[review.rating] += 1
+  }
+  return Object.fromEntries(
+    Object.entries(summaries).map(([sellerId, entry]) => [
+      sellerId,
+      {
+        rating: Math.round((entry.total / entry.reviewCount) * 10) / 10,
+        reviewCount: entry.reviewCount,
+        ratedProducts: entry.products.size,
+        breakdown: entry.breakdown,
+      },
+    ]),
+  )
+}

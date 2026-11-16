@@ -40,6 +40,9 @@ export default async function SellerFeedbackPage({ searchParams }) {
             Message
             <textarea name="message" required minLength={10} maxLength={5000} rows={5} className="rounded-xl border border-brand-line bg-white px-3 py-2" />
           </label>
+          <p className="text-xs leading-5 text-brand-muted">
+            Administrators may feature helpful feedback on the home page, showing only your first name and role.
+          </p>
           <FeedbackSubmitButton>Submit feedback</FeedbackSubmitButton>
         </form>
       </section>

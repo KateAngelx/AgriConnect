@@ -1,12 +1,12 @@
 import Link from 'next/link'
 import { SiteShell } from '@/components/site-shell'
 import { SellerCard } from '@/components/seller-card'
-import { listSellers } from '@/server/catalog'
+import { listSellers, sellerRatingSummaries } from '@/server/catalog'
 
 export default async function SellersPage({ searchParams }) {
   const query = await searchParams
   const page = Math.max(1, Number(query.page) || 1)
-  const sellers = await listSellers({ limit: 5, page })
+  const [sellers, ratings] = await Promise.all([listSellers({ limit: 5, page }), sellerRatingSummaries()])
   return (
     <SiteShell>
       <main>
@@ -26,7 +26,7 @@ export default async function SellersPage({ searchParams }) {
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {sellers.docs.map((seller) => (
-                  <SellerCard key={seller.id} seller={seller} />
+                  <SellerCard key={seller.id} seller={seller} rating={ratings[seller.id]} />
                 ))}
               </div>
               {sellers.totalPages > 1 ? (

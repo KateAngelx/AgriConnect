@@ -1,4 +1,5 @@
-import { respondToFeedbackAction } from '@/app/(frontend)/admin/feedback/actions'
+import { featureFeedbackAction, respondToFeedbackAction } from '@/app/(frontend)/admin/feedback/actions'
+import { SubmitButton } from '@/components/submit-button'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
 import { PagedRows } from '@/components/paged-rows'
@@ -91,10 +92,22 @@ export default async function AdminFeedbackPage({ searchParams }) {
                   </p>
                   <p className="mt-1 text-xs text-brand-muted">Feedback {entry.id}</p>
                   <time dateTime={entry.createdAt} className="mt-1 block text-xs text-brand-muted">
-                    Submitted {new Date(entry.createdAt).toLocaleString('en-PH')}
+                    Submitted {new Date(entry.createdAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
                   </time>
                 </div>
-                <StatusBadge status={entry.status} />
+                <div className="flex flex-wrap items-center gap-2">
+                  {entry.featured ? (
+                    <span className="rounded-full bg-[#fff6dc] px-2 py-0.5 text-[11px] font-semibold text-[#7a5a00]">On home page</span>
+                  ) : null}
+                  <StatusBadge status={entry.status} />
+                  <form action={featureFeedbackAction}>
+                    <input type="hidden" name="feedbackId" value={entry.id} />
+                    <input type="hidden" name="featured" value={entry.featured ? '0' : '1'} />
+                    <SubmitButton className="btn btn-secondary !min-h-9 !px-3 text-[13px]" pendingLabel="Saving…">
+                      {entry.featured ? 'Remove from home page' : 'Show on home page'}
+                    </SubmitButton>
+                  </form>
+                </div>
               </div>
               <details className="mt-4">
                 <summary className="w-fit cursor-pointer text-sm font-semibold text-brand-700">

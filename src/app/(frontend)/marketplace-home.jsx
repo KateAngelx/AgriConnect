@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { MarketplaceAssistant } from '@/components/marketplace-assistant'
 import { ProductCard } from '@/components/product-card'
 import { SellerCard } from '@/components/seller-card'
+import { FeaturedFeedback } from '@/components/featured-feedback'
+import { CategoryIcon } from '@/components/category-icons'
 import { FeedbackSubmitButton } from '@/components/feedback-submit-button'
 import { submitFeedbackAction } from '@/app/(frontend)/feedback/actions'
 
@@ -10,7 +12,7 @@ function partnerHref(user, path) {
   return `/login?next=${encodeURIComponent(path)}`
 }
 
-export default function MarketplaceHome({ user = null, products = [], sellers = [], categories = [] }) {
+export default function MarketplaceHome({ user = null, products = [], sellers = [], categories = [], sellerRatings = {}, featuredFeedback = [] }) {
   return (
     <main className="bg-[#f3f8ef] text-[#142016]">
       <section className="home-hero">
@@ -66,22 +68,31 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
           </div>
           <Link href="/categories" className="inline-flex items-center gap-2 text-sm font-bold text-brand-700">View all categories <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current stroke-2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></Link>
         </div>
-        <div className="mt-6 overflow-x-auto pb-1">
-          <div className="flex min-w-max gap-3">
-            {categories.map((category, index) => {
-              const image = typeof category.image === 'object' && category.image?.url ? category.image.url : null
-              return (
-                <Link key={category.id} href={`/products?category=${encodeURIComponent(category.id)}`} className="ui-card flex w-36 items-center gap-2 overflow-hidden px-2 py-2 transition-colors hover:border-[#d2d2d7]">
-                  <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-[#f5f5f7]">
-                    {image ? <img src={image} alt="" className="size-full object-cover" /> : <div className="grid size-full place-items-center text-xs font-semibold text-[#6e6e73]">{String(index + 1).padStart(2, '0')}</div>}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="line-clamp-2 text-[12px] font-semibold leading-4 tracking-[-0.01em] text-[#1d1d1f]">{category.name}</span>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+          {categories.map((category) => {
+            const image = typeof category.image === 'object' && category.image?.url ? category.image.url : null
+            return (
+              <Link
+                key={category.id}
+                href={`/products?category=${encodeURIComponent(category.id)}`}
+                className="ui-card group flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:border-[#b8d2af] hover:shadow-md"
+              >
+                <div className="grid aspect-[4/3] place-items-center overflow-hidden bg-[#eef7ea]">
+                  {image ? (
+                    <img src={image} alt="" className="size-full object-cover transition group-hover:scale-105" />
+                  ) : (
+                    <span className="grid size-20 place-items-center rounded-full bg-white text-[#2e7d32] shadow-sm sm:size-24">
+                      <CategoryIcon categoryId={category.id} className="size-10 sm:size-12" />
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-2 px-4 py-3">
+                  <span className="text-base font-bold leading-snug text-[#142016] sm:text-lg">{category.name}</span>
+                  <svg viewBox="0 0 24 24" className="size-5 shrink-0 fill-none stroke-[#4b9f30] stroke-2 transition group-hover:translate-x-0.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </div>
+              </Link>
+            )
+          })}
         </div>
         {categories.length === 0 && (
           <div className="page-empty mt-6">Categories will appear as the marketplace grows.</div>
@@ -116,7 +127,7 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {sellers.slice(0, 4).map((seller) => (
-              <SellerCard key={seller.id} seller={seller} />
+              <SellerCard key={seller.id} seller={seller} rating={sellerRatings[seller.id]} />
             ))}
           </div>
         </section>
@@ -153,6 +164,8 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
         </div>
       </section>
 
+      <FeaturedFeedback items={featuredFeedback} />
+
       <section id="platform-feedback" className="page-container page-section scroll-mt-24">
         <div className="ui-card grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10">
           <div>
@@ -165,8 +178,8 @@ export default function MarketplaceHome({ user = null, products = [], sellers = 
               Sign in with an approved buyer or seller account to submit.
             </p>
             <p className="mt-3 text-xs leading-5 text-brand-muted">
-              Platform feedback is private to you and authorized administrators. Only published
-              product reviews appear publicly.
+              Feedback goes to AgriConnect administrators. They may feature helpful feedback on this
+              page, showing only your first name and whether you are a buyer or seller.
             </p>
           </div>
           <form action={submitFeedbackAction} className="grid gap-4">

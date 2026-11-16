@@ -3,28 +3,22 @@ import { ProductCard } from '@/components/product-card'
 import { PagedRows } from '@/components/paged-rows'
 import { SiteShell } from '@/components/site-shell'
 import { BackLink } from '@/components/back-link'
-import { getSeller, listSellerProducts } from '@/server/catalog'
+import { getSeller, listSellerProducts, sellerRatingSummaries } from '@/server/catalog'
+import { SellerRatingSummary } from '@/components/seller-rating-summary'
 import { StarRating } from '@/components/star-rating'
 export default async function SellerPage({ params }) {
   const { sellerId } = await params
-  const [seller, products] = await Promise.all([getSeller(sellerId), listSellerProducts(sellerId)])
+  const [seller, products, ratings] = await Promise.all([
+    getSeller(sellerId),
+    listSellerProducts(sellerId),
+    sellerRatingSummaries(),
+  ])
+  const ratingSummary = ratings[sellerId] || null
   if (!seller || seller.status !== 'approved') notFound()
   const image = typeof seller.image === 'object' ? seller.image : null
-  const reviewCount = products.docs.reduce(
-    (total, product) => total + Number(product.reviewCount || 0),
-    0,
-  )
-  const sellerRating = reviewCount
-    ? Math.round(
-        (products.docs.reduce(
-          (total, product) =>
-            total + Number(product.rating || 0) * Number(product.reviewCount || 0),
-          0,
-        ) /
-          reviewCount) *
-          10,
-      ) / 10
-    : 0
+  // Same numbers as the Customer ratings section below.
+  const reviewCount = ratingSummary?.reviewCount || 0
+  const sellerRating = ratingSummary?.rating || 0
   return (
     <SiteShell>
       <main>
@@ -66,6 +60,9 @@ export default async function SellerPage({ params }) {
           <p className="max-w-3xl text-lg leading-8 text-[#65766d]">
             {seller.description || 'This seller has not added a public farm description yet.'}
           </p>
+          <h2 className="page-section-title mt-8 text-2xl text-brand-900">Customer ratings</h2>
+          <p className="mt-1 text-sm text-brand-muted">Combined from reviews of all this farm&apos;s products.</p>
+          <SellerRatingSummary summary={ratingSummary} className="mt-4 max-w-2xl" />
           <h2 className="page-section-title mt-8 text-3xl text-brand-900">Available products</h2>
           {products.docs.length ? (
             <PagedRows asList={false} className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">

@@ -4,10 +4,12 @@ import { DashboardPanel, StatusBadge } from '@/components/dashboard-ui'
 import { SellerProfileForm } from '@/components/profile-forms'
 import { requireSeller } from '@/server/guards'
 import { sellerProfile } from '@/server/seller'
+import { sellerRatingSummaries } from '@/server/catalog'
+import { SellerRatingSummary } from '@/components/seller-rating-summary'
 
 export default async function SellerShopPage() {
   const user = await requireSeller()
-  const seller = await sellerProfile(user)
+  const [seller, ratings] = await Promise.all([sellerProfile(user), sellerRatingSummaries()])
 
   return (
     <DashboardShell user={user} title="My shop" subtitle="Farm profile buyers see on the marketplace.">
@@ -20,6 +22,10 @@ export default async function SellerShopPage() {
             </Link>
           </div>
           <p className="mt-3 text-sm text-[#647066]">{seller.location}</p>
+          <div className="mt-4">
+            <p className="mb-2 text-sm font-semibold text-[#142016]">Your shop rating</p>
+            <SellerRatingSummary summary={ratings[seller.id]} />
+          </div>
           <p className="mt-2 text-sm leading-6 text-[#647066]">{seller.description || 'Add a description for buyers.'}</p>
           <div className="mt-6 border-t border-[#d5e4d4] pt-6">
             <SellerProfileForm seller={seller} />
