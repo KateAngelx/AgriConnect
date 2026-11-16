@@ -7,6 +7,7 @@ import { lastDaySeries, localDayKey } from '@/lib/day-series'
 import { inPeriod, periodLabel, readPeriod } from '@/lib/report-period'
 import { requireApprovedDelivery } from '@/server/guards'
 import { listCommissions } from '@/server/delivery'
+import { formatDateTime } from '@/lib/date-time'
 
 export default async function CommissionsPage({ searchParams }) {
   const user = await requireApprovedDelivery()
@@ -63,7 +64,13 @@ function CommissionList({ rows }) {
         <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <p className="font-semibold text-[#142016]">{item.order?.reference || 'Delivery'}</p>
-            <p className="text-[13px] text-[#5c6f62]">{peso(item.commission)} fixed delivery fee</p>
+            <p className="text-[13px] text-[#5c6f62]">
+              Delivered {item.deliveredAt ? formatDateTime(item.deliveredAt) : '—'} · {item.order?.buyerName || 'Buyer'} · {pretty(item.order?.paymentMethod)}
+            </p>
+            <p className="text-[13px] text-[#5c6f62]">
+              {peso(item.commission)} = the delivery fee the buyer paid
+              {item.paidAt ? ` · paid ${formatDateTime(item.paidAt)}` : ''}
+            </p>
           </div>
           <StatusBadge status={pretty(item.commissionStatus)} />
         </li>

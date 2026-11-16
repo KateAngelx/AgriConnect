@@ -340,3 +340,30 @@ test('₱3 per kilo platform share is computed on the report but not charged at 
   assert.equal(row.orderTotal, row.sellerNet + row.commission + row.courierFee)
   assert.equal(ledger.totals.orderTotal, ledger.totals.sellerNet + ledger.totals.commission + ledger.totals.courierFees)
 })
+
+test('sent announcements are kept as history and shown only to their audience', async () => {
+  const { listAnnouncements, announcementsFor } = await import('../src/server/announcements.js')
+  const store = await readyStore()
+  for (const user of [seller, courier]) store.users.set(user.id, user)
+  const both = await publishAdminAnnouncement(admin, {
+    title: 'Holiday schedule',
+    message: 'Pickups pause on the holiday; deliveries resume the next day.',
+    audience: 'both',
+  })
+  assert.equal(both.ok, true)
+
+  const history = await listAnnouncements()
+  assert.equal(history[0].title, 'Holiday schedule')
+  assert.equal(history[0].audience, 'both')
+  assert.equal(history[0].recipientCount, both.recipientCount)
+  assert.ok(history.some((item) => item.title === 'Seller-only notice'))
+
+  const forSeller = (await announcementsFor(seller)).map((item) => item.title)
+  const forCourier = (await announcementsFor(courier)).map((item) => item.title)
+  const forBuyer = await announcementsFor(buyer)
+  assert.ok(forSeller.includes('Holiday schedule') && forSeller.includes('Seller-only notice'))
+  assert.ok(!forSeller.includes('Delivery personnel notice'))
+  assert.ok(forCourier.includes('Holiday schedule') && forCourier.includes('Delivery personnel notice'))
+  assert.ok(!forCourier.includes('Seller-only notice'))
+  assert.equal(forBuyer.length, 0)
+})

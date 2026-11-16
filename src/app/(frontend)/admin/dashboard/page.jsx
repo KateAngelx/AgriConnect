@@ -1,4 +1,5 @@
 import { DashboardShell, peso } from '@/components/dashboard-shell'
+import { PagedRows } from '@/components/paged-rows'
 import {
   ActivityBars,
   MetricBoard,
@@ -120,7 +121,7 @@ export default async function AdminDashboardPage() {
               linkLabel="Open approvals"
               empty={<p className="text-sm text-[#5c6f62]">No application is waiting.</p>}
             >
-              <ul className="divide-y divide-[#d5e4d4]">
+              <PagedRows className="divide-y divide-[#d5e4d4]">
                 {applications.map((entry) => (
                   <li
                     key={entry.id}
@@ -140,7 +141,7 @@ export default async function AdminDashboardPage() {
                     <StatusBadge status={entry.status} />
                   </li>
                 ))}
-              </ul>
+              </PagedRows>
             </WorkSection>
             <ActivityBars
               title="Orders placed"
@@ -165,7 +166,7 @@ export default async function AdminDashboardPage() {
                 section: 'Approving',
                 label: 'Approvals',
                 href: '/admin/applications',
-                icon: 'clipboard',
+                icon: 'approvals',
               },
               { section: 'Approving', label: 'Accounts', href: '/admin/users', icon: 'users' },
               {
@@ -174,38 +175,38 @@ export default async function AdminDashboardPage() {
                 href: '/admin/products',
                 icon: 'package',
               },
-              { section: 'Monitoring', label: 'Orders', href: '/admin/orders', icon: 'clipboard' },
+              { section: 'Monitoring', label: 'Orders', href: '/admin/orders', icon: 'orders' },
               {
                 section: 'Monitoring',
                 label: 'Review moderation',
                 href: '/admin/reviews',
-                icon: 'clipboard',
+                icon: 'star',
               },
               {
                 section: 'Case management',
                 label: 'Feedback management',
                 href: '/admin/feedback',
-                icon: 'clipboard',
+                icon: 'feedback',
               },
               {
                 section: 'Case management',
                 label: 'Report management',
                 href: '/admin/buyer-reports',
-                icon: 'clipboard',
+                icon: 'flag',
               },
               {
                 section: 'Approving',
                 label: 'Administrator announcements',
                 href: '/admin/announcements',
-                icon: 'bell',
+                icon: 'megaphone',
               },
               {
                 section: 'Payments',
                 label: 'Transactions and payouts',
                 href: '/admin/payments',
-                icon: 'wallet',
+                icon: 'payouts',
               },
-              { section: 'Payments', label: 'Reports', href: '/admin/reports', icon: 'package' },
+              { section: 'Payments', label: 'Reports', href: '/admin/reports', icon: 'chart' },
             ]}
           />
         </aside>

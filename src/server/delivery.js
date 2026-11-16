@@ -149,10 +149,14 @@ export async function listCommissions(user) {
         commission: DELIVERY_FEE,
         commissionStatus: delivery.commissionStatus || 'pending',
         updatedAt: delivery.updatedAt || '',
+        paidAt: delivery.courierReleasedAt || '',
+        deliveredAt: delivery.proofOfDelivery?.uploadedAt || delivery.updatedAt || '',
         order: order
           ? {
               id: order.id,
               reference: order.reference,
+              paymentMethod: order.paymentMethod || 'cash',
+              buyerName: order.buyerName || 'Buyer',
             }
           : null,
       }

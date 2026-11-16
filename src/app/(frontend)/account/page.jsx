@@ -24,12 +24,12 @@ export default async function AccountPage() {
   const deliveredOrders = groupedOrders.delivered || []
   const allOrders = [...activeOrders, ...deliveredOrders]
   const quickActions = [
-    isApprovedBuyer(user) ? { section: 'Orders', label: 'My orders', href: '/buyer/orders', icon: 'clipboard' } : null,
+    isApprovedBuyer(user) ? { section: 'Orders', label: 'My orders', href: '/buyer/orders', icon: 'orders' } : null,
     { section: 'Shopping', label: 'Browse products', href: '/products', icon: 'store' },
     isApprovedBuyer(user) ? { section: 'Shopping', label: 'Wishlist', href: '/wishlist', icon: 'heart' } : null,
-    isApprovedBuyer(user) ? { section: 'Account', label: 'Feedback', href: '/feedback', icon: 'clipboard' } : null,
-    isApprovedBuyer(user) ? { section: 'Account', label: 'Report an issue', href: '/reports', icon: 'clipboard' } : null,
-    { section: 'Account', label: 'Account settings', href: '/account/settings', icon: 'user' },
+    isApprovedBuyer(user) ? { section: 'Account', label: 'Feedback', href: '/feedback', icon: 'feedback' } : null,
+    isApprovedBuyer(user) ? { section: 'Account', label: 'Report an issue', href: '/reports', icon: 'flag' } : null,
+    { section: 'Account', label: 'Account settings', href: '/account/settings', icon: 'settings' },
   ].filter(Boolean)
 
   return (

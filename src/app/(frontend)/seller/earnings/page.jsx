@@ -4,12 +4,14 @@ import { ActivityBars, MetricTile } from '@/components/dashboard-overview-ui'
 import { periodLabel, readPeriod } from '@/lib/report-period'
 import { requireApprovedSeller } from '@/server/guards'
 import { sellerFinancials } from '@/server/seller'
+import { commissionRate } from '@/server/payments'
+import { SellerPayoutRows, SellerPayoutSummary } from '@/components/money-breakdown'
 
 export default async function SellerEarningsPage({ searchParams }) {
   const user = await requireApprovedSeller()
   const query = await searchParams
   const period = readPeriod(query.period)
-  const finances = await sellerFinancials(user, period)
+  const [finances, rate] = await Promise.all([sellerFinancials(user, period), commissionRate()])
 
   return (
     <DashboardShell user={user} title="Earnings" subtitle={`${periodLabel(period)} · completed sales and orders still open.`}>
@@ -24,6 +26,18 @@ export default async function SellerEarningsPage({ searchParams }) {
         <MetricTile section="Open" label="Open order value" value={peso(finances.pending)} hint="Not completed yet" icon="wallet" tone="amber" />
         <MetricTile section="Open" label="Open orders" value={finances.openOrders} icon="clipboard" tone="blue" />
       </div>
+      <section className="ui-card mt-4 p-4 sm:p-5">
+        <h2 className="text-[17px] font-semibold text-[#142016]">Payout breakdown</h2>
+        <p className="mb-4 text-[13px] text-[#5c6f62]">{periodLabel(period)} · what your orders come to after commission, and how much has been released to you.</p>
+        <SellerPayoutSummary payout={finances.payout} commissionRate={rate} />
+      </section>
+      <section className="ui-card mt-4 overflow-hidden">
+        <div className="border-b border-[#d5e4d4] px-4 py-3 sm:px-5">
+          <h2 className="text-[17px] font-semibold text-[#142016]">Order-by-order payout</h2>
+          <p className="text-[13px] text-[#5c6f62]">Each order's sales, commission, what you receive, and whether it has been released.</p>
+        </div>
+        <SellerPayoutRows rows={finances.rows} />
+      </section>
       <div className="mt-4">
         <ActivityBars title="Sales this week" series={finances.series} caption="Your line-item sales for the last 7 days." />
       </div>

@@ -82,6 +82,9 @@ export default async function SellerReportsPage({ searchParams }) {
                         <p className="font-semibold">{peso(row.total)} sales</p>
                         <p className="text-[#5c6f62]">{peso(row.commission)} commission</p>
                         <p className="font-semibold text-[#2e7d32]">{peso(row.earnings)} net</p>
+                        <p className="text-[#5c6f62]">
+                          {row.payout === 'released' ? 'Payout released' : row.payout === 'ready' ? 'Waiting for admin release' : row.payout === 'cancelled' ? 'No payout (cancelled)' : 'Payout after completion'}
+                        </p>
                       </div>
                       <StatusBadge status={pretty(row.status)} />
                       <Link href={`/seller/orders/${encodeURIComponent(row.id)}/receipt`} className="text-xs font-semibold text-[#2e7d32] hover:underline">

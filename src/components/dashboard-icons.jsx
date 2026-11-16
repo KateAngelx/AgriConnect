@@ -19,6 +19,19 @@ import {
   Users,
   WalletCards,
   X,
+  Banknote,
+  ChartColumn,
+  Flag,
+  History,
+  LayoutDashboard,
+  Megaphone,
+  MessageSquareText,
+  ReceiptText,
+  ScrollText,
+  Settings,
+  ShoppingBag,
+  Star,
+  UserCheck,
 } from 'lucide-react'
 
 const icons = {
@@ -42,6 +55,19 @@ const icons = {
   plus: Plus,
   trash: Trash2,
   eye: Eye,
+  dashboard: LayoutDashboard,
+  approvals: UserCheck,
+  orders: ShoppingBag,
+  star: Star,
+  feedback: MessageSquareText,
+  flag: Flag,
+  megaphone: Megaphone,
+  chart: ChartColumn,
+  payouts: Banknote,
+  receipt: ReceiptText,
+  settings: Settings,
+  history: History,
+  audit: ScrollText,
 }
 
 export function DashboardIcon({ name, className = 'size-5' }) {

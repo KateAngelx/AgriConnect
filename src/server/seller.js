@@ -281,7 +281,7 @@ export async function ownedProduct(user, productId) {
 }
 
 const SELLER_ORDER_COLUMNS =
-  'id,reference,buyer_id,buyer_name,buyer_email,fulfillment,contact_number,delivery_address,delivery_landmark,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,subtotal,delivery_fee,platform_fee,platform_fee_status,created_at,items'
+  'id,reference,buyer_id,buyer_name,buyer_email,fulfillment,contact_number,delivery_address,delivery_landmark,delivery_lat,delivery_lng,seller_pickup,estimated_arrival_at,instructions,payment_method,payment_status,status,subtotal,delivery_fee,platform_fee,platform_fee_status,buyer_confirmed_at,seller_payment_status,seller_released_at,seller_released_by,created_at,items'
 
 export async function listOwnedOrders(user, { limit } = {}) {
   const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
@@ -348,6 +348,34 @@ export async function sellerFinancials(user, period = 'all') {
         !['completed', 'cancelled', 'delivered', 'picked-up'].includes(normalizedStatus(order)),
     )
     .reduce((sum, order) => sum + sellerOrderTotal(order, sellerId), 0)
+  // Per-order breakdown and where each payout stands. Admin releases a seller payout only
+  // once the order is completed, so 'ready' means waiting on admin, 'not-yet' means unfinished.
+  const rows = orders
+    .filter((order) => normalizedStatus(order) !== 'cancelled')
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .map((order) => {
+      const products = sellerOrderTotal(order, sellerId)
+      const fee = Number(order.platformFee || 0)
+      const status = normalizedStatus(order)
+      return {
+        id: order.id,
+        reference: order.reference,
+        createdAt: order.createdAt || '',
+        buyer: order.buyerName || 'Buyer',
+        fulfillment: order.fulfillment || 'pickup',
+        paymentMethod: order.paymentMethod || 'cash',
+        status,
+        itemCount: (order.items || [])
+          .filter((item) => itemSellerId(item) === sellerId)
+          .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
+        products,
+        commission: fee,
+        net: Math.max(0, products - fee),
+        payout: order.sellerPaymentStatus === 'released' ? 'released' : status === 'completed' ? 'ready' : 'not-yet',
+        releasedAt: order.sellerReleasedAt || '',
+      }
+    })
+  const sumNet = (payout) => rows.filter((row) => row.payout === payout).reduce((sum, row) => sum + row.net, 0)
   return {
     gross,
     commission,
@@ -355,6 +383,15 @@ export async function sellerFinancials(user, period = 'all') {
     pending,
     completedOrders: completed.length,
     openOrders: orders.length - completed.length,
+    rows,
+    payout: {
+      products: rows.reduce((sum, row) => sum + row.products, 0),
+      commission: rows.reduce((sum, row) => sum + row.commission, 0),
+      net: rows.reduce((sum, row) => sum + row.net, 0),
+      released: sumNet('released'),
+      ready: sumNet('ready'),
+      notYet: sumNet('not-yet'),
+    },
     series: lastDaySeries(orders, (order) => ({
       key: localDayKey(order.createdAt),
       value: sellerOrderTotal(order, sellerId),
@@ -378,6 +415,7 @@ export async function sellerSalesReport(user, period = 'all', status = 'all') {
       total,
       commission,
       earnings: Math.max(0, total - commission),
+      payout: order.sellerPaymentStatus === 'released' ? 'released' : order.status === 'completed' ? 'ready' : order.status === 'cancelled' ? 'cancelled' : 'not-yet',
       status: order.status,
       paymentStatus: order.paymentStatus,
       paymentMethod: payment?.method || order.paymentMethod,

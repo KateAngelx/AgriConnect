@@ -5,16 +5,19 @@ import { AlertBanner, WorkSection, workGridClass } from '@/components/dashboard-
 import { requireDelivery } from '@/server/guards'
 import { deliverySnapshot, listCourierWork } from '@/server/delivery'
 import { listNotifications } from '@/server/notifications'
+import { AnnouncementsPanel } from '@/components/announcement-list'
+import { announcementsFor } from '@/server/announcements'
 
 export default async function DeliveryDashboardPage({ searchParams }) {
   const user = await requireDelivery()
   const query = await searchParams
   const error = typeof query.error === 'string' ? query.error : ''
   const success = typeof query.success === 'string' ? query.success : ''
-  const [summary, work, notes] = await Promise.all([
+  const [summary, work, notes, announcements] = await Promise.all([
     deliverySnapshot(user),
     listCourierWork(user),
     listNotifications(user.id, { limit: 15 }),
+    announcementsFor(user),
   ])
   const available = work.filter((item) => item.status === 'open' && item.canAccept)
   const active = work.filter((item) => item.isMine && ['picked-up', 'in-transit'].includes(item.status))
@@ -79,14 +82,15 @@ export default async function DeliveryDashboardPage({ searchParams }) {
         </div>
 
         <aside className="space-y-4">
+          <AnnouncementsPanel items={announcements} />
           <NotificationFeed notes={notes} />
           <QuickActions
             columns={1}
             actions={[
               { section: 'Deliveries', label: 'Active deliveries', href: '/delivery/deliveries', icon: 'truck' },
-              { section: 'Deliveries', label: 'Delivery history', href: '/delivery/history', icon: 'clipboard' },
+              { section: 'Deliveries', label: 'Delivery history', href: '/delivery/history', icon: 'history' },
               { section: 'Payments', label: 'Commissions', href: '/delivery/commissions', icon: 'coin' },
-              { section: 'Account', label: 'Settings', href: '/delivery/settings', icon: 'user' },
+              { section: 'Account', label: 'Settings', href: '/delivery/settings', icon: 'settings' },
             ]}
           />
         </aside>

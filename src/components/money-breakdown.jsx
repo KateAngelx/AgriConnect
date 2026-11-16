@@ -25,7 +25,7 @@ const payoutLabel = {
 }
 
 // 'ready' means something different for each party: release money, collect it, or pay it.
-const readyLabel = { Seller: 'Ready to release', Commission: 'Ready to collect', Courier: 'Ready to pay' }
+const readyLabel = { Seller: 'Ready to release', Commission: 'Ready to collect', Courier: 'Ready to pay', Payout: 'Waiting for admin release' }
 
 function Chip({ status, prefix }) {
   const label = status === 'ready' ? readyLabel[prefix] || payoutLabel.ready : payoutLabel[status] || pretty(status)
@@ -158,6 +158,73 @@ export function MoneyLedgerRows({ rows }) {
             <Chip prefix="Seller" status={row.sellerPayout} />
             <Chip prefix="Commission" status={row.commissionStatus} />
             <Chip prefix="Courier" status={row.courierPayout} />
+          </div>
+        </li>
+      ))}
+    </PagedRows>
+  )
+}
+
+/** Seller view: what their sales come to and where each payout stands. */
+export function SellerPayoutSummary({ payout, commissionRate }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-3">
+        <Split
+          title="Your product sales"
+          total={payout.products}
+          note="What buyers paid for your products. Delivery fees go to the courier, not you."
+          parts={[['Platform commission deducted', payout.commission]]}
+        />
+        <Split
+          title="Your payout"
+          total={payout.net}
+          note={`Product sales minus platform commission (₱${commissionRate} per item on delivery orders; cash pickup has none).`}
+          parts={[
+            ['Released to you', payout.released],
+            ['Waiting for admin release', payout.ready],
+            ['Order not finished', payout.notYet],
+          ]}
+        />
+        <div className="rounded-xl border border-[#d5e4d4] bg-[#f7fbf4] p-4 text-sm leading-6 text-[#344a3b]">
+          <p className="font-semibold text-[#142016]">How payouts work</p>
+          <p className="mt-1">
+            When an order is completed (picked up, or delivered with the courier&apos;s proof photo), its payout
+            becomes ready. An administrator then releases it to you and it moves to “Released”.
+          </p>
+        </div>
+      </div>
+      <p className="rounded-xl bg-[#f7fbf4] px-4 py-3 text-sm text-[#142016]">
+        <strong>{peso(payout.products)}</strong> sales − <strong>{peso(payout.commission)}</strong> commission ={' '}
+        <strong>{peso(payout.net)}</strong> your payout
+      </p>
+    </div>
+  )
+}
+
+/** Seller view: one paged row per order with its payout math and status. */
+export function SellerPayoutRows({ rows }) {
+  if (!rows.length) return <p className="px-4 py-6 text-sm text-[#5c6f62]">No orders in this period.</p>
+  return (
+    <PagedRows className="divide-y divide-[#d5e4d4]">
+      {rows.map((row) => (
+        <li key={row.id} className="px-4 py-4 sm:px-5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="font-semibold text-[#142016]">{row.reference}</p>
+              <p className="text-[13px] text-[#5c6f62]">
+                {row.createdAt ? formatDateTime(row.createdAt) : 'Date unavailable'} · {row.buyer} · {pretty(row.fulfillment)} ·{' '}
+                {pretty(row.paymentMethod)} · {row.itemCount} item{row.itemCount === 1 ? '' : 's'} · {pretty(row.status)}
+              </p>
+            </div>
+            <p className="text-lg font-bold text-[#142016]">{peso(row.net)}</p>
+          </div>
+          <p className="mt-2 rounded-lg bg-[#f7fbf4] px-3 py-2 text-sm text-[#142016]">
+            Products {peso(row.products)} − commission {peso(row.commission)} = <strong>you get {peso(row.net)}</strong>
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Chip prefix="Payout" status={row.payout === 'ready' ? 'ready' : row.payout} />
+            {row.releasedAt ? <span className="text-[12px] text-[#5c6f62]">Released {formatDateTime(row.releasedAt)}</span> : null}
           </div>
         </li>
       ))}

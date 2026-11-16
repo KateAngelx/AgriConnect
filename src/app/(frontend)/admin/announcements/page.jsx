@@ -6,11 +6,13 @@ import { isApprovedDelivery, isApprovedSeller } from '@/server/roles'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { readyStore } from '@/server/store'
 import { SubmitButton } from '@/components/submit-button'
+import { AnnouncementList } from '@/components/announcement-list'
+import { listAnnouncements } from '@/server/announcements'
 
 export default async function AdminAnnouncementsPage({ searchParams }) {
   const user = await requireAdmin()
   const query = await searchParams
-  const { sellerCount, deliveryCount } = await audienceCounts()
+  const [{ sellerCount, deliveryCount }, sent] = await Promise.all([audienceCounts(), listAnnouncements()])
   return (
     <DashboardShell user={user} title="Administrator announcements" subtitle="Send an announcement to approved sellers, delivery personnel, or both.">
       {typeof query.error === 'string' ? (
@@ -42,6 +44,13 @@ export default async function AdminAnnouncementsPage({ searchParams }) {
           </label>
           <SubmitButton className="btn btn-primary w-fit" pendingLabel="Sending…">Send announcement</SubmitButton>
         </form>
+      </section>
+      <section className="ui-card mt-4 max-w-3xl overflow-hidden">
+        <div className="border-b border-[#d5e4d4] px-4 py-3 sm:px-5">
+          <h2 className="text-[17px] font-semibold text-[#142016]">Sent announcements</h2>
+          <p className="text-[13px] text-[#5c6f62]">{sent.length} sent · newest first. Sellers and couriers also see these on their dashboards.</p>
+        </div>
+        <AnnouncementList items={sent} showAudience empty="No announcements have been sent yet." />
       </section>
     </DashboardShell>
   )

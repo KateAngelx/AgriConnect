@@ -16,6 +16,12 @@ import { listOwnedOrders, sellerSnapshot } from '@/server/seller'
 import { commissionRate } from '@/server/payments'
 import { AlertBanner } from '@/components/dashboard-ui'
 import { DashboardIcon } from '@/components/dashboard-icons'
+import { AnnouncementsPanel } from '@/components/announcement-list'
+import { announcementsFor } from '@/server/announcements'
+
+async function SellerAnnouncements({ user }) {
+  return <AnnouncementsPanel items={await announcementsFor(user)} />
+}
 
 export default async function SellerDashboardPage() {
   const user = await requireSeller()
@@ -38,6 +44,9 @@ export default async function SellerDashboardPage() {
         </div>
         <aside className="space-y-4">
           <Suspense fallback={<NotificationsLoading />}>
+            <SellerAnnouncements user={user} />
+          </Suspense>
+          <Suspense fallback={<NotificationsLoading />}>
             <SellerNotifications user={user} />
           </Suspense>
           <QuickActions
@@ -54,20 +63,20 @@ export default async function SellerDashboardPage() {
                 section: 'Shop',
                 label: 'Product reviews',
                 href: '/seller/reviews',
-                icon: 'clipboard',
+                icon: 'star',
               },
-              { section: 'Orders', label: 'Orders', href: '/seller/orders', icon: 'clipboard' },
+              { section: 'Orders', label: 'Orders', href: '/seller/orders', icon: 'orders' },
               {
                 section: 'Account',
                 label: 'Feedback',
                 href: '/seller/feedback',
-                icon: 'clipboard',
+                icon: 'feedback',
               },
               {
                 section: 'Account',
                 label: 'Report an issue',
                 href: '/seller/issues',
-                icon: 'clipboard',
+                icon: 'flag',
               },
               { section: 'Account', label: 'My shop', href: '/seller/shop', icon: 'user' },
             ]}
