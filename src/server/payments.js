@@ -1,6 +1,6 @@
 import { notify } from './notifications'
 import { save } from './sync'
-import { readyStore } from './store'
+import { readyStore, freshStore } from './store'
 import { isApprovedAdmin, isApprovedDelivery, isApprovedSeller } from './roles'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 
@@ -118,12 +118,15 @@ export async function settlePlatformFeeOnline(orderId) {
   // we record it on the order and notify the admin.
   order.platformFee = commission
   order.platformFeeStatus = 'held-online'
-  await notify(
-    order.buyer,
-    `Platform commission of ₱${commission} recorded for ${order.reference}.`,
-    `The ₱${commission} platform commission will be remitted to the admin.`,
-    `/admin/payments`
-  )
+  // Internal bookkeeping: tell administrators, not the buyer.
+  for (const admin of [...store.users.values()].filter((entry) => isApprovedAdmin(entry))) {
+    await notify(
+      admin.id,
+      `Platform commission recorded for ${order.reference}`,
+      `₱${commission} platform commission was recorded on this online-paid order.`,
+      '/admin/payments',
+    )
+  }
   await save()
   return { ok: true, commission }
 }
@@ -248,7 +251,7 @@ export async function paymentFor(orderId) {
         }
       : null
   }
-  const store = await readyStore()
+  const store = await freshStore()
   return store.payments.find((payment) => payment.orderId === orderId) || null
 }
 
@@ -363,7 +366,7 @@ export async function startXenditCheckout(orders, origin) {
 
 export async function markXenditInvoicePaid({ invoiceId = '', externalId = '', orderIds = [] } = {}) {
   if (!invoiceId && !externalId && !orderIds.length) return { ok: false }
-  const store = await readyStore()
+  const store = await freshStore()
   let changed = false
   const ids = new Set(orderIds.filter(Boolean))
   for (const payment of store.payments) {
@@ -400,7 +403,7 @@ export async function markXenditInvoicePaid({ invoiceId = '', externalId = '', o
 export async function confirmXenditPayments(userId) {
   const header = xenditHeader()
   if (!header) return { ok: false }
-  const store = await readyStore()
+  const store = await freshStore()
   let changed = false
   for (const payment of store.payments) {
     const order = store.orders.get(payment.orderId)
@@ -429,7 +432,7 @@ export async function confirmXenditPayments(userId) {
 
 export async function markPaymongoCheckoutPaid({ sessionId = '', orderIds = [] } = {}) {
   if (!sessionId && !orderIds.length) return { ok: false }
-  const store = await readyStore()
+  const store = await freshStore()
   let changed = false
   const ids = new Set(orderIds.filter(Boolean))
   for (const payment of store.payments) {
@@ -464,7 +467,7 @@ export async function markPaymongoCheckoutPaid({ sessionId = '', orderIds = [] }
 }
 
 export async function confirmBuyerPayments(userId) {
-  const store = await readyStore()
+  const store = await freshStore()
   let changed = false
   for (const payment of store.payments) {
     const order = store.orders.get(payment.orderId)
@@ -492,7 +495,7 @@ export async function confirmBuyerPayments(userId) {
 }
 
 export async function collectCash(orderId, user) {
-  const store = await readyStore()
+  const store = await freshStore()
   const order = store.orders.get(orderId)
   if (!order) return { error: 'Order not found.' }
   if (['paymongo', 'xendit'].includes(order.paymentMethod)) return { error: 'This order is paid electronically.' }
@@ -518,7 +521,7 @@ export async function collectCash(orderId, user) {
 }
 
 export async function listPayments() {
-  const store = await readyStore()
+  const store = await freshStore()
   return store.payments
     .map((payment) => ({ ...payment, order: store.orders.get(payment.orderId) || null }))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))

@@ -639,6 +639,7 @@ async function hydrate() {
     await pullAll(client)
     globalThis.__agriconnectLoadedFromDb = true
     globalThis.__agriconnectPersistedSnapshot = snapshot(getStore())
+    globalThis.__agriconnectPulledAt = Date.now()
     globalThis.__agriconnectStatus = {
       mode: 'supabase',
       reason: probe.data?.length
@@ -651,6 +652,33 @@ async function hydrate() {
     throw new Error(`Supabase synchronization failed: ${error.message}`, { cause: error })
   }
   return globalThis.__agriconnectStatus
+}
+
+/**
+ * Reload the in-memory copy from the database when it is older than `maxAgeMs`.
+ *
+ * The memory copy is otherwise loaded once per server process, so anything written by
+ * another process (another hosting instance, or a dev server next to production) never
+ * shows up. Workspace pages call this so reviews, feedback, reports, and orders written
+ * elsewhere appear. It waits for pending saves first so a write is never overwritten.
+ */
+export async function refresh(maxAgeMs = 3000) {
+  await ready()
+  if (globalThis.__agriconnectStatus?.mode !== 'supabase' || !globalThis.__agriconnectLoadedFromDb) return
+  if (Date.now() - (globalThis.__agriconnectPulledAt || 0) < maxAgeMs) return
+  if (!globalThis.__agriconnectRefresh) {
+    globalThis.__agriconnectRefresh = (async () => {
+      await (globalThis.__agriconnectSave || Promise.resolve()).catch(() => undefined)
+      const client = getSupabaseAdmin()
+      if (!client) return
+      await pullAll(client)
+      globalThis.__agriconnectPersistedSnapshot = snapshot(getStore())
+      globalThis.__agriconnectPulledAt = Date.now()
+    })().finally(() => {
+      globalThis.__agriconnectRefresh = null
+    })
+  }
+  await globalThis.__agriconnectRefresh
 }
 
 export function ready() {

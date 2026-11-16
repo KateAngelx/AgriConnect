@@ -1,13 +1,14 @@
 const COLORS = {
   pickup: '#2e7d32',
   dropoff: '#ef7d32',
+  delivery: '#1e6fd9',
   place: '#2e7d32',
 }
 
 const GLYPHS = {
   pickup: `<text x="0" y="3.8" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700">S</text>`,
   dropoff: `<text x="0" y="3.8" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700">B</text>`,
-  delivery: `<text x="0" y="3.8" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700">D</text>`,
+  delivery: `<text x="0" y="3.8" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700">C</text>`,
   place: `<circle cx="0" cy="0" r="4.3" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="0" cy="0" r="1.7" fill="#fff"/>`,
 }
 

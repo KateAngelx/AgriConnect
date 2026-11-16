@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { CheckoutForm } from '@/components/checkout-form'
+import { BackLink } from '@/components/back-link'
 import { DELIVERY_FEE, electronicPaymentConfiguredSafely, electronicPaymentProvider } from '@/server/payments'
 import { currentUser } from '@/server/auth'
 import { checkoutSummaryForBuyer } from '@/server/checkout-summary'
@@ -27,6 +28,7 @@ export default async function CheckoutPage({ searchParams }) {
       title="Checkout"
       subtitle="Choose pickup or delivery, then how you will pay."
     >
+      <BackLink href="/cart" label="Back to cart" className="mb-4" />
       <CheckoutForm
         user={user}
         summary={summary}

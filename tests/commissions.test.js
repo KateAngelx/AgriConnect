@@ -10,7 +10,7 @@ delete process.env.SUPABASE_SERVICE_ROLE_KEY
 const { DELIVERY_FEE, PLATFORM_FEE_PER_KILO, kiloPlatformFee, orderTotal, collectCash } = await import('../src/server/payments.js')
 const { readyStore } = await import('../src/server/store.js')
 const { updateAssignment, submitProofOfDelivery, listCourierWork, listCommissions, listDeliveryHistory, deliverySnapshot } = await import('../src/server/delivery.js')
-const { markCommissionPaid, listAssignments, platformReport } = await import('../src/server/admin.js')
+const { markCommissionPaid, listAssignments, moneyLedger, platformReport } = await import('../src/server/admin.js')
 const { advanceOrder, cancelOrder, nextSellerAction } = await import('../src/server/seller.js')
 const { publishAdminAnnouncement } = await import('../src/server/announcements.js')
 const { isApprovedAdmin, isApprovedSeller, isApprovedDelivery, isApprovedBuyer, hasRole } = await import('../src/server/roles.js')
@@ -330,8 +330,13 @@ test('₱3 per kilo platform share is computed on the report but not charged at 
   const { order } = makeOrder(store, { id: 'o-kilo', quantity: 5 })
   // Buyer total excludes the platform share; courier still gets ₱49.
   assert.equal(orderTotal(order), 400 + 49)
+  // The report no longer shows the uncharged per-kilo figure; it reports what is actually charged.
   const report = await platformReport('all')
-  const kilosInStore = [...store.orders.values()].flatMap((o) => o.items).filter((i) => i.unit === 'kilogram').reduce((s, i) => s + i.quantity, 0)
-  assert.equal(report.platformFee, kilosInStore * 3)
-  assert.ok(report.platformFee >= 15)
+  assert.equal(report.platformFee, undefined)
+  // Every order's total splits exactly into seller payout + platform commission + courier fee.
+  const ledger = await moneyLedger('all')
+  const row = ledger.rows.find((entry) => entry.id === order.id)
+  assert.equal(row.orderTotal, 400 + 49)
+  assert.equal(row.orderTotal, row.sellerNet + row.commission + row.courierFee)
+  assert.equal(ledger.totals.orderTotal, ledger.totals.sellerNet + ledger.totals.commission + ledger.totals.courierFees)
 })

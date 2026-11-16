@@ -1,7 +1,7 @@
 import { notify } from './notifications'
 import { isApprovedAdmin, isApprovedBuyer, isApprovedSeller } from './roles'
 import { save } from './sync'
-import { readyStore } from './store'
+import { freshStore } from './store'
 
 export const BUYER_REPORT_TYPES = [
   ['product', 'Product'],
@@ -38,7 +38,7 @@ export function reportTypesForRole(user, reporterRole = 'buyer') {
 
 export async function reportOptions(user, reporterRole = 'buyer') {
   if (!reportTypesForRole(user, reporterRole).length) return []
-  const store = await readyStore()
+  const store = await freshStore()
   const options = []
   if (reporterRole === 'buyer') {
     for (const product of store.products) {
@@ -180,7 +180,7 @@ export async function submitBuyerReport(user, input) {
     return { error: 'Choose the item, seller, order, or delivery person being reported.' }
   }
 
-  const store = await readyStore()
+  const store = await freshStore()
   const target = targetForReport(store, user, reportType, targetId, reporterRole)
   if (!target)
     return {
@@ -211,7 +211,7 @@ export async function submitBuyerReport(user, input) {
 
 export async function reportsForBuyer(user) {
   if (!isApprovedBuyer(user) && !isApprovedSeller(user)) return []
-  const store = await readyStore()
+  const store = await freshStore()
   return (store.reports || [])
     .filter((entry) => entry.userId === user.id)
     .map((entry) => ({
@@ -233,7 +233,7 @@ export async function reportsForBuyer(user) {
 
 export async function reportsForAdmin(user) {
   if (!isApprovedAdmin(user)) return []
-  const store = await readyStore()
+  const store = await freshStore()
   return (store.reports || [])
     .map((entry) => ({
       ...entry,
@@ -262,7 +262,7 @@ export async function updateBuyerReport(
     return { error: 'Administrative actions must be 2,000 characters or fewer.' }
   if (!reportStatuses.has(normalizedStatus)) return { error: 'Choose a valid report status.' }
 
-  const store = await readyStore()
+  const store = await freshStore()
   const entry = (store.reports || []).find((item) => item.id === String(reportId || ''))
   if (!entry) return { error: 'Buyer report not found.' }
   const statusChanged = normalizeReportStatus(entry.status) !== normalizedStatus

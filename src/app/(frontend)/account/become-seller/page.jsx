@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { PartnerApplication } from '@/components/partner-application'
 import { SiteShell } from '@/components/site-shell'
+import { BackLink } from '@/components/back-link'
 import { applicationsForUser } from '@/server/applications'
 import { requireUser } from '@/server/guards'
 import { canApplyForPartnerRole, isApprovedSeller } from '@/server/roles'
@@ -15,6 +16,7 @@ export default async function BecomeSellerPage({ searchParams }) {
   return (
     <SiteShell>
       <main className="page-container page-section">
+        <BackLink href="/account" className="mb-4" />
         <p className="page-eyebrow">Join the marketplace</p>
         <h1 className="page-title mt-2 text-3xl text-brand-900">Apply as a seller</h1>
         <p className="page-lead mt-3 max-w-2xl text-brand-muted">Tell us about the farm. An administrator reviews this before seller tools unlock.</p>

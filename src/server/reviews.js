@@ -1,7 +1,7 @@
 import { isApprovedAdmin, isApprovedBuyer, isApprovedSeller } from './roles'
 import { notify } from './notifications'
 import { deleteProductReview as deleteStoredReview, save } from './sync'
-import { readyStore } from './store'
+import { freshStore } from './store'
 
 function orderContainsProduct(order, productId) {
   return (order.items || []).some((item) => {
@@ -21,7 +21,7 @@ function eligibleOrder(store, userId, productId) {
 
 export async function buyerReviewForProduct(user, productId) {
   if (!isApprovedBuyer(user) || isApprovedSeller(user)) return { eligible: false, review: null }
-  const store = await readyStore()
+  const store = await freshStore()
   const product = store.products.find((item) => item.id === productId)
   if (!product || !eligibleOrder(store, user.id, productId))
     return { eligible: false, review: null }
@@ -44,7 +44,7 @@ export async function saveBuyerReview(user, { productId, rating, body }) {
   }
   if (normalizedBody.length > 2000) return { error: 'Comments must be 2,000 characters or fewer.' }
 
-  const store = await readyStore()
+  const store = await freshStore()
   const product = store.products.find((item) => item.id === normalizedProductId)
   if (!product || product.status !== 'active' || product.seller?.status !== 'approved') {
     return { error: 'That product is no longer available for review.' }
@@ -94,7 +94,7 @@ export async function saveBuyerReview(user, { productId, rating, body }) {
 export async function deleteBuyerReview(user, reviewId) {
   if (!isApprovedBuyer(user) || isApprovedSeller(user))
     return { error: 'Sellers cannot modify or delete customer reviews.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const review = store.productReviews.find(
     (item) => item.id === String(reviewId || '') && item.reviewerId === user.id,
   )
@@ -107,7 +107,7 @@ export async function deleteBuyerReview(user, reviewId) {
 
 export async function listSellerReviews(user) {
   if (!isApprovedSeller(user)) return []
-  const store = await readyStore()
+  const store = await freshStore()
   const sellerId = user.sellerId || store.sellers.find((seller) => seller.ownerId === user.id)?.id
   if (!sellerId) return []
   const products = new Map(
@@ -135,7 +135,7 @@ export async function listSellerReviews(user) {
 
 export async function reviewsForAdmin(user) {
   if (!isApprovedAdmin(user)) return []
-  const store = await readyStore()
+  const store = await freshStore()
   return store.productReviews
     .map((review) => ({
       id: review.id,
@@ -165,7 +165,7 @@ export async function moderateProductReview(user, { reviewId, action, reason }) 
     return { error: 'Provide a moderation reason between 3 and 1,000 characters.' }
   }
 
-  const store = await readyStore()
+  const store = await freshStore()
   const review = store.productReviews.find((entry) => entry.id === String(reviewId || ''))
   if (!review) return { error: 'Review not found.' }
   const status = review.moderationStatus || 'published'

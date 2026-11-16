@@ -2,13 +2,12 @@ import { collectDeliveryAction, trackAction } from '@/app/(frontend)/delivery/ac
 import Link from 'next/link'
 import { OverviewPanel } from '@/components/dashboard-overview-ui'
 import { DarkButton, FieldInput, StatusBadge } from '@/components/dashboard-ui'
-import { LocationRouteMap } from '@/components/location-route-map'
 import { deliveryStatusLabel, peso } from '@/lib/dashboard-format'
 import { DashboardIcon } from '@/components/dashboard-icons'
 import { ConfirmButton } from '@/components/confirm-button'
 import { formatEstimatedArrival } from '@/lib/delivery-eta'
 import { PagedRows } from '@/components/paged-rows'
-import { CourierLocationSharing } from '@/components/courier-location-sharing'
+import { CourierJobMap } from '@/components/courier-location-sharing'
 import { ProofDeliveryForm } from '@/components/proof-delivery-form'
 
 const nextLabel = {
@@ -87,20 +86,17 @@ export function DeliveryAssignmentDetail({ assignment }) {
         <StatusBadge status={deliveryStatusLabel(assignment.status)} />
       </div>
       <DeliveryProgress status={assignment.status} updates={assignment.updates} />
-      <CourierLocationSharing
-        deliveryId={assignment.id}
-        active={assignment.isMine && ['accepted', 'picked-up', 'in-transit'].includes(assignment.status)}
-      />
-      {(assignment.privacy === 'full' || (assignment.pickupLat && assignment.deliveryLat)) ? (
-        <div className="mt-4">
-          <LocationRouteMap
-            pickupLat={assignment.pickupLat}
-            pickupLng={assignment.pickupLng}
-            deliveryLat={assignment.deliveryLat}
-            deliveryLng={assignment.deliveryLng}
-            height={220}
-          />
-        </div>
+      {assignment.privacy === 'full' || (assignment.pickupLat && assignment.deliveryLat) ? (
+        <CourierJobMap
+          deliveryId={assignment.id}
+          active={assignment.isMine && ['accepted', 'picked-up', 'in-transit'].includes(assignment.status)}
+          status={assignment.status}
+          pickupLat={assignment.pickupLat}
+          pickupLng={assignment.pickupLng}
+          deliveryLat={assignment.deliveryLat}
+          deliveryLng={assignment.deliveryLng}
+          height={220}
+        />
       ) : null}
       {nextLabel[assignment.status] && (assignment.status === 'open' || assignment.isMine) ? (
         <form action={trackAction} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">

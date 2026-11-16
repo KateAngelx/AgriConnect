@@ -7,7 +7,7 @@ import { notify } from './notifications'
 import { collectCash, DELIVERY_FEE, notifyOrderSellers } from './payments'
 import { isApprovedAdmin, isApprovedDelivery, hasRole, rolesFromLegacy } from './roles'
 import { save } from './sync'
-import { readyStore } from './store'
+import { freshStore } from './store'
 import { orderFromDatabaseRow } from './order-record'
 
 function deliveryHintForOrder(store, order) {
@@ -111,7 +111,7 @@ export const deliverySnapshot = cache(async function deliverySnapshot(user) {
       commission: commission * DELIVERY_FEE,
     }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const mine = store.deliveries.filter((item) => item.courierId === user.id)
   const completed = mine.filter((item) => ['delivered', 'completed'].includes(item.status))
   const pending = completed.filter((item) => item.commissionStatus !== 'paid')
@@ -136,7 +136,7 @@ export async function listCourierWork(user) {
 
 export async function listCommissions(user) {
   if (!isApprovedDelivery(user)) return []
-  const store = await readyStore()
+  const store = await freshStore()
   return store.deliveries
     .filter(
       (item) => item.courierId === user.id && ['delivered', 'completed'].includes(item.status),
@@ -224,7 +224,7 @@ export async function listDeliveryHistory(user) {
       }
     })
   }
-  const store = await readyStore()
+  const store = await freshStore()
   return store.deliveries
     .filter(
       (delivery) =>
@@ -303,7 +303,7 @@ export async function assignmentForOrder(orderId) {
       courier,
     }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const delivery = store.deliveries.find((item) => item.orderId === orderId) || null
   if (!delivery) return null
   return { ...delivery, courier: store.users.get(delivery.courierId) || null }
@@ -313,7 +313,7 @@ export async function updateAssignment(user, deliveryId, note) {
   if (!hasRole(user, 'delivery') || user.status !== 'approved') {
     return { error: 'Delivery tools unlock after approval.' }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const delivery = store.deliveries.find((item) => item.id === deliveryId)
   const order = delivery ? store.orders.get(delivery.orderId) : null
   if (!delivery || !order) return { error: 'Assignment not found.' }
@@ -398,7 +398,7 @@ export async function submitProofOfDelivery(user, deliveryId, proofFile) {
   if (proofFile.size < 1 || proofFile.size > 10 * 1024 * 1024) {
     return { error: 'The proof image must be between 1 KB and 10 MB.' }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const delivery = store.deliveries.find((item) => item.id === deliveryId)
   if (!delivery || delivery.courierId !== user.id) {
     return { error: 'This assignment is not assigned to your account.' }
@@ -523,7 +523,7 @@ export async function saveServiceArea(
         lng: longitude,
       },
     ]
-  const store = await readyStore()
+  const store = await freshStore()
   const record = store.users.get(user.id)
   if (!record) return { error: 'Account not found.' }
   record.serviceArea = area

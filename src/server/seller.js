@@ -7,7 +7,7 @@ import { notify } from './notifications'
 import { collectCash, itemSellerId } from './payments'
 import { hasRole, isApprovedSeller } from './roles'
 import { save } from './sync'
-import { readyStore } from './store'
+import { freshStore } from './store'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { orderFromDatabaseRow } from './order-record'
 import { cancelOrderAndReleaseReservations } from './order-cancellation'
@@ -200,7 +200,7 @@ export const sellerSnapshot = cache(async function sellerSnapshot(user) {
       ).length,
     }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const sellerId = sellerIdForUser(store, user)
   const products = store.products.filter((product) => product.seller?.id === sellerId)
   const orders = [...store.orders.values()].filter((order) =>
@@ -258,7 +258,7 @@ export async function sellerProfile(user) {
       pickupLng: data.pickup_lng ?? null,
     }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   return sellerRecord(store, user)
 }
 
@@ -306,7 +306,7 @@ export async function listOwnedOrders(user, { limit } = {}) {
       .slice(0, Number.isInteger(limit) && limit > 0 ? limit : undefined)
   }
 
-  const store = await readyStore()
+  const store = await freshStore()
   sellerId = sellerIdForUser(store, user)
   const orders = [...store.orders.values()]
     .filter((order) => order.items.some((item) => itemSellerId(item) === sellerId))
@@ -330,7 +330,7 @@ function sellerOrderTotal(order, sellerId) {
 
 export async function sellerFinancials(user, period = 'all') {
   const orders = (await listOwnedOrders(user)).filter((order) => inPeriod(order.createdAt, period))
-  const sellerId = sellerIdForUser(await readyStore(), user)
+  const sellerId = sellerIdForUser(await freshStore(), user)
   const normalizedStatus = (order) =>
     String(order.status ?? '')
       .trim()
@@ -366,7 +366,7 @@ export async function sellerSalesReport(user, period = 'all', status = 'all') {
   const orders = (await listOwnedOrders(user))
     .filter((order) => inPeriod(order.createdAt, period))
     .filter((order) => status === 'all' || order.status === status)
-  const store = await readyStore()
+  const store = await freshStore()
   const sellerId = sellerIdForUser(store, user)
   return orders.map((order) => {
     const payment = store.payments.find((entry) => entry.orderId === order.id) || null
@@ -391,7 +391,7 @@ export async function sellerSalesReport(user, period = 'all', status = 'all') {
 
 export async function sellerOrderReceipt(user, orderId) {
   if (!isApprovedSeller(user)) return null
-  const store = await readyStore()
+  const store = await freshStore()
   const order = store.orders.get(orderId)
   const sellerId = sellerIdForUser(store, user)
   if (!order || !sellerId || !order.items?.some((item) => itemSellerId(item) === sellerId))
@@ -421,7 +421,7 @@ export async function sellerOrderReceipt(user, orderId) {
 
 export async function saveSellerProfile(user, input) {
   if (!hasRole(user, 'seller')) return { error: 'Only seller accounts can edit a farm profile.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const seller = sellerRecord(store, user)
   if (!seller) return { error: 'Seller profile not found.' }
   const farmName = cleanText(input.farmName, 80)
@@ -449,7 +449,7 @@ export async function saveProduct(user, input) {
   if (!isApprovedSeller(user)) {
     return { error: 'Product tools unlock after your seller account is approved.' }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const name = cleanText(input.name, 120)
   const description = cleanText(input.description, 2000)
   const location = cleanText(input.location, 80)
@@ -523,7 +523,7 @@ export async function updateStock(user, productId, stockValue) {
   if (!Number.isInteger(stock) || stock < 0 || stock > 100000) {
     return { error: 'Enter a whole-number stock quantity.' }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const sellerId = sellerIdForUser(store, user)
   const product = store.products.find(
     (item) => item.id === productId && item.seller?.id === sellerId,
@@ -544,7 +544,7 @@ export async function updateStock(user, productId, stockValue) {
 
 export async function removeProduct(user, productId) {
   if (!isApprovedSeller(user)) return { error: 'Product tools are locked.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const sellerId = sellerIdForUser(store, user)
   const product = store.products.find(
     (item) => item.id === productId && item.seller?.id === sellerId,
@@ -567,7 +567,7 @@ function ownsOrder(order, sellerId) {
 
 export async function advanceOrder(user, orderId) {
   if (!isApprovedSeller(user)) return { error: 'Order tools are locked.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const order = store.orders.get(orderId)
   const sellerId = sellerIdForUser(store, user)
   if (!order || !ownsOrder(order, sellerId)) return { error: 'Order not found.' }
@@ -621,7 +621,7 @@ export async function advanceOrder(user, orderId) {
 
 async function closeOrder(user, orderId, rejection = false, rejectionReason = '') {
   if (!isApprovedSeller(user)) return { error: 'Order tools are locked.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const order = store.orders.get(orderId)
   const sellerId = sellerIdForUser(store, user)
   if (!order || !ownsOrder(order, sellerId)) return { error: 'Order not found.' }

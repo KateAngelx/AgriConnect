@@ -1,7 +1,7 @@
 import { isApprovedAdmin, isApprovedBuyer, isApprovedSeller } from './roles'
 import { notify } from './notifications'
 import { save } from './sync'
-import { readyStore } from './store'
+import { freshStore } from './store'
 
 export const FEEDBACK_CATEGORIES = [
   ['general-feedback', 'General Feedback'],
@@ -38,7 +38,7 @@ export async function submitFeedback(user, input) {
     return { error: 'Message must be between 10 and 5,000 characters.' }
   }
 
-  const store = await readyStore()
+  const store = await freshStore()
   const now = new Date().toISOString()
   const entry = {
     id: crypto.randomUUID(),
@@ -62,7 +62,7 @@ export async function submitFeedback(user, input) {
 
 export async function feedbackForBuyer(user) {
   if (!canSubmitFeedback(user)) return []
-  const store = await readyStore()
+  const store = await freshStore()
   return (store.feedback || [])
     .filter((entry) => entry.userId === user.id)
     .map((entry) => ({
@@ -86,7 +86,7 @@ export async function feedbackForBuyer(user) {
 
 export async function feedbackForAdmin(user) {
   if (!isApprovedAdmin(user)) return []
-  const store = await readyStore()
+  const store = await freshStore()
   return (store.feedback || [])
     .map((entry) => ({
       ...entry,
@@ -118,7 +118,7 @@ export async function respondToFeedback(user, { feedbackId, response, status }) 
     return { error: 'Responses must be 5,000 characters or fewer.' }
   if (!feedbackStatuses.has(normalizedStatus)) return { error: 'Choose a valid feedback status.' }
 
-  const store = await readyStore()
+  const store = await freshStore()
   const entry = (store.feedback || []).find((item) => item.id === String(feedbackId || ''))
   if (!entry) return { error: 'Feedback submission not found.' }
   const previousResponse = entry.adminResponse || ''

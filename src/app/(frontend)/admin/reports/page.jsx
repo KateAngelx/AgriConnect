@@ -4,14 +4,21 @@ import { PeriodFilter } from '@/components/period-filter'
 import { ActivityBars } from '@/components/dashboard-overview-ui'
 import { DashboardPanel, StatCard } from '@/components/dashboard-ui'
 import { periodLabel, readPeriod } from '@/lib/report-period'
-import { adminVolumeActivity, platformReport } from '@/server/admin'
+import { adminVolumeActivity, moneyLedger, platformReport } from '@/server/admin'
+import { commissionRate } from '@/server/payments'
+import { MoneyLedgerRows, MoneySummary } from '@/components/money-breakdown'
 import { requireAdmin } from '@/server/guards'
 
 export default async function AdminReportsPage({ searchParams }) {
   const user = await requireAdmin()
   const query = await searchParams
   const period = readPeriod(query.period)
-  const [report, volume] = await Promise.all([platformReport(period), adminVolumeActivity()])
+  const [report, volume, ledger, rate] = await Promise.all([
+    platformReport(period),
+    adminVolumeActivity(),
+    moneyLedger(period),
+    commissionRate(),
+  ])
 
   return (
     <DashboardShell user={user} title="Reports" subtitle={`${periodLabel(period)} · marketplace totals. Each seller still fulfills their own orders.`}>
@@ -24,7 +31,7 @@ export default async function AdminReportsPage({ searchParams }) {
       <DashboardPanel fit title="This period" description="Combined totals for every seller. This is the marketplace view, not one farm's order list.">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard icon="clipboard" label="Orders" value={report.orders} hint={`${report.ordersAttention} still active`} />
-          <StatCard icon="coin" label="Order total" value={peso(report.orderVolume)} hint="Subtotal plus delivery fees" />
+          <StatCard icon="coin" label="Order total" value={peso(report.orderVolume)} hint="Products plus delivery fees, cancelled orders excluded" />
           <StatCard icon="wallet" label="Paid transactions" value={report.paidTransactions} hint={peso(report.paidVolume)} />
           <StatCard icon="wallet" label="Pending payments" value={report.payments} />
           <StatCard icon="users" label="New accounts" value={report.users} hint={`${report.buyers} buyers`} />
@@ -33,9 +40,25 @@ export default async function AdminReportsPage({ searchParams }) {
           <StatCard icon="package" label="Applications" value={report.applicationsTotal} hint={`${report.applicationsApproved} approved · ${report.pending} waiting`} />
         </div>
         <p className="mt-4 text-sm text-[#5c6f62]">
-          The platform commission realized in this period is {peso(report.platformCommission)}. It is deducted from seller payouts and is not added to buyer totals.
+          Platform commission earned on completed orders in this period: {peso(report.platformCommission)}. It is deducted from seller payouts and is not added to buyer totals.
         </p>
       </DashboardPanel>
+      <div className="mt-4">
+        <DashboardPanel
+          fit
+          title="Money breakdown"
+          description="Where every peso of this period's orders goes, and what has already been paid out."
+        >
+          <MoneySummary totals={ledger.totals} commissionRate={rate} />
+        </DashboardPanel>
+      </div>
+      <section className="ui-card mt-4 overflow-hidden">
+        <div className="border-b border-[#d5e4d4] px-4 py-3 sm:px-5">
+          <h2 className="text-[17px] font-semibold text-[#142016]">Order-by-order breakdown</h2>
+          <p className="text-[13px] text-[#5c6f62]">Each order's total split into seller payout, platform commission, and courier fee, with payout status.</p>
+        </div>
+        <MoneyLedgerRows rows={ledger.rows} />
+      </section>
       <div className="mt-4">
         <ActivityBars title="Order value" series={volume} caption="Order total, including delivery fees, for each of the last 7 days." />
       </div>

@@ -17,7 +17,7 @@ import {
   settlePlatformFeeOnline,
 } from './payments'
 import { mutateBuyerCart, save, saveCart } from './sync'
-import { readyStore } from './store'
+import { freshStore } from './store'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { orderFromDatabaseRow } from './order-record'
 import { listBuyerOrders } from './order-listing'
@@ -27,7 +27,7 @@ export { itemSellerId }
 
 export async function confirmBuyerReceived(user, orderId) {
   if (!isApprovedBuyer(user)) return { error: 'Buyer tools are locked.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const order = store.orders.get(String(orderId || ''))
   if (!order || order.buyer !== user.id) return { error: 'Order not found.' }
   const delivery = store.deliveries.find((item) => item.orderId === order.id)
@@ -50,7 +50,7 @@ const ORDER_DETAIL_COLUMNS =
 export async function listOrders(userId, requestedPage = 1) {
   const buyerId = userId ?? (await currentUser())?.id
   const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
-  const store = client ? null : await readyStore()
+  const store = client ? null : await freshStore()
   return listBuyerOrders(buyerId, requestedPage, { client, store })
 }
 
@@ -68,7 +68,7 @@ export async function getOrder(orderId, userId) {
     if (error) throw new Error(`Could not load buyer order details: ${error.message}`)
     return data ? orderFromDatabaseRow(data) : null
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const order = store.orders.get(orderId)
   if (!order || order.buyer !== buyerId) return null
   return order
@@ -76,7 +76,7 @@ export async function getOrder(orderId, userId) {
 
 export async function cancelBuyerOrder(user, orderId) {
   if (!isApprovedBuyer(user)) return { error: 'Only approved buyers can cancel orders.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const order = store.orders.get(orderId)
   if (!order || order.buyer !== user.id) return { error: 'Order not found.' }
   if (order.status !== 'placed') return { error: 'This order can only be cancelled before the seller confirms it.' }
@@ -143,7 +143,7 @@ export async function placeOrder(input) {
       ? input.cartItemIds.split(',').map((id) => id.trim()).filter(Boolean)
       : null
   const selectedIds = selectedCartItemIds ? new Set(selectedCartItemIds) : null
-  const store = await readyStore()
+  const store = await freshStore()
   const groups = new Map()
   const checkoutItems = selectedIds
     ? cart.items.filter((item) => selectedIds.has(String(item.id)))

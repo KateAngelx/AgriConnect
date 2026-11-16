@@ -3,10 +3,10 @@ import { lastDaySeries, localDayKey } from '@/lib/day-series'
 import { inPeriod, periodStart } from '@/lib/report-period'
 import { listRoleApplications } from './applications'
 import { notify } from './notifications'
-import { DELIVERY_FEE, kiloPlatformFee } from './payments'
+import { DELIVERY_FEE } from './payments'
 import { isApprovedAdmin, rolesFromLegacy } from './roles'
 import { save } from './sync'
-import { readyStore } from './store'
+import { freshStore } from './store'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 
 const statuses = ['approved', 'pending', 'rejected', 'suspended']
@@ -116,7 +116,7 @@ export const adminSnapshot = cache(async function adminSnapshot() {
       platformCommission: platformFee,
     }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const users = [...store.users.values()]
   const orders = [...store.orders.values()]
   const closed = new Set(['completed', 'cancelled', 'delivered', 'picked-up'])
@@ -154,7 +154,7 @@ export const adminSnapshot = cache(async function adminSnapshot() {
 
 export async function adminTransactionReceipt(user, paymentId) {
   if (!isApprovedAdmin(user)) return null
-  const store = await readyStore()
+  const store = await freshStore()
   const payment = store.payments.find((entry) => entry.id === String(paymentId || ''))
   if (!payment) return null
   const order = store.orders.get(payment.orderId)
@@ -229,7 +229,7 @@ export async function listRecentApplications(limit = 5) {
 }
 
 export async function listRecentOrdersForAdmin(limit = 5) {
-  const store = await readyStore()
+  const store = await freshStore()
   return [...store.orders.values()]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, limit)
@@ -298,7 +298,7 @@ export async function listProductsForAdmin() {
       reportedCount: reports.filter((report) => report.target_id === product.id).length,
     }))
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const reports = store.reports || []
   return store.products
     .map((product) => {
@@ -326,7 +326,7 @@ export async function listProductsForAdmin() {
 }
 
 export async function listOrdersForAdmin() {
-  const store = await readyStore()
+  const store = await freshStore()
   const reports = store.reports || []
   return [...store.orders.values()]
     .map((order) => {
@@ -381,7 +381,7 @@ export async function deactivateProduct(actor, productId) {
   if (actor.role !== 'admin' || actor.status !== 'approved') {
     return { error: 'Only an approved administrator can deactivate listings.' }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const product = store.products.find((entry) => entry.id === String(productId || ''))
   if (!product) return { error: 'Product not found.' }
   if (product.status !== 'active') return { error: 'Only active listings can be deactivated.' }
@@ -406,13 +406,13 @@ export async function adminOrderActivity() {
       value: 1,
     }))
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const orders = [...store.orders.values()]
   return lastDaySeries(orders, (order) => ({ key: localDayKey(order.createdAt), value: 1 }))
 }
 
 export async function adminVolumeActivity() {
-  const store = await readyStore()
+  const store = await freshStore()
   const orders = [...store.orders.values()]
   return lastDaySeries(orders, (order) => ({
     key: localDayKey(order.createdAt),
@@ -466,7 +466,7 @@ export async function listUsers() {
       })
       .sort((a, b) => a.name.localeCompare(b.name))
   }
-  const store = await readyStore()
+  const store = await freshStore()
   return [...store.users.values()]
     .map((user) => {
       const userRoles = rolesFromLegacy(user)
@@ -499,7 +499,7 @@ export async function setUserStatus(actor, userId, status) {
   }
   if (!statuses.includes(status)) return { error: 'Choose a valid account status.' }
   if (actor.id === userId) return { error: 'You cannot change your own account status.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const user = store.users.get(userId)
   if (!user) return { error: 'Account not found.' }
   if (user.role === 'admin') return { error: 'Administrator accounts stay approved.' }
@@ -526,7 +526,7 @@ export async function setUserStatus(actor, userId, status) {
 
 export async function markCommissionPaid(actor, deliveryId) {
   if (actor.role !== 'admin') return { error: 'Only administrators can pay commissions.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const delivery = store.deliveries.find((item) => item.id === deliveryId)
   if (!delivery) return { error: 'Assignment not found.' }
   if (!['delivered', 'completed'].includes(delivery.status)) {
@@ -560,7 +560,7 @@ export async function markCommissionPaid(actor, deliveryId) {
 
 export async function markSellerPaid(actor, orderId) {
   if (actor.role !== 'admin') return { error: 'Only administrators can release seller payments.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const order = store.orders.get(String(orderId || ''))
   if (!order) return { error: 'Order not found.' }
   if (order.status !== 'completed') {
@@ -578,7 +578,7 @@ export async function markSellerPaid(actor, orderId) {
 export async function markPlatformCommissionPaid(actor, orderId) {
   if (actor.role !== 'admin')
     return { error: 'Only administrators can collect platform commission.' }
-  const store = await readyStore()
+  const store = await freshStore()
   const order = [...store.orders.values()].find((item) => item.id === orderId)
   if (!order) return { error: 'Order not found.' }
   if (Number(order.platformFee || 0) <= 0)
@@ -586,13 +586,8 @@ export async function markPlatformCommissionPaid(actor, orderId) {
   if (!['delivered', 'completed', 'picked-up'].includes(order.status)) {
     return { error: 'Record platform commission collection after fulfillment.' }
   }
+  // Platform commission is between the platform and the seller; the buyer is not involved.
   order.platformFeeStatus = 'paid'
-  await notify(
-    order.buyer,
-    'Delivery fee settled',
-    `${order.reference} delivery fee was confirmed by the administrator.`,
-    `/buyer/orders/${order.id}`,
-  )
   await save()
   return { ok: true }
 }
@@ -617,7 +612,7 @@ export function platformCommissionLedger(store) {
 }
 
 export async function platformReport(period = 'all') {
-  const store = await readyStore()
+  const store = await freshStore()
   const users = [...store.users.values()].filter((user) => inPeriod(user.createdAt, period))
   const applications = store.applications.filter((item) => inPeriod(item.createdAt, period))
   const orders = [...store.orders.values()].filter((order) => inPeriod(order.createdAt, period))
@@ -642,22 +637,96 @@ export async function platformReport(period = 'all') {
     activeProducts: store.products.filter((product) => product.status === 'active').length,
     orders: orders.length,
     ordersAttention: orders.filter((order) => !closed.has(order.status)).length,
-    orderVolume: orders.reduce(
-      (sum, order) => sum + (Number(order.subtotal) || 0) + (Number(order.deliveryFee) || 0),
-      0,
-    ),
+    orderVolume: orders
+      .filter((order) => order.status !== 'cancelled')
+      .reduce((sum, order) => sum + (Number(order.subtotal) || 0) + (Number(order.deliveryFee) || 0), 0),
     payments: payments.filter((payment) => payment.status === 'pending').length,
     paidTransactions: payments.filter((payment) => payment.status === 'paid').length,
     paidVolume: payments
       .filter((payment) => payment.status === 'paid')
       .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
-    platformFee: kiloPlatformFee(orders),
-    platformCommission: orders.reduce((sum, order) => sum + Number(order.platformFee || 0), 0),
+    // Commission is realized once the order is completed; cancelled orders carry none.
+    platformCommission: orders
+      .filter((order) => order.status === 'completed')
+      .reduce((sum, order) => sum + Number(order.platformFee || 0), 0),
   }
 }
 
+/**
+ * Where every peso of each order goes, for the reports and payouts pages.
+ *
+ *   Order total (what the buyer pays) = product sales + delivery fee
+ *   Product sales = seller payout + platform commission
+ *   Delivery fee  = courier fee (₱49 per delivery order)
+ *
+ * Cancelled orders are listed but count as ₱0.
+ */
+export async function moneyLedger(period = 'all') {
+  const store = await freshStore()
+  const sellerName = (id) => store.sellers.find((entry) => entry.id === id)?.farmName || 'Seller'
+  const rows = [...store.orders.values()]
+    .filter((order) => inPeriod(order.createdAt, period))
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .map((order) => {
+      const cancelled = order.status === 'cancelled'
+      const delivery = store.deliveries.find((entry) => entry.orderId === order.id)
+      const productSales = cancelled ? 0 : Number(order.subtotal) || 0
+      const deliveryFee = cancelled ? 0 : Number(order.deliveryFee) || 0
+      const commission = cancelled ? 0 : Number(order.platformFee) || 0
+      const completed = order.status === 'completed'
+      const sellerIds = [...new Set((order.items || []).map((item) => item.sellerId || item.product?.seller?.id).filter(Boolean))]
+      const itemCount = (order.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+      return {
+        id: order.id,
+        reference: order.reference || order.id,
+        createdAt: order.createdAt || '',
+        buyer: order.buyerName || store.users.get(order.buyer)?.name || 'Buyer',
+        seller: sellerIds.map(sellerName).join(', ') || 'Seller',
+        courier: delivery?.courierId ? store.users.get(delivery.courierId)?.name || 'Courier' : '',
+        fulfillment: order.fulfillment || 'pickup',
+        paymentMethod: order.paymentMethod || 'cash',
+        status: order.status || 'unknown',
+        itemCount,
+        productSales,
+        deliveryFee,
+        orderTotal: productSales + deliveryFee,
+        commission,
+        sellerNet: Math.max(0, productSales - commission),
+        courierFee: deliveryFee,
+        buyerPayment: cancelled ? 'cancelled' : order.paymentStatus === 'paid' ? 'paid' : 'unpaid',
+        commissionStatus: commission <= 0 ? 'none' : order.platformFeeStatus === 'paid' ? 'collected' : completed ? 'ready' : 'not-yet',
+        sellerPayout: cancelled ? 'cancelled' : order.sellerPaymentStatus === 'released' ? 'released' : completed ? 'ready' : 'not-yet',
+        courierPayout: deliveryFee <= 0 ? 'none' : delivery?.commissionStatus === 'paid' ? 'paid' : completed ? 'ready' : 'not-yet',
+      }
+    })
+  const sum = (key, keep = () => true) => rows.filter(keep).reduce((total, row) => total + row[key], 0)
+  const totals = {
+    orders: rows.length,
+    cancelledOrders: rows.filter((row) => row.status === 'cancelled').length,
+    completedOrders: rows.filter((row) => row.status === 'completed').length,
+    orderTotal: sum('orderTotal'),
+    productSales: sum('productSales'),
+    deliveryFees: sum('deliveryFee'),
+    commission: sum('commission'),
+    sellerNet: sum('sellerNet'),
+    courierFees: sum('courierFee'),
+    buyerPaid: sum('orderTotal', (row) => row.buyerPayment === 'paid'),
+    buyerUnpaid: sum('orderTotal', (row) => row.buyerPayment === 'unpaid'),
+    commissionCollected: sum('commission', (row) => row.commissionStatus === 'collected'),
+    commissionReady: sum('commission', (row) => row.commissionStatus === 'ready'),
+    commissionNotYet: sum('commission', (row) => row.commissionStatus === 'not-yet'),
+    sellerReleased: sum('sellerNet', (row) => row.sellerPayout === 'released'),
+    sellerReady: sum('sellerNet', (row) => row.sellerPayout === 'ready'),
+    sellerNotYet: sum('sellerNet', (row) => row.sellerPayout === 'not-yet'),
+    courierPaid: sum('courierFee', (row) => row.courierPayout === 'paid'),
+    courierReady: sum('courierFee', (row) => row.courierPayout === 'ready'),
+    courierNotYet: sum('courierFee', (row) => row.courierPayout === 'not-yet'),
+  }
+  return { rows, totals }
+}
+
 export async function listAuditEvents(limit = 30) {
-  const store = await readyStore()
+  const store = await freshStore()
   return store.applications
     .filter((item) => ['approved', 'rejected', 'needs-info', 'under-review'].includes(item.status))
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
@@ -674,7 +743,7 @@ export async function listAuditEvents(limit = 30) {
 }
 
 export async function listAssignments() {
-  const store = await readyStore()
+  const store = await freshStore()
   return store.deliveries
     .map((delivery) => ({
       ...delivery,

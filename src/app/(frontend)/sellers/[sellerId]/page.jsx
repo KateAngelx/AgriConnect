@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { ProductCard } from '@/components/product-card'
 import { PagedRows } from '@/components/paged-rows'
 import { SiteShell } from '@/components/site-shell'
+import { BackLink } from '@/components/back-link'
 import { getSeller, listSellerProducts } from '@/server/catalog'
 import { StarRating } from '@/components/star-rating'
 export default async function SellerPage({ params }) {
@@ -28,6 +29,9 @@ export default async function SellerPage({ params }) {
     <SiteShell>
       <main>
         <section className="page-band">
+          <div className="page-container">
+            <BackLink href="/sellers" label="Back to sellers" className="mb-3" />
+          </div>
           <div className="page-container flex flex-col gap-4 sm:flex-row sm:items-center">
             {image?.url ? (
               <img src={image.url} alt={image.alt} className="size-20 rounded-xl object-cover" />

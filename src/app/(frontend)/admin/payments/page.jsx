@@ -4,10 +4,11 @@ import { PeriodFilter } from '@/components/period-filter'
 import { AlertBanner, StatusBadge, WorkSection, workGridClass } from '@/components/dashboard-ui'
 import { PagedRows } from '@/components/paged-rows'
 import { inPeriod, periodLabel, readPeriod } from '@/lib/report-period'
-import { listAssignments, platformCommissionLedger } from '@/server/admin'
+import { listAssignments, moneyLedger, platformCommissionLedger } from '@/server/admin'
+import { MoneySummary } from '@/components/money-breakdown'
 import { requireAdmin } from '@/server/guards'
-import { listPayments } from '@/server/payments'
-import { readyStore } from '@/server/store'
+import { commissionRate, listPayments } from '@/server/payments'
+import { freshStore } from '@/server/store'
 import { SubmitButton } from '@/components/submit-button'
 
 export default async function AdminPaymentsPage({ searchParams }) {
@@ -17,11 +18,18 @@ export default async function AdminPaymentsPage({ searchParams }) {
   const error = typeof query.error === 'string' ? query.error : ''
   const success = typeof query.success === 'string' ? query.success : ''
   const period = readPeriod(query.period)
-  const [payments, deliveries, store] = await Promise.all([
+  const [payments, deliveries, store, ledger, rate] = await Promise.all([
     listPayments(),
     listAssignments(),
-    readyStore(),
+    freshStore(),
+    moneyLedger(period),
+    commissionRate(),
   ])
+  const sellerNames = (order) =>
+    [...new Set((order.items || []).map((item) => item.sellerId || item.product?.seller?.id).filter(Boolean))]
+      .map((id) => store.sellers.find((entry) => entry.id === id)?.farmName || 'Seller')
+      .join(', ') || 'Seller'
+  const itemCount = (order) => (order.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
   const platformLedger = platformCommissionLedger(store)
   const paymentsInRange = payments.filter((payment) => inPeriod(payment.createdAt, period))
   const paymentStatuses = [
@@ -71,6 +79,11 @@ export default async function AdminPaymentsPage({ searchParams }) {
       <div className="mb-4">
         <PeriodFilter period={period} pathname="/admin/payments" />
       </div>
+      <section className="ui-card mb-4 p-4 sm:p-5">
+        <h2 className="text-[17px] font-semibold text-[#142016]">Money summary · {periodLabel(period)}</h2>
+        <p className="mb-4 text-[13px] text-[#5c6f62]">What buyers pay and how it is split. The lists below are what you still need to release or collect.</p>
+        <MoneySummary totals={ledger.totals} commissionRate={rate} />
+      </section>
       {error ? (
         <div className="mb-4">
           <AlertBanner tone="error">{error}</AlertBanner>
@@ -234,6 +247,13 @@ export default async function AdminPaymentsPage({ searchParams }) {
                   <p className="text-[13px] text-[#5c6f62]">
                     {pretty(order.paymentMethod)} · {order.buyerName}
                   </p>
+                  <p className="text-[13px] text-[#5c6f62]">
+                    {(() => {
+                      const source = store.orders.get(order.id)
+                      const count = source ? itemCount(source) : 0
+                      return `₱${rate} × ${count} item${count === 1 ? '' : 's'} · taken from ${source ? sellerNames(source) : 'the seller'}'s payout`
+                    })()}
+                  </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <p className="text-sm font-semibold">{peso(order.amount)}</p>
@@ -291,7 +311,10 @@ export default async function AdminPaymentsPage({ searchParams }) {
                   <div className="min-w-0">
                     <p className="font-semibold text-[#142016]">{order.reference}</p>
                     <p className="text-[13px] text-[#5c6f62]">
-                      {pretty(order.fulfillment)} · {pretty(order.paymentMethod)} · Platform fee {peso(order.platformFee || 0)}
+                      Pay <strong className="text-[#142016]">{sellerNames(order)}</strong> · {pretty(order.fulfillment)} · {pretty(order.paymentMethod)}
+                    </p>
+                    <p className="text-[13px] text-[#5c6f62]">
+                      Products {peso(order.subtotal || 0)} − commission {peso(order.platformFee || 0)} = {peso(Math.max(0, Number(order.subtotal || 0) - Number(order.platformFee || 0)))}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">

@@ -10,6 +10,15 @@ import {
 
 const rateBucket = new Map()
 
+// Keep the assistant snappy: one slow provider call must not hold the chat open.
+const CALL_TIMEOUT_MS = 12_000
+const TOTAL_BUDGET_MS = 15_000
+const MAX_GEMINI_MODELS = 3
+
+function timedOut(error) {
+  return error?.name === 'TimeoutError' || error?.name === 'AbortError'
+}
+
 export function aiConfigured() {
   return aiLlmEnabled()
 }
@@ -75,7 +84,10 @@ export async function probeOpenAi() {
 async function chatOpenAiCompatible({ system, user, temperature }) {
   const config = openAiCompatibleChatConfig()
   if (!config) return { error: 'OpenAI-compatible provider not configured.', useDatabaseFallback: true }
-  const response = await fetch(config.url, {
+  let response
+  try {
+    response = await fetch(config.url, {
+    signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.key}`,
@@ -89,8 +101,13 @@ async function chatOpenAiCompatible({ system, user, temperature }) {
         { role: 'system', content: system },
         { role: 'user', content: user },
       ],
+      max_tokens: 1024,
     }),
   })
+  } catch (error) {
+    if (timedOut(error)) return { error: 'The AI took too long. Using AgriConnect data instead.', useDatabaseFallback: true }
+    throw error
+  }
   const bodyText = await response.text()
   if (!response.ok) return parseProviderFailure(response.status, bodyText)
   let payload
@@ -123,7 +140,10 @@ function isGeminiModelRetryable(status, bodyText) {
 
 async function chatGeminiOnce({ model, key, system, user, temperature }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`
-  const response = await fetch(url, {
+  let response
+  try {
+    response = await fetch(url, {
+    signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -131,10 +151,16 @@ async function chatGeminiOnce({ model, key, system, user, temperature }) {
       contents: [{ role: 'user', parts: [{ text: user }] }],
       generationConfig: {
         temperature,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 1024,
       },
     }),
   })
+  } catch (error) {
+    if (timedOut(error)) {
+      return { error: 'The AI took too long. Using AgriConnect data instead.', useDatabaseFallback: true, retryModel: false }
+    }
+    throw error
+  }
   const bodyText = await response.text()
   if (!response.ok) {
     return {
@@ -170,16 +196,17 @@ async function chatGemini({ system, user, temperature }) {
   const key = geminiApiKey()
   if (!key) return { error: 'Google AI Studio (Gemini) is not configured.', useDatabaseFallback: true }
 
-  const models = [...geminiModelCandidates()]
+  const models = [...geminiModelCandidates()].slice(0, MAX_GEMINI_MODELS)
   let lastFailure = null
+  const started = Date.now()
 
-  for (let index = 0; index < models.length; index += 1) {
+  for (let index = 0; index < models.length && Date.now() - started < TOTAL_BUDGET_MS; index += 1) {
     const model = models[index]
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const result = await chatGeminiOnce({ model, key, system, user, temperature })
       if (result.content) return result
       lastFailure = result
-      if (result.suggestedModel && !models.includes(result.suggestedModel)) {
+      if (result.suggestedModel && !models.includes(result.suggestedModel) && models.length < MAX_GEMINI_MODELS + 1) {
         models.splice(index + 1, 0, result.suggestedModel)
       }
       if (!result.retryModel) {
@@ -190,7 +217,7 @@ async function chatGemini({ system, user, temperature }) {
         }
       }
       if (result.status === 503 && attempt === 0) {
-        await sleep(2000)
+        await sleep(500)
         continue
       }
       break

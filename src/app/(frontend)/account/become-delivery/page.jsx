@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { PartnerApplication } from '@/components/partner-application'
 import { SiteShell } from '@/components/site-shell'
+import { BackLink } from '@/components/back-link'
 import { applicationsForUser } from '@/server/applications'
 import { requireUser } from '@/server/guards'
 import { canApplyForPartnerRole, isApprovedDelivery } from '@/server/roles'
@@ -15,6 +16,7 @@ export default async function BecomeDeliveryPage({ searchParams }) {
   return (
     <SiteShell>
       <main className="page-container page-section">
+        <BackLink href="/account" className="mb-4" />
         <p className="page-eyebrow">Join the marketplace</p>
         <h1 className="page-title mt-2 text-3xl text-brand-900">Apply as a delivery partner</h1>
         <p className="page-lead mt-3 max-w-2xl text-brand-muted">Tell us where you can deliver. An administrator reviews this before delivery tools unlock.</p>

@@ -44,6 +44,13 @@ export async function readyStore() {
   return getStore()
 }
 
+/** Like readyStore(), but first reloads from the database if the copy is a few seconds old. */
+export async function freshStore(maxAgeMs = 3000) {
+  const { refresh } = await import('./sync.js')
+  await refresh(maxAgeMs)
+  return getStore()
+}
+
 export function publicUser(user) {
   if (!user) return null
   normalizeUserRoles(user)

@@ -7,7 +7,7 @@ import {
   hasRole,
 } from './roles'
 import { save } from './sync'
-import { readyStore } from './store'
+import { freshStore } from './store'
 
 const APPLICATION_TYPES = ['seller', 'delivery']
 const ACTIVE_STATUSES = new Set(['pending', 'under-review'])
@@ -45,14 +45,14 @@ function editableApplicationForUser(store, userId, type) {
 }
 
 export async function applicationsForUser(userId) {
-  const store = await readyStore()
+  const store = await freshStore()
   return store.applications
     .filter((item) => item.userId === userId)
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
 }
 
 export async function listRoleApplications() {
-  const store = await readyStore()
+  const store = await freshStore()
   return store.applications
     .map((item) => ({
       ...item,
@@ -96,7 +96,7 @@ export async function saveSellerApplicationDraft(user, input) {
   if (!canApplyForPartnerRole(user, 'seller')) {
     return { error: 'You cannot start a seller application with this account.' }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   if (activeApplicationForUser(store, user.id, 'seller')) {
     return { error: 'You already have a seller application under review.' }
   }
@@ -128,7 +128,7 @@ export async function submitSellerApplication(user, input) {
   if (!canApplyForPartnerRole(user, 'seller')) {
     return { error: 'You cannot submit a seller application with this account.' }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   if (activeApplicationForUser(store, user.id, 'seller')) {
     return { error: 'You already have an active seller application under review.' }
   }
@@ -164,7 +164,7 @@ export async function saveDeliveryApplicationDraft(user, input) {
   if (!canApplyForPartnerRole(user, 'delivery')) {
     return { error: 'You cannot start a delivery application with this account.' }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   if (activeApplicationForUser(store, user.id, 'delivery')) {
     return { error: 'You already have a delivery application under review.' }
   }
@@ -196,7 +196,7 @@ export async function submitDeliveryApplication(user, input) {
   if (!canApplyForPartnerRole(user, 'delivery')) {
     return { error: 'You cannot submit a delivery application with this account.' }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   if (activeApplicationForUser(store, user.id, 'delivery')) {
     return { error: 'You already have an active delivery application under review.' }
   }
@@ -244,7 +244,7 @@ export async function reviewRoleApplication(actor, applicationId, decision, admi
   if (!['approved', 'rejected', 'under-review', 'needs-info'].includes(normalized)) {
     return { error: 'Choose approve, reject, request information, or mark under review.' }
   }
-  const store = await readyStore()
+  const store = await freshStore()
   const application = findApplication(store, applicationId)
   if (!application) return { error: 'Application not found.' }
   if (application.status === 'approved' || application.status === 'rejected') {
