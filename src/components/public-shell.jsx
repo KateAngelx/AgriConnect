@@ -99,6 +99,7 @@ export function PublicShell({
   cartCount = 0,
   wishlistCount = 0,
   dashboardLayout = false,
+  onUnreadChange,
 }) {
   return (
     <div className="min-h-screen bg-[#f3f8ef] text-[#142016]">
@@ -109,6 +110,7 @@ export function PublicShell({
           cartCount={cartCount}
           wishlistCount={wishlistCount}
           dashboardLayout={dashboardLayout}
+          onUnreadChange={onUnreadChange}
         />
       )}
       {children}

@@ -52,8 +52,8 @@ export function MarketplaceStateProvider({
     wishlist: initialWishlist,
     cartBusy: false,
     wishlistBusy: false,
-    cartLoading: Boolean(userId && !initialCart),
-    wishlistLoading: Boolean(userId && !initialCart),
+    cartLoading: Boolean(userId),
+    wishlistLoading: Boolean(userId),
     cartError: '',
     wishlistError: '',
   }))
@@ -82,8 +82,8 @@ export function MarketplaceStateProvider({
       wishlist: initialWishlist,
       cartBusy: false,
       wishlistBusy: false,
-      cartLoading: Boolean(userId && !initialCart),
-      wishlistLoading: Boolean(userId && !initialCart),
+      cartLoading: Boolean(userId),
+      wishlistLoading: Boolean(userId),
       cartError: '',
       wishlistError: '',
     })
@@ -273,7 +273,7 @@ export function MarketplaceStateProvider({
   const addToCart = useCallback(
     async (product, quantity = 1, replace = false) => {
       if (!userId) return { error: 'Sign in with an approved buyer account to use your cart.' }
-      if (cartBusy.current) return { error: 'A cart update is already processing.' }
+      if (cartBusy.current) return { ignored: true }
       const amount = Math.floor(Number(quantity))
       if (!Number.isInteger(amount) || amount < 1) return { error: 'Enter a valid quantity.' }
       cartBusy.current = true
@@ -331,7 +331,7 @@ export function MarketplaceStateProvider({
   const updateCart = useCallback(
     async (itemId, quantity) => {
       if (!userId) return { error: 'Sign in with an approved buyer account to use your cart.' }
-      if (cartBusy.current) return { error: 'A cart update is already processing.' }
+      if (cartBusy.current) return { ignored: true }
       const currentCart = cartRef.current
       const currentItem = currentCart?.items?.find((item) => item.id === itemId)
       if (!currentCart || !currentItem) return { error: 'Cart item not found.' }
@@ -385,7 +385,7 @@ export function MarketplaceStateProvider({
   const setWishlistItem = useCallback(
     async (product, saved) => {
       if (!userId) return { error: 'Sign in with an approved buyer account to save products.' }
-      if (wishlistBusy.current) return { error: 'A wishlist update is already processing.' }
+      if (wishlistBusy.current) return { ignored: true }
       wishlistBusy.current = true
       setState((previous) => ({ ...previous, wishlistBusy: true }))
       const previousItems = wishlistRef.current
@@ -431,8 +431,8 @@ export function MarketplaceStateProvider({
           wishlist: initialWishlist,
           cartBusy: false,
           wishlistBusy: false,
-          cartLoading: Boolean(userId && !initialCart),
-          wishlistLoading: Boolean(userId && !initialCart),
+          cartLoading: Boolean(userId),
+          wishlistLoading: Boolean(userId),
           cartError: '',
           wishlistError: '',
         }

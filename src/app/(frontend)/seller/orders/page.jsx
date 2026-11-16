@@ -15,6 +15,8 @@ import { ConfirmButton } from '@/components/confirm-button'
 import { LocationMap } from '@/components/location-map'
 import { LocationRouteMap } from '@/components/location-route-map'
 import { listOwnedOrders, nextSellerAction } from '@/server/seller'
+import { assignmentForOrder } from '@/server/delivery'
+import { ProofOfDeliveryPhoto } from '@/components/proof-of-delivery-photo'
 import { orderStatusLabel } from '@/lib/order-status'
 import { groupBySection, sellerOrderSection } from '@/lib/work-sections'
 import {
@@ -48,6 +50,8 @@ export default async function SellerOrdersPage({ searchParams }) {
   const grouped = groupBySection(orders, sellerOrderSection)
   const orderId = typeof query.order === 'string' ? query.order : ''
   const selected = orders.find((order) => order.id === orderId) || null
+  const selectedDelivery =
+    selected?.fulfillment === 'delivery' ? await assignmentForOrder(selected.id) : null
 
   return (
     <DashboardShell
@@ -119,7 +123,7 @@ export default async function SellerOrdersPage({ searchParams }) {
           size="xl"
         >
           {selected ? (
-            <SellerOrderDetail order={selected} />
+            <SellerOrderDetail order={selected} delivery={selectedDelivery} />
           ) : (
             <p className="text-sm text-[#5c6f62]">This order is not in your shop.</p>
           )}
@@ -166,7 +170,7 @@ function OrderRoute({ order }) {
   )
 }
 
-function SellerOrderDetail({ order }) {
+function SellerOrderDetail({ order, delivery = null }) {
   const nextAction = nextSellerAction(order.fulfillment, order.status)
   const commission = Number(order.platformFee || 0)
   const earnings = Math.max(0, order.subtotal - commission)
@@ -190,6 +194,7 @@ function SellerOrderDetail({ order }) {
         ))}
       </ul>
       <OrderRoute order={order} />
+      <ProofOfDeliveryPhoto proof={delivery?.proofOfDelivery} courierName={delivery?.courier?.name} />
       <div className="mt-4 flex flex-wrap gap-2">
         {nextAction ? (
           <form action={advanceOrderAction}>
@@ -231,6 +236,7 @@ function SellerOrderDetail({ order }) {
           'completed',
           'delivered',
           'picked-up',
+          'courier-picked-up',
           'out-for-delivery',
           'cancelled',
         ].includes(order.status) && (

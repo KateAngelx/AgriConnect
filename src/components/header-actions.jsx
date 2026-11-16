@@ -292,6 +292,7 @@ export function AuthenticatedHeaderActions({
   unread = 0,
   pathname = '',
   mobileAccountInMenu = false,
+  onUnreadChange,
 }) {
   const [cartOpen, setCartOpen] = useState(false)
   const [cartLoaded, setCartLoaded] = useState(false)
@@ -371,7 +372,10 @@ export function AuthenticatedHeaderActions({
           key={user.id}
           open={notifOpen}
           onClose={() => setNotifOpen(false)}
-          onUnreadChange={setUnreadCount}
+          onUnreadChange={(count) => {
+            setUnreadCount(count)
+            onUnreadChange?.(count)
+          }}
         />
       ) : null}
     </>

@@ -29,14 +29,17 @@ export async function notify(userId, title, body, href) {
   return note
 }
 
-export async function listNotifications(userId) {
+export async function listNotifications(userId, { limit = 0 } = {}) {
+  const rowLimit = Number.isInteger(limit) && limit > 0 ? limit : 0
   const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
   if (client) {
-    const { data, error } = await client
+    let query = client
       .from('notifications')
       .select('id, user_id, title, body, href, read, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
+    if (rowLimit) query = query.limit(rowLimit)
+    const { data, error } = await query
     if (error) throw new Error(`Could not load notifications: ${error.message}`)
     const notes = (data || []).map((row) => ({
       id: row.id,
@@ -47,17 +50,50 @@ export async function listNotifications(userId) {
       read: Boolean(row.read),
       createdAt: row.created_at,
     }))
-    const store = getStore()
-    store.notifications = [
-      ...store.notifications.filter((note) => note.userId !== userId),
-      ...notes,
-    ]
+    if (!rowLimit) {
+      const store = getStore()
+      store.notifications = [
+        ...store.notifications.filter((note) => note.userId !== userId),
+        ...notes,
+      ]
+    }
     return notes
   }
   const store = await readyStore()
-  return store.notifications
+  const notes = store.notifications
     .filter((note) => note.userId === userId)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  return rowLimit ? notes.slice(0, rowLimit) : notes
+}
+
+export async function latestUnreadNotification(userId) {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const { data, error } = await client
+      .from('notifications')
+      .select('id, title, body, href, read, created_at')
+      .eq('user_id', userId)
+      .eq('read', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) throw new Error(`Could not load notifications: ${error.message}`)
+    if (!data) return null
+    return {
+      id: data.id,
+      title: data.title,
+      body: data.body || '',
+      href: data.href || '',
+      read: false,
+      createdAt: data.created_at,
+    }
+  }
+  const store = await readyStore()
+  return (
+    store.notifications
+      .filter((note) => note.userId === userId && !note.read)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] || null
+  )
 }
 
 export async function unreadCount(userId) {

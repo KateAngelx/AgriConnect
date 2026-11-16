@@ -8,6 +8,7 @@ import { listAssignments, platformCommissionLedger } from '@/server/admin'
 import { requireAdmin } from '@/server/guards'
 import { listPayments } from '@/server/payments'
 import { readyStore } from '@/server/store'
+import { SubmitButton } from '@/components/submit-button'
 
 export default async function AdminPaymentsPage({ searchParams }) {
   const user = await requireAdmin()
@@ -47,13 +48,19 @@ export default async function AdminPaymentsPage({ searchParams }) {
   )
   const readyToPay = deliveries.filter(
     (delivery) =>
-      delivery.status === 'completed' &&
-      delivery.buyerConfirmedAt &&
+      // The courier's proof photo completes the order; that is all a courier payout needs.
+      ['delivered', 'completed'].includes(delivery.status) &&
+      delivery.order?.status === 'completed' &&
       delivery.proofOfDelivery?.url &&
       delivery.courierPaymentStatus !== 'released' &&
       delivery.commissionStatus !== 'paid',
   )
-  const paidOut = deliveriesInRange.filter((delivery) => delivery.commissionStatus === 'paid')
+  // Most recently released first, so a payout just marked paid is at the top.
+  const paidOut = deliveriesInRange
+    .filter((delivery) => delivery.commissionStatus === 'paid')
+    .sort((a, b) =>
+      String(b.courierReleasedAt || b.updatedAt || '').localeCompare(String(a.courierReleasedAt || a.updatedAt || '')),
+    )
 
   return (
     <DashboardShell
@@ -128,7 +135,7 @@ export default async function AdminPaymentsPage({ searchParams }) {
           </button>
         </form>
         {transactionRows.length ? (
-          <ul className="divide-y divide-brand-line">
+          <PagedRows className="divide-y divide-brand-line">
             {transactionRows.map((payment) => {
               const order = payment.order
               const buyerName = order?.buyerName || store.users.get(order?.buyer)?.name || 'Buyer'
@@ -200,7 +207,7 @@ export default async function AdminPaymentsPage({ searchParams }) {
                 </li>
               )
             })}
-          </ul>
+          </PagedRows>
         ) : (
           <p className="p-6 text-sm text-brand-muted">
             No transaction records match these filters.
@@ -233,9 +240,9 @@ export default async function AdminPaymentsPage({ searchParams }) {
                   <StatusBadge status="Ready" />
                   <form action={payPlatformCommissionAction}>
                     <input type="hidden" name="orderId" value={order.id} />
-                    <button type="submit" className="btn btn-dark">
+                    <SubmitButton className="btn btn-dark" pendingLabel="Saving…">
                       Mark collected
-                    </button>
+                    </SubmitButton>
                   </form>
                 </div>
               </li>
@@ -284,7 +291,7 @@ export default async function AdminPaymentsPage({ searchParams }) {
                   <div className="min-w-0">
                     <p className="font-semibold text-[#142016]">{order.reference}</p>
                     <p className="text-[13px] text-[#5c6f62]">
-                      Buyer confirmed {pretty(order.buyerConfirmedAt)} · Platform fee {peso(order.platformFee || 0)}
+                      {pretty(order.fulfillment)} · {pretty(order.paymentMethod)} · Platform fee {peso(order.platformFee || 0)}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
@@ -293,7 +300,7 @@ export default async function AdminPaymentsPage({ searchParams }) {
                     </p>
                     <form action={paySellerAction}>
                       <input type="hidden" name="orderId" value={order.id} />
-                      <button type="submit" className="btn btn-dark">Mark seller paid</button>
+                      <SubmitButton className="btn btn-dark" pendingLabel="Saving…">Mark seller paid</SubmitButton>
                     </form>
                   </div>
                 </li>
@@ -318,15 +325,23 @@ export default async function AdminPaymentsPage({ searchParams }) {
                     {pretty(delivery.order?.paymentMethod)} · {pretty(delivery.status)} ·{' '}
                     {delivery.courier?.name || 'Unassigned'}
                   </p>
+                  <a
+                    href={delivery.proofOfDelivery.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[13px] font-semibold text-brand-700 hover:underline"
+                  >
+                    View proof of delivery
+                  </a>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <p className="text-sm font-semibold">{peso(delivery.commission)}</p>
                   <StatusBadge status={pretty(delivery.commissionStatus)} />
                   <form action={payCommissionAction}>
                     <input type="hidden" name="deliveryId" value={delivery.id} />
-                    <button type="submit" className="btn btn-dark">
+                    <SubmitButton className="btn btn-dark" pendingLabel="Saving…">
                       Mark paid
-                    </button>
+                    </SubmitButton>
                   </form>
                 </div>
               </li>

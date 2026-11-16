@@ -14,6 +14,7 @@ export function ProductResults({
   initialPage,
   search,
   baseParams,
+  onPageChange,
 }) {
   const [products, setProducts] = useState(initialProducts)
   const [page, setPage] = useState(initialPage)
@@ -100,6 +101,7 @@ export function ProductResults({
   )
 
   useEffect(() => {
+    if (onPageChange) return undefined
     const handlePopState = () => {
       const requestedPage = Math.max(
         1,
@@ -109,7 +111,7 @@ export function ProductResults({
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [navigate, totalPages])
+  }, [navigate, onPageChange, totalPages])
 
   function onPageClick(event, target) {
     if (
@@ -122,6 +124,10 @@ export function ProductResults({
     )
       return
     event.preventDefault()
+    if (onPageChange) {
+      onPageChange(target)
+      return
+    }
     navigate(target)
   }
 

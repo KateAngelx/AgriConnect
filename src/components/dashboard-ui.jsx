@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { DashboardIcon } from '@/components/dashboard-icons'
+import { SubmitButton } from '@/components/submit-button'
 
 export function StatCard({ label, value, hint, icon }) {
   const text = typeof value === 'string' || typeof value === 'number' ? String(value) : ''
@@ -158,20 +159,27 @@ export function ListRow({ title, meta, badge, amount, actions }) {
   )
 }
 
-export function PrimaryButton({ className = '', ...props }) {
-  return <button className={`btn btn-primary ${className}`} {...props} />
+function ActionButton({ variant, className = '', ...props }) {
+  const classes = `btn ${variant} ${className}`
+  // Submit buttons lock while the form's server action is running.
+  if (props.type === 'submit') return <SubmitButton {...props} className={classes} />
+  return <button className={classes} {...props} />
 }
 
-export function SecondaryButton({ className = '', ...props }) {
-  return <button className={`btn btn-secondary ${className}`} {...props} />
+export function PrimaryButton(props) {
+  return <ActionButton variant="btn-primary" {...props} />
 }
 
-export function DangerButton({ className = '', ...props }) {
-  return <button className={`btn btn-danger ${className}`} {...props} />
+export function SecondaryButton(props) {
+  return <ActionButton variant="btn-secondary" {...props} />
 }
 
-export function DarkButton({ className = '', ...props }) {
-  return <button className={`btn btn-dark ${className}`} {...props} />
+export function DangerButton(props) {
+  return <ActionButton variant="btn-danger" {...props} />
+}
+
+export function DarkButton(props) {
+  return <ActionButton variant="btn-dark" {...props} />
 }
 
 export function PrimaryLink({ href, className = '', children }) {

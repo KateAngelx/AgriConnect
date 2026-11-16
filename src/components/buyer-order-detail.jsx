@@ -33,7 +33,8 @@ export function BuyerOrderDetail({ order, delivery, payment, error = '', success
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
-        <StatusBadge status={orderStatusLabel(order.status)} />
+        {/* Payout release is between admin and seller; buyers just see "Completed". */}
+        <StatusBadge status={order.status === 'completed' ? 'Completed' : orderStatusLabel(order.status)} />
         {showEta ? (
           <span className="rounded-full bg-[#e8f5e3] px-3 py-1 text-sm font-semibold text-[#1b5e20]">
             {etaMinutes > 0 ? `Estimated arrival ~${etaMinutes} min · ${etaLabel}` : `Arriving ${etaLabel}`}
@@ -62,7 +63,7 @@ export function BuyerOrderDetail({ order, delivery, payment, error = '', success
       {order.status === 'cancelled' ? (
         <AlertBanner tone="error">This order was cancelled and reserved stock was returned.</AlertBanner>
       ) : null}
-      {order.status === 'delivered' ? (
+      {delivery?.proofOfDelivery?.url || order.status === 'delivered' ? (
         <section className="rounded-xl border border-brand-line bg-white p-4">
           <h3 className="text-sm font-bold text-[#142016]">Proof of delivery</h3>
           {delivery?.proofOfDelivery?.url ? (
@@ -70,12 +71,15 @@ export function BuyerOrderDetail({ order, delivery, payment, error = '', success
           ) : (
             <p className="mt-2 text-sm text-[#5c6f62]">The courier has not uploaded proof yet.</p>
           )}
-          <form action={confirmReceivedAction} className="mt-4">
-            <input type="hidden" name="orderId" value={order.id} />
-            <ConfirmButton type="submit" message="Confirm that you received this order?" className="btn btn-dark">
-              Confirm Received
-            </ConfirmButton>
-          </form>
+          {/* Only older orders still wait in 'delivered'; new ones complete when the proof is uploaded. */}
+          {order.status === 'delivered' ? (
+            <form action={confirmReceivedAction} className="mt-4">
+              <input type="hidden" name="orderId" value={order.id} />
+              <ConfirmButton type="submit" message="Confirm that you received this order?" className="btn btn-dark">
+                Confirm Received
+              </ConfirmButton>
+            </form>
+          ) : null}
         </section>
       ) : null}
 

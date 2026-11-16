@@ -50,7 +50,7 @@ async function wishlistProducts(client, records) {
   if (!productIds.length) return new Map()
   const { data: productRows, error: productError } = await client
     .from('products')
-    .select('id,name,price,unit,stock,location,status,seller_id,images')
+    .select('id,name,price,unit,stock,location,status,seller_id')
     .in('id', productIds)
   if (productError) throw new Error(`Could not load wishlist products: ${productError.message}`)
   const sellerIds = [...new Set((productRows || []).map((product) => product.seller_id).filter(Boolean))]
@@ -69,7 +69,7 @@ async function wishlistProducts(client, records) {
       stock: Number(product.stock || 0),
       location: product.location || '',
       status: product.status,
-      images: product.images || [],
+      images: [],
       seller: sellers.has(product.seller_id)
         ? {
             id: product.seller_id,

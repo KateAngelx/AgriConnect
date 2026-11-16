@@ -5,6 +5,7 @@ import { PagedRows } from '@/components/paged-rows'
 import { pretty } from '@/lib/dashboard-format'
 import { listUsers } from '@/server/admin'
 import { requireAdmin } from '@/server/guards'
+import { SubmitButton } from '@/components/submit-button'
 
 const roleOptions = [
   ['all', 'All roles'],
@@ -95,7 +96,7 @@ export default async function AdminUsersPage({ searchParams }) {
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-brand-muted">
                       <span>{pretty(entry.role)}</span>
                       <span aria-hidden="true">·</span>
-                      <span>Registered {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString('en-PH') : 'Date unavailable'}</span>
+                      <span>Registered {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' }) : 'Date unavailable'}</span>
                     </div>
                   </div>
                   <StatusBadge status={entry.status === 'approved' ? 'Active' : pretty(entry.status)} />
@@ -145,9 +146,9 @@ function StatusButton({ userId, status, label, danger }) {
     <form action={setStatusAction}>
       <input type="hidden" name="userId" value={userId} />
       <input type="hidden" name="status" value={status} />
-      <button type="submit" className={danger ? 'btn btn-danger' : 'btn btn-dark'}>
+      <SubmitButton className={danger ? 'btn btn-danger' : 'btn btn-dark'} pendingLabel="Saving…">
         {label}
-      </button>
+      </SubmitButton>
     </form>
   )
 }

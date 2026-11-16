@@ -3,13 +3,11 @@ import { DashboardShell } from '@/components/dashboard-shell'
 import { DashboardPanel, StatusBadge } from '@/components/dashboard-ui'
 import { SellerProfileForm } from '@/components/profile-forms'
 import { requireSeller } from '@/server/guards'
-import { sellerRecord } from '@/server/seller'
-import { readyStore } from '@/server/store'
+import { sellerProfile } from '@/server/seller'
 
 export default async function SellerShopPage() {
   const user = await requireSeller()
-  const store = await readyStore()
-  const seller = sellerRecord(store, user)
+  const seller = await sellerProfile(user)
 
   return (
     <DashboardShell user={user} title="My shop" subtitle="Farm profile buyers see on the marketplace.">

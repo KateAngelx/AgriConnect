@@ -34,7 +34,7 @@ export async function confirmBuyerReceived(user, orderId) {
   if (order.status !== 'delivered' || !delivery?.proofOfDelivery?.url) {
     return { error: 'The courier must upload proof before you can confirm receipt.' }
   }
-  if (delivery.buyerConfirmedAt) return { ok: true, alreadyConfirmed: true }
+  if (delivery.buyerConfirmedAt || order.buyerConfirmedAt) return { ok: true, alreadyConfirmed: true }
   const confirmedAt = new Date().toISOString()
   order.buyerConfirmedAt = confirmedAt
   delivery.buyerConfirmedAt = confirmedAt
@@ -284,8 +284,9 @@ export async function placeOrder(input) {
 
   const selectedIdsForRemoval = new Set(checkoutItems.map((item) => String(item.id)))
   if (supabaseEnv().serviceKey) {
+    let clearedCart = null
     for (const item of checkoutItems) {
-      await mutateBuyerCart({
+      clearedCart = await mutateBuyerCart({
         buyerId: user.id,
         operation: 'set',
         cartId: cart.id,
@@ -293,6 +294,9 @@ export async function placeOrder(input) {
         quantity: 0,
       })
     }
+    // Keep the in-memory copy in step with the database. Otherwise save() below
+    // sees the old items in memory and writes them back into the buyer's cart.
+    if (clearedCart) store.carts.set(user.id, clearedCart)
   } else {
     const savedCart = store.carts.get(user.id)
     if (savedCart) {

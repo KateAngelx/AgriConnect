@@ -1,6 +1,7 @@
 import { notify } from './notifications'
 import { save } from './sync'
 import { readyStore } from './store'
+import { isApprovedAdmin, isApprovedDelivery, isApprovedSeller } from './roles'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 
 export { verifyPaymongoWebhook } from './paymongo-signature.js'
@@ -175,7 +176,7 @@ export function itemSellerId(item) {
   return item.sellerId || item.product?.seller?.id || item.product?.seller || ''
 }
 
-async function notifyOrderSellers(order, title, body) {
+export async function notifyOrderSellers(order, title, body, href = '/seller/orders') {
   if (!order) return
   const store = await readyStore()
   const sellerIds = new Set((order.items || []).map(itemSellerId).filter(Boolean))
@@ -183,7 +184,7 @@ async function notifyOrderSellers(order, title, body) {
     const seller = [...store.users.values()].find(
       (user) => user.sellerId === sellerId || store.sellers.find((entry) => entry.id === sellerId)?.ownerId === user.id,
     )
-    if (seller) await notify(seller.id, title, body, '/seller/orders')
+    if (seller) await notify(seller.id, title, body, href)
   }
 }
 
@@ -497,10 +498,12 @@ export async function collectCash(orderId, user) {
   if (['paymongo', 'xendit'].includes(order.paymentMethod)) return { error: 'This order is paid electronically.' }
   const delivery = store.deliveries.find((item) => item.orderId === orderId)
   const ownsItems = order.items.every((item) => itemSellerId(item) === user.sellerId)
+  // Check the full role list, not just the primary role: someone who is both a seller
+  // and a courier has primary role "seller" but must still be able to record COD cash.
   const allowed =
-    user.role === 'admin' ||
-    (user.role === 'seller' && ownsItems && order.fulfillment === 'pickup') ||
-    (user.role === 'delivery' && delivery?.courierId === user.id && order.fulfillment === 'delivery')
+    isApprovedAdmin(user) ||
+    (isApprovedSeller(user) && ownsItems && order.fulfillment === 'pickup') ||
+    (isApprovedDelivery(user) && delivery?.courierId === user.id && order.fulfillment === 'delivery')
   if (!allowed) return { error: 'You cannot collect this payment.' }
   if (!['picked-up', 'delivered', 'completed'].includes(order.status)) {
     return { error: 'Collect payment after the order is fulfilled.' }

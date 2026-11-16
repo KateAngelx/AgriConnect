@@ -1,51 +1,12 @@
-import { unreadCount } from '@/server/notifications'
-import { adminSnapshot } from '@/server/admin'
-import { deliverySnapshot } from '@/server/delivery'
-import { sellerSnapshot } from '@/server/seller'
-import { DashboardFrame } from './dashboard-frame'
+import { PageHeading } from './page-heading'
 
 export { peso, pretty, formatTimeAgo, greetingName } from '@/lib/dashboard-format'
 
-async function resolveNavBadges(user, navBadges) {
-  if (navBadges) return navBadges
-  if (user.role === 'admin') {
-    const summary = await adminSnapshot()
-    return { '/admin/applications': summary.pending }
-  }
-  if (user.role === 'seller') {
-    const summary = await sellerSnapshot(user)
-    return summary.openOrders > 0 ? { '/seller/orders': summary.openOrders } : {}
-  }
-  if (user.role === 'delivery') {
-    const summary = await deliverySnapshot(user)
-    return summary.open > 0 ? { '/delivery/dashboard': summary.open } : {}
-  }
-  return {}
-}
-
-export async function DashboardShell({
-  user,
-  title,
-  subtitle,
-  children,
-  variant = 'default',
-  navBadges,
-  unread: providedUnread,
-}) {
-  const [unread, badges] = await Promise.all([
-    providedUnread === undefined ? unreadCount(user.id) : providedUnread,
-    resolveNavBadges(user, navBadges),
-  ])
+export function DashboardShell({ title, subtitle = '', variant = 'default', children }) {
   return (
-    <DashboardFrame
-      user={user}
-      title={title}
-      subtitle={subtitle}
-      unread={unread}
-      navBadges={badges}
-      variant={variant}
-    >
+    <>
+      <PageHeading title={title || 'Overview'} subtitle={subtitle} variant={variant} />
       {children}
-    </DashboardFrame>
+    </>
   )
 }

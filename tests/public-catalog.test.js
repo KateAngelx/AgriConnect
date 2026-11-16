@@ -34,6 +34,9 @@ function catalogClient(rowsByTable) {
         or() {
           return this
         },
+        not() {
+          return this
+        },
         order() {
           return this
         },

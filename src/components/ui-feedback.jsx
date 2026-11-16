@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 export function ConfirmDialog({ open, title = 'Confirm action', message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, onConfirm, onCancel }) {
   const cancelRef = useRef(null)
@@ -62,7 +62,6 @@ export function ConfirmDialog({ open, title = 'Confirm action', message, confirm
 export function RouteFeedbackToast() {
   const searchParams = useSearchParams()
   const pathname = usePathname()
-  const router = useRouter()
   const [feedback, setFeedback] = useState(null)
 
   useEffect(() => {
@@ -97,14 +96,16 @@ export function RouteFeedbackToast() {
     params.delete('success')
     params.delete('error')
     const query = params.toString()
-    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false })
+    // Only tidy the address bar. router.replace() here would re-render the whole page
+    // on the server a second time right after every form action.
+    window.history.replaceState(window.history.state, '', `${pathname}${query ? `?${query}` : ''}${window.location.hash}`)
     return () => window.clearTimeout(timeout)
-  }, [searchParams, pathname, router])
+  }, [searchParams, pathname])
 
   if (!feedback) return null
   const success = feedback.tone === 'success'
   return (
-    <div role={success ? 'status' : 'alert'} className="fixed left-1/2 top-[calc(env(safe-area-inset-top)+0.75rem)] z-[1200] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 rounded-2xl border border-[#173c2c]/10 bg-white px-4 py-3 shadow-xl sm:left-auto sm:right-6 sm:w-auto sm:max-w-sm sm:translate-x-0">
+    <div role={success ? 'status' : 'alert'} className="fixed left-1/2 top-[calc(env(safe-area-inset-top)+4.5rem)] z-[1200] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 rounded-2xl border border-[#173c2c]/10 bg-white px-4 py-3 shadow-xl sm:left-auto sm:right-6 sm:w-auto sm:max-w-sm sm:translate-x-0">
       <div className="flex items-start gap-3">
         <span className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold ${success ? 'bg-[#e8f5e3] text-[#2e7d32]' : 'bg-[#fff1ed] text-[#963b2d]'}`}>
           {success ? '✓' : '!'}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useFormStatus } from 'react-dom'
 import { ConfirmDialog } from './ui-feedback'
 
 export function ConfirmButton({
@@ -9,23 +10,21 @@ export function ConfirmButton({
   danger = false,
   children,
   className = '',
+  disabled,
   ...props
 }) {
   const [open, setOpen] = useState(false)
-  const confirmed = useRef(false)
+  const { pending } = useFormStatus()
   const buttonRef = useRef(null)
 
   function handleClick(event) {
-    if (confirmed.current) {
-      confirmed.current = false
-      return
-    }
+    // requestSubmit() below does not dispatch a click, so every real click asks first.
     event.preventDefault()
+    if (pending) return
     setOpen(true)
   }
 
   function confirm() {
-    confirmed.current = true
     setOpen(false)
     const button = buttonRef.current
     if (button?.form) button.form.requestSubmit(button)
@@ -33,7 +32,17 @@ export function ConfirmButton({
 
   return (
     <>
-      <button ref={buttonRef} {...props} type={props.type || 'submit'} className={className} onClick={handleClick}>{children}</button>
+      <button
+        ref={buttonRef}
+        {...props}
+        type={props.type || 'submit'}
+        disabled={disabled || pending}
+        aria-busy={pending || undefined}
+        className={className}
+        onClick={handleClick}
+      >
+        {pending ? 'Processing…' : children}
+      </button>
       <ConfirmDialog
         open={open}
         message={message}

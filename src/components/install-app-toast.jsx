@@ -1,17 +1,41 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { installApp, isAndroid, isInstallablePhone, isIos } from '@/lib/install-app'
+import { installApp, isAndroid, isInstalled, isInstallablePhone, isIos } from '@/lib/install-app'
 
 const DISMISS_KEY = 'agriconnect-install-dismissed:v2'
+
+function installReady() {
+  return Boolean(window.__agriconnectInstall)
+}
 
 export function InstallAppMenuButton({ onDone }) {
   const [kind, setKind] = useState('')
   const [note, setNote] = useState('')
 
   useEffect(() => {
-    if (!isInstallablePhone()) return
-    setKind(isIos() ? 'ios' : 'android')
+    const sync = () => {
+      if (isInstalled()) {
+        setKind('')
+        return
+      }
+      if (isIos()) {
+        setKind('ios')
+        return
+      }
+      if (isInstallablePhone() || installReady()) {
+        setKind('android')
+        return
+      }
+      setKind('')
+    }
+    sync()
+    window.addEventListener('agriconnect:installready', sync)
+    window.addEventListener('appinstalled', sync)
+    return () => {
+      window.removeEventListener('agriconnect:installready', sync)
+      window.removeEventListener('appinstalled', sync)
+    }
   }, [])
 
   if (!kind) return null
@@ -40,18 +64,24 @@ export function InstallAppToast() {
   const [message, setMessage] = useState('')
 
   useEffect(() => {
+    if (isInstalled()) return
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
     }
-    if (!isInstallablePhone() || localStorage.getItem(DISMISS_KEY) === '1') return
-
-    const syncPrompt = () => {
-      if (window.__agriconnectInstall) setHasPrompt(true)
+    const dismissed = () => localStorage.getItem(DISMISS_KEY) === '1'
+    const reveal = () => {
+      if (dismissed() || isInstalled()) return
+      if (installReady() || isInstallablePhone()) setReady(true)
     }
     const onPrompt = (event) => {
       event.preventDefault()
       window.__agriconnectInstall = event
       setHasPrompt(true)
+      reveal()
+    }
+    const onReady = () => {
+      if (installReady()) setHasPrompt(true)
+      reveal()
     }
     const onInstalled = () => {
       window.__agriconnectInstall = null
@@ -59,15 +89,15 @@ export function InstallAppToast() {
       setReady(false)
       setHasPrompt(false)
     }
-    const showDelay = window.setTimeout(() => {
-      syncPrompt()
-      setReady(true)
-    }, 1200)
+    if (installReady()) setHasPrompt(true)
+    const showDelay = window.setTimeout(reveal, 1200)
     window.addEventListener('beforeinstallprompt', onPrompt)
+    window.addEventListener('agriconnect:installready', onReady)
     window.addEventListener('appinstalled', onInstalled)
     return () => {
       window.clearTimeout(showDelay)
       window.removeEventListener('beforeinstallprompt', onPrompt)
+      window.removeEventListener('agriconnect:installready', onReady)
       window.removeEventListener('appinstalled', onInstalled)
     }
   }, [])

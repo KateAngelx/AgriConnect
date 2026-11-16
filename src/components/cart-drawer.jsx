@@ -157,7 +157,6 @@ export function CartDrawer({ open, onClose }) {
               <ul className="space-y-4">
                 {cartItems.map((entry) => {
                   const product = entry.product
-                  const image = product.images?.[0]
                   const selectable =
                     product.status === 'active' &&
                     product.seller?.status === 'approved' &&
@@ -177,13 +176,11 @@ export function CartDrawer({ open, onClose }) {
                         className="mt-1 size-4 shrink-0 accent-[#2e7d32]"
                       />
                       <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#eef0ea]">
-                        {image?.url ? (
-                          <img src={image.url} alt="" className="size-full object-cover" />
-                        ) : (
-                          <div className="grid size-full place-items-center text-[10px] text-[#647066]">
-                            No image
-                          </div>
-                        )}
+                        <img
+                          src={`/api/products/${encodeURIComponent(product.id)}/image`}
+                          alt=""
+                          className="size-full object-cover"
+                        />
                       </div>
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <p className="line-clamp-2 text-sm font-bold leading-snug text-[#142016]">

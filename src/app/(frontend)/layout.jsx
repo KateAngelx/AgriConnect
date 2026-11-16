@@ -1,9 +1,9 @@
 import { Suspense } from 'react'
+import { AppChrome } from '@/components/app-chrome'
 import { FloatingAiAssistantLoader } from '@/components/floating-ai-assistant-loader'
 import { InstallAppToast } from '@/components/install-app-toast'
 import { RouteFeedbackToast } from '@/components/ui-feedback'
 import { BrowserNotifications } from '@/components/browser-notifications'
-import { RefreshOnFocus } from '@/components/refresh-on-focus'
 import { MarketplaceStateProvider } from '@/components/marketplace-state'
 import { currentUser } from '@/server/auth'
 import { isApprovedBuyer } from '@/server/roles'
@@ -29,7 +29,8 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     title: 'AgriConnect',
-    statusBarStyle: 'black-translucent',
+    // 'black-translucent' draws white status-bar icons, which vanish on the light header.
+    statusBarStyle: 'default',
   },
   icons: {
     icon: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
@@ -55,9 +56,8 @@ export default async function RootLayout({ children }) {
         </a>
         <div id="root" tabIndex={-1}>
           <MarketplaceStateProvider userId={buyerEnabled ? user.id : null}>
-            {children}
+            <AppChrome user={user}>{children}</AppChrome>
           </MarketplaceStateProvider>
-          <RefreshOnFocus />
           <Suspense fallback={null}>
             <RouteFeedbackToast />
           </Suspense>

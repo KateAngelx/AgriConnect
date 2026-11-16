@@ -375,6 +375,10 @@ export async function listProductsPage(filters = {}, store = null, catalogData =
         `name.ilike.%${search}%,description.ilike.%${search}%,location.ilike.%${search}%`,
       )
   }
+  productQuery = productQuery
+    .not('seller_id', 'in', '(benguet-growers,nueva-ecija-rice)')
+    .not('name', 'ilike', '%highland strawberries%')
+    .not('name', 'ilike', '%highland potatoes%')
   if (filters.sort === 'price') productQuery = productQuery.order('price', { ascending: true })
   else if (filters.sort === '-price')
     productQuery = productQuery.order('price', { ascending: false })
@@ -386,10 +390,12 @@ export async function listProductsPage(filters = {}, store = null, catalogData =
     (row) => !isRemovedBenguetProduct(row) && !isRemovedNuevaEcijaProduct(row),
   )
   if (filteredRows.length === 0) {
+    const hiddenOnPage = productRows?.length || 0
+    const totalDocs = Math.max(0, (count || 0) - hiddenOnPage)
     return cacheProductPage(pageCacheKey, {
       docs: [],
-      totalDocs: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
+      totalDocs,
+      totalPages: Math.ceil(totalDocs / limit),
       page,
     })
   }
@@ -446,8 +452,7 @@ export async function listProductsPage(filters = {}, store = null, catalogData =
     ratingsByProduct.set(review.product_id, ratings)
   }
 
-  return cacheProductPage(pageCacheKey, {
-    docs: filteredRows
+  const docs = filteredRows
       .map((row) => {
         const seller = sellersById.get(row.seller_id)
         const category = categoriesById.get(row.category_id)
@@ -483,9 +488,13 @@ export async function listProductsPage(filters = {}, store = null, catalogData =
           ...summarizeRatings(ratingsByProduct.get(product.id)),
         }
       })
-      .filter(Boolean),
-    totalDocs: count || 0,
-    totalPages: Math.ceil((count || 0) / limit),
+      .filter(Boolean)
+  const hiddenOnPage = Math.max(0, (productRows?.length || 0) - docs.length)
+  const totalDocs = Math.max(docs.length, (count || 0) - hiddenOnPage)
+  return cacheProductPage(pageCacheKey, {
+    docs,
+    totalDocs,
+    totalPages: Math.ceil(totalDocs / limit),
     page,
   })
   /*
@@ -502,7 +511,7 @@ export const getProduct = cache(async function getProduct(id, store = null) {
     const { data, error } = await client
       .from('products')
       .select(
-        'id,name,description,price,unit,stock,location,status,pickup,delivery,created_at,category_id,seller_id,images',
+        'id,name,description,price,unit,stock,location,status,pickup,delivery,created_at,category_id,seller_id',
       )
       .eq('id', id)
       .eq('status', 'active')
@@ -579,7 +588,7 @@ export async function listRelatedProducts(product, store = null) {
     const { data, error } = await client
       .from('products')
       .select(
-        'id,name,description,price,unit,stock,location,status,pickup,delivery,created_at,category_id,seller_id,images',
+        'id,name,description,price,unit,stock,location,status,pickup,delivery,created_at,category_id,seller_id',
       )
       .eq('status', 'active')
       .eq('category_id', categoryId)
@@ -771,7 +780,7 @@ export async function listSellerProducts(sellerId, store = null) {
     const { data, error } = await client
       .from('products')
       .select(
-        'id,name,description,price,unit,stock,location,status,pickup,delivery,created_at,category_id,seller_id,images',
+        'id,name,description,price,unit,stock,location,status,pickup,delivery,created_at,category_id,seller_id',
       )
       .eq('seller_id', sellerId)
       .eq('status', 'active')

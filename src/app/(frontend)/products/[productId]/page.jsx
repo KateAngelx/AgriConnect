@@ -20,6 +20,7 @@ import {
 } from '@/app/(frontend)/products/actions'
 import { StarRating } from '@/components/star-rating'
 import { StarRatingInput } from '@/components/star-rating-input'
+import { SubmitButton } from '@/components/submit-button'
 
 export default async function ProductDetailsPage({ params, searchParams }) {
   const [{ productId }, query] = await Promise.all([params, searchParams])
@@ -34,7 +35,7 @@ export default async function ProductDetailsPage({ params, searchParams }) {
       ? buyerReviewForProduct(user, product.id)
       : Promise.resolve({ eligible: false, review: null }),
   ])
-  const images = product.images?.filter((image) => typeof image === 'object' && image.url) ?? []
+  const imageSrc = product.imageSrc || `/api/products/${encodeURIComponent(product.id)}/image`
   return (
     <SiteShell user={user}>
       <main className="page-container page-section page-open">
@@ -62,35 +63,8 @@ export default async function ProductDetailsPage({ params, searchParams }) {
         <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
           <section>
             <div className="aspect-square overflow-hidden rounded-xl border border-[#d5e4d4] bg-[#f3f8ef]">
-              {images[0] && typeof images[0] === 'object' ? (
-                <img
-                  src={images[0].url}
-                  alt={images[0].alt}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="grid h-full place-items-center text-[#65766d]">
-                  Product image coming soon
-                </div>
-              )}
+              <img src={imageSrc} alt={product.name} className="h-full w-full object-cover" />
             </div>
-            {images.length > 1 && (
-              <div className="mt-3 grid grid-cols-4 gap-3">
-                {images
-                  .slice(1)
-                  .map(
-                    (image) =>
-                      typeof image === 'object' && (
-                        <img
-                          key={image.id}
-                          src={image.url}
-                          alt={image.alt}
-                          className="aspect-square rounded-xl object-cover"
-                        />
-                      ),
-                  )}
-              </div>
-            )}
           </section>
           <section>
             <p className="page-eyebrow text-[#4f8d3b]">
@@ -122,7 +96,7 @@ export default async function ProductDetailsPage({ params, searchParams }) {
                 <span className="text-xs text-[#65766d]">Stock</span>
                 <p className="mt-1 font-semibold">
                   {product.stock > 0 ? `${product.stock} ${product.unit} available` : 'Sold out'}
-                  {product.stock > 0 && product.stock < 10 ? ' Â· Low stock' : ''}
+                  {product.stock > 0 && product.stock < 10 ? ' · Low stock' : ''}
                 </p>
               </div>
               <div className="ui-card p-4">
@@ -130,7 +104,7 @@ export default async function ProductDetailsPage({ params, searchParams }) {
                 <p className="mt-1 font-semibold">
                   {[product.pickup && 'Pickup', product.delivery && 'Delivery']
                     .filter(Boolean)
-                    .join(' Â· ') || 'Ask seller'}
+                    .join(' · ') || 'Ask seller'}
                 </p>
               </div>
             </div>
@@ -293,17 +267,17 @@ export default async function ProductDetailsPage({ params, searchParams }) {
                     className="rounded-xl border border-brand-line bg-white px-3 py-2"
                   />
                 </label>
-                <button type="submit" className="btn btn-primary w-fit">
+                <SubmitButton className="btn btn-primary w-fit" pendingLabel="Saving…">
                   {reviewAccess.review ? 'Save changes' : 'Submit review'}
-                </button>
+                </SubmitButton>
               </form>
               {reviewAccess.review ? (
                 <form action={deleteProductReviewAction} className="mt-3">
                   <input type="hidden" name="productId" value={product.id} />
                   <input type="hidden" name="reviewId" value={reviewAccess.review.id} />
-                  <button type="submit" className="btn btn-secondary">
+                  <SubmitButton className="btn btn-secondary" pendingLabel="Deleting…">
                     Delete review
-                  </button>
+                  </SubmitButton>
                 </form>
               ) : null}
             </div>

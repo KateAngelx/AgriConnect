@@ -36,12 +36,20 @@ function presentCart(store, cart) {
   }
 }
 
+async function presentPersistedCart(cart) {
+  const client = getSupabaseAdmin()
+  if (!client) return cart
+  const store = getStore()
+  store.carts.set(cart.buyer, cart)
+  return presentDatabaseCart(client, cart)
+}
+
 async function presentDatabaseCart(client, cart) {
   const productIds = [...new Set((cart?.items || []).map((item) => item.productId).filter(Boolean))]
   if (!productIds.length) return { ...cart, items: [] }
   const { data: productRows, error: productError } = await client
     .from('products')
-    .select('id,name,price,unit,stock,location,status,pickup,delivery,seller_id,images')
+    .select('id,name,price,unit,stock,location,status,pickup,delivery,seller_id')
     .in('id', productIds)
   if (productError) throw new Error(`Could not load cart products: ${productError.message}`)
   const sellerIds = [...new Set((productRows || []).map((product) => product.seller_id).filter(Boolean))]
@@ -62,7 +70,7 @@ async function presentDatabaseCart(client, cart) {
       status: product.status,
       pickup: Boolean(product.pickup),
       delivery: Boolean(product.delivery),
-      images: product.images || [],
+      images: [],
       seller: sellers.has(product.seller_id)
         ? {
             id: product.seller_id,
@@ -122,9 +130,7 @@ export async function addToCart(input) {
     productId: productID,
     quantity,
   })
-  if (persistedCart) {
-    return { cart: await getCart(buyer.user.id) }
-  }
+  if (persistedCart) return { cart: await presentPersistedCart(persistedCart) }
   const store = await readyStore()
   const product = await getProduct(productID)
   if (!product || product.status !== 'active') return { error: 'That product is not available.' }
@@ -159,9 +165,7 @@ export async function updateCart(input) {
     itemId: item.id,
     quantity,
   })
-  if (persistedCart) {
-    return { cart: await getCart(buyer.user.id) }
-  }
+  if (persistedCart) return { cart: await presentPersistedCart(persistedCart) }
   const store = await readyStore()
   const memoryCart = store.carts.get(buyer.user.id)
   const memoryItem = memoryCart?.items.find((entry) => entry.id === item.id)
@@ -192,9 +196,7 @@ export async function buyNow(input) {
     productId: productID,
     quantity,
   })
-  if (persistedCart) {
-    return { cart: await getCart(buyer.user.id) }
-  }
+  if (persistedCart) return { cart: await presentPersistedCart(persistedCart) }
   const store = await readyStore()
   const product = await getProduct(productID)
   if (!product || product.status !== 'active') return { error: 'That product is not available.' }

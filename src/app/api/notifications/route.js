@@ -1,11 +1,13 @@
 import { currentUser } from '@/server/auth'
-import { listNotifications, markAllNotificationsRead, markNotificationRead } from '@/server/notifications'
+import { listNotifications, markAllNotificationsRead, markNotificationRead, unreadCount } from '@/server/notifications'
 
 export async function GET() {
   const user = await currentUser()
   if (!user) return Response.json({ error: 'Sign in required.' }, { status: 401 })
-  const notifications = await listNotifications(user.id)
-  const unread = notifications.filter((note) => !note.read).length
+  const [notifications, unread] = await Promise.all([
+    listNotifications(user.id, { limit: 20 }),
+    unreadCount(user.id),
+  ])
   return Response.json({ notifications, unread })
 }
 

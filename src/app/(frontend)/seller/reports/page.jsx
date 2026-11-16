@@ -73,7 +73,7 @@ export default async function SellerReportsPage({ searchParams }) {
                         {row.reference}
                       </Link>
                       <p className="text-[13px] text-[#5c6f62]">
-                        {pretty(row.paymentMethod)} · {pretty(row.paymentStatus)} · {row.createdAt ? new Date(row.createdAt).toLocaleDateString('en-PH') : '—'}
+                        {pretty(row.paymentMethod)} · {pretty(row.paymentStatus)} · {row.createdAt ? new Date(row.createdAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' }) : '—'}
                       </p>
                       {row.transactionId ? <p className="mt-1 break-all text-xs text-[#5c6f62]">Transaction: {row.transactionId}</p> : null}
                     </div>

@@ -19,7 +19,7 @@ export default async function AdminDashboardPage() {
     adminSnapshot(),
     listRecentApplications(5),
     adminOrderActivity(),
-    listNotifications(user.id),
+    listNotifications(user.id, { limit: 15 }),
     describeIntegrations(),
   ])
 
@@ -133,7 +133,7 @@ export default async function AdminDashboardPage() {
                       <p className="text-[13px] text-[#5c6f62]">
                         {entry.applicationType} ·{' '}
                         {entry.createdAt
-                          ? new Date(entry.createdAt).toLocaleDateString('en-PH')
+                          ? new Date(entry.createdAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' })
                           : '—'}
                       </p>
                     </div>

@@ -4,8 +4,8 @@ import { isValidPin } from '@/lib/geo'
 import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
 import { deliveryAssignmentForViewer, listDeliveryWorkForUser } from './delivery-assignments'
 import { notify } from './notifications'
-import { collectCash, DELIVERY_FEE } from './payments'
-import { isApprovedDelivery, hasRole, rolesFromLegacy } from './roles'
+import { collectCash, DELIVERY_FEE, notifyOrderSellers } from './payments'
+import { isApprovedAdmin, isApprovedDelivery, hasRole, rolesFromLegacy } from './roles'
 import { save } from './sync'
 import { readyStore } from './store'
 import { orderFromDatabaseRow } from './order-record'
@@ -274,7 +274,7 @@ export async function assignmentForOrder(orderId) {
   if (client) {
     const { data: row, error } = await client
       .from('deliveries')
-      .select('id,order_id,courier_id,status,commission,commission_status,note,updates,updated_at')
+      .select('id,order_id,courier_id,status,commission,commission_status,note,updates,proof_of_delivery,updated_at')
       .eq('order_id', orderId)
       .maybeSingle()
     if (error) throw new Error(`Could not load order delivery assignment: ${error.message}`)
@@ -298,6 +298,7 @@ export async function assignmentForOrder(orderId) {
       commissionStatus: row.commission_status || 'pending',
       note: row.note || '',
       updates: Array.isArray(row.updates) ? row.updates : [],
+      proofOfDelivery: row.proof_of_delivery || null,
       updatedAt: row.updated_at || '',
       courier,
     }
@@ -431,7 +432,9 @@ export async function submitProofOfDelivery(user, deliveryId, proofFile) {
   order.proofOfDeliveryUrl = proofUrl
   order.proofOfDeliveryAt = submittedAt
   order.proofCourierId = user.id
-  order.status = 'delivered'
+  // The proof photo completes the order. No seller or buyer step follows; admin
+  // releases the seller and courier payouts from here.
+  order.status = 'completed'
   delivery.status = 'delivered'
   delivery.commission = DELIVERY_FEE
   delivery.updatedAt = submittedAt
@@ -444,20 +447,28 @@ export async function submitProofOfDelivery(user, deliveryId, proofFile) {
   delivery.updates.push({
     at: submittedAt,
     status: 'delivered',
-    note: 'Proof of delivery uploaded and delivery marked complete.',
+    note: 'Proof of delivery uploaded. Order completed.',
   })
   await notify(
     order.buyer,
     `${order.reference} was delivered`,
-    'Please review the proof of delivery and confirm that you received the products.',
+    'Your courier delivered the order. The proof of delivery photo is in your order details.',
     `/buyer/orders?order=${order.id}`,
   )
-  await notify(
-    order.seller,
+  await notifyOrderSellers(
+    order,
     `${order.reference} was delivered`,
-    'The courier uploaded proof of delivery. The buyer must confirm receipt before admin payment release.',
+    'The courier uploaded proof of delivery and the order is complete. Your payment will be released by an administrator.',
     `/seller/orders?order=${order.id}`,
   )
+  for (const admin of [...store.users.values()].filter((entry) => isApprovedAdmin(entry))) {
+    await notify(
+      admin.id,
+      `${order.reference} delivered`,
+      `${user.name} uploaded proof of delivery. Seller payment and the ₱${DELIVERY_FEE} courier fee are ready to release.`,
+      '/admin/payments',
+    )
+  }
   await save()
   return { ok: true }
 }

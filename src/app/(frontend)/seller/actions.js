@@ -34,6 +34,7 @@ export async function saveProductAction(_state, formData) {
     category: formData.get('category'),
     location: formData.get('location'),
     imageUrl: formData.get('imageUrl'),
+    keepImage: formData.get('keepImage'),
     pickup: formData.get('pickup'),
     delivery: formData.get('delivery'),
     status: formData.get('status'),

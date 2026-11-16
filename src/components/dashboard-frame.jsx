@@ -115,6 +115,7 @@ export function DashboardFrame({
   wishlistCount = 0,
   navBadges = {},
   variant = 'default',
+  onUnreadChange,
   children,
 }) {
   const pathname = usePathname()
@@ -217,6 +218,7 @@ export function DashboardFrame({
               cartCount={cartCount}
               wishlistCount={wishlistCount}
               pathname={pathname}
+              onUnreadChange={onUnreadChange}
             />
           </div>
         </header>

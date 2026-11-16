@@ -4,6 +4,7 @@ import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
 import { PagedRows } from '@/components/paged-rows'
 import { requireAdmin } from '@/server/guards'
 import { listOrdersForAdmin } from '@/server/admin'
+import { ProofOfDeliveryPhoto } from '@/components/proof-of-delivery-photo'
 
 const statuses = [
   'all',
@@ -171,6 +172,7 @@ export default async function AdminOrdersPage({ searchParams }) {
                         Subtotal {peso(order.subtotal)}
                         {order.deliveryFee ? ` · Delivery ${peso(order.deliveryFee)}` : ''}
                       </p>
+                      <ProofOfDeliveryPhoto proof={order.proofOfDelivery} courierName={order.courierName} />
                     </div>
                     <div>
                       <h4 className="font-semibold text-brand-900">Transaction records</h4>

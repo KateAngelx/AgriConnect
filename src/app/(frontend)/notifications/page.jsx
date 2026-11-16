@@ -10,11 +10,12 @@ import {
 } from '@/app/(frontend)/notifications/actions'
 import { currentUser } from '@/server/auth'
 import { listNotifications } from '@/server/notifications'
+import { SubmitButton } from '@/components/submit-button'
 
 export default async function NotificationsPage() {
   const user = await currentUser()
   if (!user) redirect('/login')
-  const notes = await listNotifications(user.id)
+  const notes = await listNotifications(user.id, { limit: 100 })
   const unread = notes.filter((note) => !note.read).length
 
   return (
@@ -65,9 +66,9 @@ export default async function NotificationsPage() {
                   {!note.read ? (
                     <form action={readNotificationAction}>
                       <input type="hidden" name="id" value={note.id} />
-                      <button type="submit" className="text-brand-900 hover:underline">
+                      <SubmitButton className="text-brand-900 hover:underline disabled:opacity-60">
                         Mark read
-                      </button>
+                      </SubmitButton>
                     </form>
                   ) : null}
                 </div>

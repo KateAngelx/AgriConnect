@@ -3,10 +3,12 @@
 import { useActionState, useState } from 'react'
 import { saveProductAction } from '@/app/(frontend)/seller/actions'
 import { DashboardIcon } from '@/components/dashboard-icons'
+import { SubmitButton } from '@/components/submit-button'
 
-function ProductPhotoField({ initial, productId = '' }) {
+function ProductPhotoField({ initial, productId = '', keepExisting = false }) {
   const [preview, setPreview] = useState(initial || '')
-  const [savedUrl, setSavedUrl] = useState(initial || '')
+  const [savedUrl, setSavedUrl] = useState('')
+  const [keep, setKeep] = useState(keepExisting)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -35,10 +37,12 @@ function ProductPhotoField({ initial, productId = '' }) {
       if (!response.ok || !result.url) throw new Error(result.error || 'Could not upload the photo.')
       setPreview(result.url)
       setSavedUrl(result.url)
+      setKeep(false)
     } catch (pickError) {
       setError(pickError.message || 'Could not use that photo.')
       setPreview(initial || '')
-      setSavedUrl(initial || '')
+      setSavedUrl('')
+      setKeep(keepExisting)
     } finally {
       URL.revokeObjectURL(localPreview)
       setBusy(false)
@@ -62,13 +66,14 @@ function ProductPhotoField({ initial, productId = '' }) {
             <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={onPick} disabled={busy} />
           </label>
           {preview ? (
-            <button type="button" className="btn btn-danger !size-9 !min-h-9 !p-0" onClick={() => { setPreview(''); setSavedUrl(''); setError('') }} aria-label="Remove selected photo" title="Remove selected photo">
+            <button type="button" className="btn btn-danger !size-9 !min-h-9 !p-0" onClick={() => { setPreview(''); setSavedUrl(''); setKeep(false); setError('') }} aria-label="Remove selected photo" title="Remove selected photo">
               <DashboardIcon name="trash" className="size-4" />
             </button>
           ) : null}
         </div>
       </div>
       <p className="mt-2 text-[12px] text-[#5c6f62]">On a phone, Take photo opens the camera. Upload photo opens your library.</p>
+      {keep ? <input type="hidden" name="keepImage" value="1" /> : null}
       <input type="hidden" name="imageUrl" value={savedUrl} />
       {error ? <p role="alert" className="mt-2 text-sm text-[#963b2d]">{error}</p> : null}
     </div>
@@ -80,7 +85,12 @@ const field =
 
 export function ProductForm({ categories, product, commissionRate = 1 }) {
   const [state, action, pending] = useActionState(saveProductAction, { error: '' })
-  const image = product?.images?.find((item) => item?.url)?.url || ''
+  const storedImage = product?.images?.find((item) => item?.url)?.url || ''
+  const image = storedImage.startsWith('https://')
+    ? storedImage
+    : product?.id && product.status === 'active'
+      ? `/api/products/${encodeURIComponent(product.id)}/image`
+      : ''
   return (
     <form action={action} className="space-y-4">
       <div className="rounded-xl border border-[#d6e9cf] bg-[#f3f9ef] px-4 py-3 text-[13px] leading-5 text-[#486044]">
@@ -171,7 +181,7 @@ export function ProductForm({ categories, product, commissionRate = 1 }) {
         </label>
         <input id="location" name="location" required defaultValue={product?.location || ''} className={field} />
       </div>
-      <ProductPhotoField initial={image} productId={product?.id || ''} />
+      <ProductPhotoField initial={image} productId={product?.id || ''} keepExisting={Boolean(product)} />
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="flex items-center gap-2 text-sm font-bold">
           <input type="checkbox" name="pickup" value="yes" defaultChecked={product ? product.pickup : true} />
@@ -198,9 +208,9 @@ export function ProductForm({ categories, product, commissionRate = 1 }) {
           {state.error}
         </p>
       )}
-      <button disabled={pending} className="btn btn-primary">
+      <SubmitButton disabled={pending} className="btn btn-primary">
         {pending ? 'Saving…' : 'Save product'}
-      </button>
+      </SubmitButton>
     </form>
   )
 }

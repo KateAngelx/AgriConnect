@@ -173,14 +173,10 @@ test('cash order: commission becomes ready after delivery and admin can mark it 
   }
   const proof = new File([new Uint8Array([137, 80, 78, 71])], 'proof.png', { type: 'image/png' })
   assert.deepEqual(await submitProofOfDelivery(courier, delivery.id, proof), { ok: true })
-  assert.equal(order.status, 'delivered')
-  assert.equal(delivery.status, 'delivered')
-  const confirmedAt = new Date().toISOString()
-  delivery.buyerConfirmedAt = confirmedAt
-  order.buyerConfirmedAt = confirmedAt
-  order.status = 'completed'
-  delivery.status = 'completed'
+  // The proof photo completes the order on its own: no buyer or seller step follows.
   assert.equal(order.status, 'completed')
+  assert.equal(delivery.status, 'delivered')
+  assert.equal(order.buyerConfirmedAt || '', '')
   assert.equal(delivery.courierId, courier.id)
   assert.equal(delivery.commission, DELIVERY_FEE)
   assert.equal(delivery.commissionStatus, 'pending')

@@ -2,15 +2,15 @@ import { publishSellerAnnouncementAction } from '@/app/(frontend)/admin/announce
 import { DashboardShell } from '@/components/dashboard-shell'
 import { AlertBanner } from '@/components/dashboard-ui'
 import { requireAdmin } from '@/server/guards'
-import { readyStore } from '@/server/store'
 import { isApprovedDelivery, isApprovedSeller } from '@/server/roles'
+import { getSupabaseAdmin, supabaseEnv } from '@/lib/supabase'
+import { readyStore } from '@/server/store'
+import { SubmitButton } from '@/components/submit-button'
 
 export default async function AdminAnnouncementsPage({ searchParams }) {
   const user = await requireAdmin()
   const query = await searchParams
-  const store = await readyStore()
-  const sellerCount = [...store.users.values()].filter(isApprovedSeller).length
-  const deliveryCount = [...store.users.values()].filter(isApprovedDelivery).length
+  const { sellerCount, deliveryCount } = await audienceCounts()
   return (
     <DashboardShell user={user} title="Administrator announcements" subtitle="Send an announcement to approved sellers, delivery personnel, or both.">
       {typeof query.error === 'string' ? (
@@ -40,9 +40,42 @@ export default async function AdminAnnouncementsPage({ searchParams }) {
             Message
             <textarea name="message" required minLength={10} maxLength={2000} rows={5} className="rounded-xl border border-brand-line bg-white px-3 py-2" />
           </label>
-          <button type="submit" className="btn btn-primary w-fit">Send announcement</button>
+          <SubmitButton className="btn btn-primary w-fit" pendingLabel="Sending…">Send announcement</SubmitButton>
         </form>
       </section>
     </DashboardShell>
   )
+}
+
+async function audienceCounts() {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (!client) {
+    const store = await readyStore()
+    const users = [...store.users.values()]
+    return {
+      sellerCount: users.filter(isApprovedSeller).length,
+      deliveryCount: users.filter(isApprovedDelivery).length,
+    }
+  }
+  const users = []
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await client
+      .from('profiles')
+      .select('role,roles,status,seller_id')
+      .range(offset, offset + 999)
+    if (error) throw new Error(`Could not count announcement recipients: ${error.message}`)
+    for (const row of data || []) {
+      users.push({
+        role: row.role,
+        roles: row.roles,
+        status: row.status,
+        sellerId: row.seller_id || null,
+      })
+    }
+    if (!data || data.length < 1000) break
+  }
+  return {
+    sellerCount: users.filter(isApprovedSeller).length,
+    deliveryCount: users.filter(isApprovedDelivery).length,
+  }
 }

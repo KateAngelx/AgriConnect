@@ -21,6 +21,7 @@ export function AppHeader({
   unread = 0,
   cartCount = 0,
   wishlistCount = 0,
+  onUnreadChange,
 }) {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -113,6 +114,7 @@ export function AppHeader({
               cartCount={cartCount}
               wishlistCount={wishlistCount}
               pathname={pathname}
+              onUnreadChange={onUnreadChange}
               mobileAccountInMenu
             />
           ) : null}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { proofDeliveryAction } from '@/app/(frontend)/delivery/actions'
+import { SubmitButton } from '@/components/submit-button'
 
 export function ProofDeliveryForm({ deliveryId }) {
   const [preview, setPreview] = useState('')
@@ -35,9 +36,9 @@ export function ProofDeliveryForm({ deliveryId }) {
       {preview ? (
         <img src={preview} alt="Proof preview" className="mt-3 max-h-72 w-full rounded-lg object-contain" />
       ) : null}
-      <button type="submit" className="btn btn-dark mt-3">
+      <SubmitButton className="btn btn-dark mt-3" pendingLabel="Uploading proof…">
         Submit proof and complete delivery
-      </button>
+      </SubmitButton>
     </form>
   )
 }

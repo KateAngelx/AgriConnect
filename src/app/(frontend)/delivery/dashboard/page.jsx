@@ -14,7 +14,7 @@ export default async function DeliveryDashboardPage({ searchParams }) {
   const [summary, work, notes] = await Promise.all([
     deliverySnapshot(user),
     listCourierWork(user),
-    listNotifications(user.id),
+    listNotifications(user.id, { limit: 15 }),
   ])
   const available = work.filter((item) => item.status === 'open' && item.canAccept)
   const active = work.filter((item) => item.isMine && ['picked-up', 'in-transit'].includes(item.status))

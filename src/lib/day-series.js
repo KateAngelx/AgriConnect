@@ -1,20 +1,21 @@
-/** Local calendar day, so bars match the date shown in the Philippines. */
+const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
+
+/** Philippine calendar day (UTC+8), whatever timezone the server runs in. */
 export function localDayKey(value) {
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
+  return new Date(date.getTime() + MANILA_OFFSET_MS).toISOString().slice(0, 10)
 }
 
 export function lastDaySeries(items, pick, days = 7) {
   const buckets = []
   for (let index = days - 1; index >= 0; index -= 1) {
-    const date = new Date()
-    date.setHours(0, 0, 0, 0)
-    date.setDate(date.getDate() - index)
+    // Noon Manila time on the target day keeps the key and label on the same date.
+    const today = localDayKey(new Date())
+    const date = new Date(`${today}T12:00:00+08:00`)
+    date.setUTCDate(date.getUTCDate() - index)
     buckets.push({
-      label: date.toLocaleDateString('en-PH', { weekday: 'short' }),
+      label: date.toLocaleDateString('en-PH', { weekday: 'short', timeZone: 'Asia/Manila' }),
       key: localDayKey(date),
       value: 0,
     })

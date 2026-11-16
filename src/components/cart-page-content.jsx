@@ -94,7 +94,7 @@ export function CartPageContent() {
   }
 
   return items.length ? (
-    <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
       <section className="space-y-4">
         <label className="ui-card flex min-h-12 items-center gap-3 px-4 py-3 text-sm font-semibold">
           <input

@@ -72,7 +72,7 @@ export default async function SellerReviewsPage() {
                           <StatusBadge status="Customer review" />
                           {review.createdAt ? (
                             <time dateTime={review.createdAt} className="text-xs text-brand-muted">
-                              {new Date(review.createdAt).toLocaleDateString('en-PH')}
+                              {new Date(review.createdAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' })}
                             </time>
                           ) : null}
                         </div>

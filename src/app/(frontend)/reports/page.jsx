@@ -4,6 +4,7 @@ import { PagedRows } from '@/components/paged-rows'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
 import { requireApprovedBuyer } from '@/server/guards'
 import { reportsForBuyer, reportOptions, BUYER_REPORT_TYPES } from '@/server/reports'
+import { SubmitButton } from '@/components/submit-button'
 
 const reportTypeLabels = Object.fromEntries(BUYER_REPORT_TYPES.filter(([value]) => value !== 'buyer'))
 
@@ -66,7 +67,7 @@ export default async function BuyerReportsPage({ searchParams }) {
               className="rounded-xl border border-brand-line bg-white px-3 py-2"
             />
           </label>
-          <button type="submit" className="btn btn-primary w-fit">Submit report</button>
+          <SubmitButton className="btn btn-primary w-fit" pendingLabel="Submitting…">Submit report</SubmitButton>
         </form>
       </section>
 

@@ -1,14 +1,23 @@
 'use client'
 
-import { useActionState, useMemo, useState } from 'react'
+import { useActionState, useEffect, useMemo, useState } from 'react'
 import { placeOrderAction } from '@/app/(frontend)/checkout/actions'
 import { peso } from '@/lib/dashboard-format'
 import { CheckoutDeliveryEta } from '@/components/checkout-delivery-eta'
 import { LocationPicker } from '@/components/location-picker'
+import { useCartState } from '@/components/marketplace-state'
+import { SubmitButton } from '@/components/submit-button'
 
 export function CheckoutForm({ user, summary, electronicPayments, electronicProvider, deliveryFee }) {
   const [state, checkoutAction, pending] = useActionState(placeOrderAction, { error: '' })
-  const [fulfillment, setFulfillment] = useState('pickup')
+  const { refreshCart } = useCartState()
+  // A placed order redirects away from this form. Reload the cart then so the
+  // header badge and drawer drop the items that were just ordered.
+  useEffect(() => () => refreshCart(), [refreshCart])
+  // Only offer a method that every item in this checkout supports.
+  const pickupAllowed = summary.items.every((line) => line.product?.pickup !== false)
+  const deliveryAllowed = summary.items.every((line) => line.product?.delivery !== false)
+  const [fulfillment, setFulfillment] = useState(pickupAllowed || !deliveryAllowed ? 'pickup' : 'delivery')
   const savedAddresses = (Array.isArray(user.savedAddresses) ? user.savedAddresses : []).filter(
     (item) => item?.id !== 'service-area-pin' && item?.address && item?.lat !== undefined && item?.lng !== undefined,
   )
@@ -133,7 +142,7 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
   )
 
   return (
-    <form action={checkoutAction} className="grid gap-8 lg:grid-cols-[1fr_360px]">
+    <form action={checkoutAction} className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
       {summary.items.map((line) => (
         <input key={line.cartItemId} type="hidden" name="cartItemIds" value={line.cartItemId} />
       ))}
@@ -163,26 +172,33 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
                 type="radio"
                 name="fulfillment"
                 value="pickup"
+                disabled={!pickupAllowed}
                 checked={fulfillment === 'pickup'}
                 onChange={() => setFulfillment('pickup')}
               />{' '}
               <strong>Pickup</strong>
-              <span className="mt-1 block text-xs text-[#647066]">No delivery fee</span>
+              <span className="mt-1 block text-xs text-[#647066]">{pickupAllowed ? 'No delivery fee' : 'Not available for every item'}</span>
             </label>
             <label className="rounded-xl border border-[#e5e5ea] bg-white p-4 has-[:checked]:border-[#248a3d] has-[:checked]:bg-[#f5f5f7]">
               <input
                 type="radio"
                 name="fulfillment"
                 value="delivery"
+                disabled={!deliveryAllowed}
                 checked={fulfillment === 'delivery'}
                 onChange={() => setFulfillment('delivery')}
               />{' '}
               <strong>Delivery</strong>
               <span className="mt-1 block text-xs text-[#647066]">
-                + {peso(deliveryFee)} per seller order
+                {deliveryAllowed ? `+ ${peso(deliveryFee)} per seller order` : 'Not available for every item'}
               </span>
             </label>
           </div>
+          {!pickupAllowed && !deliveryAllowed ? (
+            <p role="alert" className="mt-3 rounded-xl bg-[#fff1ed] px-4 py-3 text-sm text-[#963b2d]">
+              Some items are pickup-only and others are delivery-only. Check them out separately from your cart.
+            </p>
+          ) : null}
         </fieldset>
         {deliverySection}
         <fieldset>
@@ -260,13 +276,9 @@ export function CheckoutForm({ user, summary, electronicPayments, electronicProv
           <span>Total</span>
           <span>{peso(grandTotal)}</span>
         </div>
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-primary mt-6 w-full"
-        >
+        <SubmitButton disabled={pending} className="btn btn-primary mt-6 w-full">
           {pending ? 'Placing order…' : 'Place order'}
-        </button>
+        </SubmitButton>
       </aside>
     </form>
   )

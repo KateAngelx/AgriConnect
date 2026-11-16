@@ -34,7 +34,7 @@ export async function installApp() {
       const choice = await prompt.userChoice
       window.__agriconnectInstall = null
       if (choice?.outcome === 'accepted') {
-        return { ok: true, message: 'AgriConnect was added to this phone.' }
+        return { ok: true, message: 'AgriConnect was added to this device.' }
       }
       return { ok: false, message: 'Install was not added. Open the browser menu and choose Install app.' }
     } catch {
@@ -43,10 +43,26 @@ export async function installApp() {
   }
 
   if (isIos()) {
-    if (isIosInAppBrowser() || typeof navigator.share !== 'function') {
+    if (isIosInAppBrowser()) {
       return {
         ok: false,
         message: 'Open this page in Safari. Tap Share → Add to Home Screen to install it, or tap Add Bookmark to save the website only.',
+      }
+    }
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: 'AgriConnect',
+          url: window.location.href,
+        })
+        return {
+          ok: true,
+          message: 'In the share sheet, tap Add to Home Screen. Choose Add Bookmark if you only want a saved link.',
+        }
+      } catch (error) {
+        if (error?.name === 'AbortError') {
+          return { ok: false, message: 'Share was closed. Tap Share in Safari, then Add to Home Screen.' }
+        }
       }
     }
     return {
@@ -65,5 +81,17 @@ export async function installApp() {
   return {
     ok: false,
     message: 'Open the browser menu and choose Install app or Add to Home screen.',
+  }
+}
+
+if (typeof window !== 'undefined' && !window.__agriconnectInstallBound) {
+  window.__agriconnectInstallBound = true
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault()
+    window.__agriconnectInstall = event
+    window.dispatchEvent(new Event('agriconnect:installready'))
+  })
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
   }
 }

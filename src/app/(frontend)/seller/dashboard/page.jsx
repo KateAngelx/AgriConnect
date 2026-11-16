@@ -195,7 +195,7 @@ async function SellerOrderSections({ user }) {
 }
 
 async function SellerNotifications({ user }) {
-  const notes = await listNotifications(user.id)
+  const notes = await listNotifications(user.id, { limit: 15 })
   return <NotificationFeed notes={notes} />
 }
 

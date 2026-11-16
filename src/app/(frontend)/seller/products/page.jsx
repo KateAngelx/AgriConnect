@@ -9,8 +9,7 @@ import { ProductForm } from '@/components/product-form'
 import { listCategories } from '@/server/catalog'
 import { requireApprovedSeller } from '@/server/guards'
 import { listOwnedProducts } from '@/server/seller'
-import { commissionRateFrom } from '@/server/payments'
-import { readyStore } from '@/server/store'
+import { commissionRate } from '@/server/payments'
 
 const statusOrder = ['active', 'unavailable', 'draft', 'archived']
 
@@ -20,8 +19,11 @@ export default async function SellerProductsPage({ searchParams }) {
   const error = typeof query.error === 'string' ? query.error : ''
   const creating = query.new === '1'
   const editingId = typeof query.edit === 'string' ? query.edit : ''
-  const [products, categories, store] = await Promise.all([listOwnedProducts(user), listCategories(), readyStore()])
-  const commissionRate = commissionRateFrom(store)
+  const [products, categories, rate] = await Promise.all([
+    listOwnedProducts(user),
+    listCategories(),
+    commissionRate(),
+  ])
   const editing = editingId ? products.find((product) => product.id === editingId) : null
   const known = new Set(statusOrder)
   const extra = [...new Set(products.map((product) => product.status).filter((status) => !known.has(status)))]
@@ -39,7 +41,7 @@ export default async function SellerProductsPage({ searchParams }) {
       {creating || editingId ? (
         <div className="mb-4">
           <AlertBanner tone="info">
-            Platform commission notice: delivered orders may deduct ₱{commissionRate} per item from your seller payout.
+            Platform commission notice: delivered orders may deduct ₱{rate} per item from your seller payout.
             Cash pickup orders do not incur this commission.
           </AlertBanner>
         </div>
@@ -59,7 +61,7 @@ export default async function SellerProductsPage({ searchParams }) {
               <ProductForm
                 categories={categories.docs}
                 product={editing || undefined}
-                commissionRate={commissionRate}
+                commissionRate={rate}
               />
             )}
           </DashboardPanel>
@@ -85,8 +87,16 @@ export default async function SellerProductsPage({ searchParams }) {
                 <li key={product.id} className="flex flex-col items-stretch gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#d5e4d4] bg-[#eef0ea]">
-                      {product.images?.[0]?.url ? (
-                        <img src={product.images[0].url} alt={product.name} className="size-full object-cover" />
+                      {product.status === 'active' || product.images?.[0]?.url?.startsWith('https://') ? (
+                        <img
+                          src={
+                            product.images?.[0]?.url?.startsWith('https://')
+                              ? product.images[0].url
+                              : `/api/products/${encodeURIComponent(product.id)}/image`
+                          }
+                          alt={product.name}
+                          className="size-full object-cover"
+                        />
                       ) : (
                         <DashboardIcon name="box" className="size-5 text-[#78936d]" />
                       )}

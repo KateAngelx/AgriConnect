@@ -123,7 +123,10 @@ export default async function AdminProductsPage({ searchParams }) {
         {products.length ? (
           <PagedRows className="divide-y divide-brand-line">
             {products.map((product) => {
-              const image = product.images[0]?.url
+              const image =
+                product.status === 'active'
+                  ? `/api/products/${encodeURIComponent(product.id)}/image`
+                  : product.images[0]?.url
               return (
                 <li key={product.id} className="px-4 py-4 sm:px-5">
                   <div className="grid gap-3 sm:grid-cols-[4.5rem_minmax(0,1fr)_auto] sm:items-center">
@@ -171,7 +174,7 @@ export default async function AdminProductsPage({ searchParams }) {
                       <p className="mt-2 text-xs text-brand-muted">
                         Listing ID: {product.id}
                         {product.createdAt
-                          ? ` · Added ${new Date(product.createdAt).toLocaleDateString('en-PH')}`
+                          ? ` · Added ${new Date(product.createdAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' })}`
                           : ''}
                       </p>
                       <p className="mt-2 text-sm text-brand-muted">

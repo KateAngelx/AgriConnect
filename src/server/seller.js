@@ -26,7 +26,8 @@ const sellerSteps = {
     placed: 'confirmed',
     confirmed: 'preparing',
     preparing: 'awaiting-delivery',
-    delivered: 'completed',
+    // No 'delivered' step: only the buyer's Confirm Received completes a delivery order,
+    // and payouts wait for that confirmation.
   },
 }
 
@@ -235,9 +236,36 @@ export const sellerSnapshot = cache(async function sellerSnapshot(user) {
   }
 })
 
+export async function sellerProfile(user) {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    let query = client
+      .from('sellers')
+      .select('id,farm_name,location,landmark,status,description,owner_id,pickup_lat,pickup_lng')
+    query = user.sellerId ? query.eq('id', user.sellerId) : query.eq('owner_id', user.id)
+    const { data, error } = await query.maybeSingle()
+    if (error) throw new Error(`Could not load the shop profile: ${error.message}`)
+    if (!data) return null
+    return {
+      id: data.id,
+      farmName: data.farm_name,
+      location: data.location || '',
+      landmark: data.landmark || '',
+      status: data.status,
+      description: data.description || '',
+      ownerId: data.owner_id || '',
+      pickupLat: data.pickup_lat ?? null,
+      pickupLng: data.pickup_lng ?? null,
+    }
+  }
+  const store = await readyStore()
+  return sellerRecord(store, user)
+}
+
 export async function listOwnedProducts(user) {
   const store = await getCatalogSnapshot({
     includeInactive: true,
+    includeImages: false,
     includeReviews: false,
     sellerId: user.sellerId || '',
   })
@@ -474,9 +502,14 @@ export async function saveProduct(user, input) {
   record.pickup = pickup
   record.delivery = delivery
   record.status = status
-  record.images = photo
-    ? [{ id: record.images?.[0]?.id || crypto.randomUUID(), url: photo, alt: name }]
-    : []
+  if (photo) {
+    record.images = [{ id: record.images?.[0]?.id || crypto.randomUUID(), url: photo, alt: name }]
+  } else if (String(input.keepImage || '') === '1' && existing) {
+    record.images = existing.images || []
+    if (record.images[0]) record.images[0] = { ...record.images[0], alt: name }
+  } else {
+    record.images = []
+  }
   if (!existing) store.products.unshift(record)
   await save()
   return { product: record }
@@ -597,6 +630,10 @@ async function closeOrder(user, orderId, rejection = false, rejectionReason = ''
   }
   if (['completed', 'delivered', 'picked-up', 'cancelled'].includes(order.status)) {
     return { error: 'This order can no longer be cancelled.' }
+  }
+  // Once the courier has the goods, cancelling would return stock that is not in the shop.
+  if (['courier-picked-up', 'out-for-delivery'].includes(order.status)) {
+    return { error: 'The courier already has this order. It can no longer be cancelled.' }
   }
   const { delivery } = cancelOrderAndReleaseReservations(store, order, 'the seller')
   if (delivery) {

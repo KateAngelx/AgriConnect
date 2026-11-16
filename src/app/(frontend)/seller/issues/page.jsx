@@ -4,6 +4,7 @@ import { PagedRows } from '@/components/paged-rows'
 import { AlertBanner, StatusBadge } from '@/components/dashboard-ui'
 import { requireApprovedSeller } from '@/server/guards'
 import { reportsForBuyer, reportOptions, reportTypesForRole } from '@/server/reports'
+import { SubmitButton } from '@/components/submit-button'
 
 export default async function SellerIssuesPage({ searchParams }) {
   const user = await requireApprovedSeller()
@@ -50,7 +51,7 @@ export default async function SellerIssuesPage({ searchParams }) {
             Description <span className="font-normal text-brand-muted">(optional)</span>
             <textarea name="description" rows={5} maxLength={3000} className="rounded-xl border border-brand-line bg-white px-3 py-2" />
           </label>
-          <button type="submit" className="btn btn-primary w-fit">Submit report</button>
+          <SubmitButton className="btn btn-primary w-fit" pendingLabel="Submitting…">Submit report</SubmitButton>
         </form>
       </section>
       <section className="mt-6">

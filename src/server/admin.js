@@ -1,6 +1,6 @@
 import { cache } from 'react'
 import { lastDaySeries, localDayKey } from '@/lib/day-series'
-import { inPeriod } from '@/lib/report-period'
+import { inPeriod, periodStart } from '@/lib/report-period'
 import { listRoleApplications } from './applications'
 import { notify } from './notifications'
 import { DELIVERY_FEE, kiloPlatformFee } from './payments'
@@ -34,46 +34,84 @@ async function readDashboardRows(client, table, columns, optional = false) {
   }
 }
 
+async function headCount(client, table, apply, optional = false) {
+  let query = client.from(table).select('id', { count: 'exact', head: true })
+  if (apply) query = apply(query)
+  const { count, error } = await query
+  if (error) {
+    if (optional && missingTable(error)) return 0
+    throw new Error(`Could not count admin dashboard ${table}: ${error.message}`)
+  }
+  return Number(count || 0)
+}
+
 export const adminSnapshot = cache(async function adminSnapshot() {
   if (supabaseEnv().serviceKey) {
     const client = getSupabaseAdmin()
     if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
-    const [users, products, orders, payments, applications, reports, feedback] = await Promise.all([
+    const closed = ['completed', 'cancelled', 'delivered', 'picked-up']
+    const pendingApplicationStatuses = ['pending', 'under-review', 'needs-info']
+    const openReportStatuses = ['submitted', 'pending', 'in-review', 'under-review']
+    const [
+      users,
+      products,
+      activeProducts,
+      orders,
+      ordersAttention,
+      feeRows,
+      transactions,
+      payments,
+      paidTransactions,
+      pending,
+      pendingReports,
+      unresolvedFeedback,
+    ] = await Promise.all([
       readDashboardRows(client, 'profiles', 'role,roles,status'),
-      readDashboardRows(client, 'products', 'status'),
-      readDashboardRows(client, 'orders', 'status,platform_fee'),
-      readDashboardRows(client, 'payments', 'status'),
-      readDashboardRows(client, 'role_applications', 'status', true),
-      readDashboardRows(client, 'buyer_reports', 'status', true),
-      readDashboardRows(client, 'buyer_feedback', 'status', true),
+      headCount(client, 'products'),
+      headCount(client, 'products', (query) => query.eq('status', 'active')),
+      headCount(client, 'orders'),
+      headCount(client, 'orders', (query) => query.not('status', 'in', `(${closed.join(',')})`)),
+      readDashboardRows(client, 'orders', 'platform_fee'),
+      headCount(client, 'payments'),
+      headCount(client, 'payments', (query) => query.eq('status', 'pending')),
+      headCount(client, 'payments', (query) => query.eq('status', 'paid')),
+      headCount(
+        client,
+        'role_applications',
+        (query) => query.in('status', pendingApplicationStatuses),
+        true,
+      ),
+      headCount(
+        client,
+        'buyer_reports',
+        (query) => query.in('status', openReportStatuses),
+        true,
+      ),
+      headCount(client, 'buyer_feedback', (query) => query.neq('status', 'resolved'), true),
     ])
     const roles = users.map((user) => ({ user, roles: rolesFromLegacy(user) }))
-    const closed = new Set(['completed', 'cancelled', 'delivered', 'picked-up'])
-    const pendingApplicationStatuses = new Set(['pending', 'under-review', 'needs-info'])
-    const platformFee = orders.reduce((sum, order) => sum + Number(order.platform_fee || 0), 0)
+    const platformFee = feeRows.reduce((sum, order) => sum + Number(order.platform_fee || 0), 0)
     return {
       users: users.length,
       buyers: users.filter((user) => user.role === 'buyer').length,
       sellers: roles.filter(({ roles }) => roles.includes('seller')).length,
       deliveryPersonnel: roles.filter(({ roles }) => roles.includes('delivery')).length,
-      pending: applications.filter((item) => pendingApplicationStatuses.has(item.status)).length,
+      pending,
       approvedSellers: users.filter(
         (user) => rolesFromLegacy(user).includes('seller') && user.status === 'approved',
       ).length,
       approvedDelivery: users.filter(
         (user) => rolesFromLegacy(user).includes('delivery') && user.status === 'approved',
       ).length,
-      products: products.length,
-      activeProducts: products.filter((product) => product.status === 'active').length,
-      orders: orders.length,
-      ordersAttention: orders.filter((order) => !closed.has(order.status)).length,
-      transactions: payments.length,
-      payments: payments.filter((payment) => payment.status === 'pending').length,
-      paidTransactions: payments.filter((payment) => payment.status === 'paid').length,
-      pendingReports: reports.filter((report) =>
-        ['submitted', 'pending', 'in-review', 'under-review'].includes(report.status),
-      ).length,
-      unresolvedFeedback: feedback.filter((entry) => entry.status !== 'resolved').length,
+      products,
+      activeProducts,
+      orders,
+      ordersAttention,
+      transactions,
+      payments,
+      paidTransactions,
+      pendingReports,
+      unresolvedFeedback,
       platformFee,
       platformCommission: platformFee,
     }
@@ -224,6 +262,42 @@ export async function listRecentOrdersForAdmin(limit = 5) {
 }
 
 export async function listProductsForAdmin() {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const [productRows, sellersResult, categoriesResult, reportsResult] = await Promise.all([
+      readDashboardRows(
+        client,
+        'products',
+        'id,name,description,price,unit,stock,status,created_at,category_id,seller_id',
+      ),
+      readDashboardRows(client, 'sellers', 'id,farm_name'),
+      readDashboardRows(client, 'categories', 'id,name'),
+      client.from('buyer_reports').select('target_id').eq('report_type', 'product'),
+    ])
+    const reports = reportsResult.error && missingTable(reportsResult.error) ? [] : reportsResult.data || []
+    if (reportsResult.error && !missingTable(reportsResult.error)) {
+      throw new Error(`Could not load product reports: ${reportsResult.error.message}`)
+    }
+    const sellers = new Map(sellersResult.map((seller) => [seller.id, seller.farm_name]))
+    const categories = new Map(categoriesResult.map((category) => [category.id, category.name]))
+    return productRows
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .map((product) => ({
+      id: product.id,
+      name: product.name || 'Product',
+      description: product.description || '',
+      price: Number(product.price) || 0,
+      unit: product.unit || '',
+      stock: Number(product.stock) || 0,
+      status: product.status || 'unavailable',
+      createdAt: product.created_at || '',
+      images: [],
+      category: categories.get(product.category_id) || '',
+      seller: sellers.get(product.seller_id) || 'Seller unavailable',
+      sellerId: product.seller_id || '',
+      reportedCount: reports.filter((report) => report.target_id === product.id).length,
+    }))
+  }
   const store = await readyStore()
   const reports = store.reports || []
   return store.products
@@ -268,6 +342,7 @@ export async function listOrdersForAdmin() {
         }
       })
       const sellers = [...new Set(items.map((item) => item.seller))]
+      const delivery = store.deliveries.find((entry) => entry.orderId === order.id)
       return {
         id: order.id,
         reference: order.reference || order.id,
@@ -281,6 +356,8 @@ export async function listOrdersForAdmin() {
         status: order.status || 'unknown',
         paymentStatus: order.paymentStatus || 'unknown',
         items,
+        proofOfDelivery: delivery?.proofOfDelivery?.url ? delivery.proofOfDelivery : null,
+        courierName: delivery?.courierId ? store.users.get(delivery.courierId)?.name || '' : '',
         transactions: store.payments
           .filter((payment) => payment.orderId === order.id)
           .map((payment) => ({
@@ -317,9 +394,8 @@ export async function adminOrderActivity() {
   if (supabaseEnv().serviceKey) {
     const client = getSupabaseAdmin()
     if (!client) throw new Error('Supabase is configured but its server client is unavailable.')
-    const start = new Date()
-    start.setHours(0, 0, 0, 0)
-    start.setDate(start.getDate() - 6)
+    // Same 7 Philippine calendar days the chart shows.
+    const start = periodStart('7d')
     const { data, error } = await client
       .from('orders')
       .select('created_at')
@@ -345,6 +421,51 @@ export async function adminVolumeActivity() {
 }
 
 export async function listUsers() {
+  const client = supabaseEnv().serviceKey ? getSupabaseAdmin() : null
+  if (client) {
+    const [users, sellers, orders, products, deliveries] = await Promise.all([
+      readDashboardRows(client, 'profiles', 'id,name,email,role,roles,status,created_at,seller_id,service_area'),
+      readDashboardRows(client, 'sellers', 'id,farm_name'),
+      readDashboardRows(client, 'orders', 'buyer_id'),
+      readDashboardRows(client, 'products', 'seller_id'),
+      readDashboardRows(client, 'deliveries', 'courier_id', true),
+    ])
+    const sellerNames = new Map(sellers.map((seller) => [seller.id, seller.farm_name || '']))
+    const ordersByBuyer = new Map()
+    for (const order of orders) {
+      ordersByBuyer.set(order.buyer_id, (ordersByBuyer.get(order.buyer_id) || 0) + 1)
+    }
+    const productsBySeller = new Map()
+    for (const product of products) {
+      productsBySeller.set(product.seller_id, (productsBySeller.get(product.seller_id) || 0) + 1)
+    }
+    const deliveriesByCourier = new Map()
+    for (const delivery of deliveries) {
+      deliveriesByCourier.set(delivery.courier_id, (deliveriesByCourier.get(delivery.courier_id) || 0) + 1)
+    }
+    return users
+      .map((user) => {
+        const normalized = { ...user, sellerId: user.seller_id || null, roles: user.roles }
+        const userRoles = rolesFromLegacy(normalized)
+        return {
+          id: user.id,
+          name: user.name || 'Account',
+          email: user.email || '',
+          role: user.role || 'buyer',
+          roles: userRoles,
+          status: user.status || 'pending',
+          createdAt: user.created_at || '',
+          seller: user.seller_id ? { farmName: sellerNames.get(user.seller_id) || '' } : null,
+          serviceArea: user.service_area || '',
+          activity: {
+            orders: ordersByBuyer.get(user.id) || 0,
+            products: user.seller_id ? productsBySeller.get(user.seller_id) || 0 : 0,
+            deliveries: deliveriesByCourier.get(user.id) || 0,
+          },
+        }
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }
   const store = await readyStore()
   return [...store.users.values()]
     .map((user) => {
@@ -415,10 +536,9 @@ export async function markCommissionPaid(actor, deliveryId) {
   if (
     !order ||
     order.status !== 'completed' ||
-    !delivery.buyerConfirmedAt ||
     !delivery.proofOfDelivery?.url
   ) {
-    return { error: 'Release the courier fee only after proof and buyer confirmation.' }
+    return { error: 'Release the courier fee only after the courier uploads proof of delivery.' }
   }
   if (delivery.courierPaymentStatus === 'released' || delivery.commissionStatus === 'paid') {
     return { ok: true, alreadyReleased: true }
@@ -444,7 +564,7 @@ export async function markSellerPaid(actor, orderId) {
   const order = store.orders.get(String(orderId || ''))
   if (!order) return { error: 'Order not found.' }
   if (order.status !== 'completed') {
-    return { error: 'Release seller payment only after buyer confirmation.' }
+    return { error: 'Release seller payment only after the order is completed.' }
   }
   if (order.sellerPaymentStatus === 'released') return { ok: true, alreadyReleased: true }
   const releasedAt = new Date().toISOString()
@@ -506,10 +626,13 @@ export async function platformReport(period = 'all') {
   return {
     users: users.length,
     buyers: users.filter((user) => user.role === 'buyer').length,
-    approvedSellers: users.filter((user) => user.role === 'seller' && user.status === 'approved')
-      .length,
-    approvedDelivery: users.filter((user) => user.role === 'delivery' && user.status === 'approved')
-      .length,
+    // Count by the full role list so seller-and-courier accounts appear in both totals.
+    approvedSellers: users.filter(
+      (user) => rolesFromLegacy(user).includes('seller') && user.status === 'approved',
+    ).length,
+    approvedDelivery: users.filter(
+      (user) => rolesFromLegacy(user).includes('delivery') && user.status === 'approved',
+    ).length,
     pending: applications.filter(
       (item) => item.status === 'pending' || item.status === 'under-review',
     ).length,
